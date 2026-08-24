@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Zap, Sliders, Layers, Star, CheckCircle } from 'lucide-react';
+import { Sparkles, ArrowRight, Layers, Info, CheckCircle } from 'lucide-react';
 import { CATALOG_POSTERS } from '../data/catalogData';
 
-export default function HeroCarousel({ onOpenSimulator, onSelectPoster }) {
+export default function HeroCarousel({ onSelectPoster }) {
   const featuredPosters = CATALOG_POSTERS.filter(p => p.isFeatured).slice(0, 4);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -17,7 +17,7 @@ export default function HeroCarousel({ onOpenSimulator, onSelectPoster }) {
 
   return (
     <section style={{
-      paddingTop: '150px',
+      paddingTop: '160px',
       paddingBottom: '90px',
       position: 'relative',
       overflow: 'hidden'
@@ -50,7 +50,7 @@ export default function HeroCarousel({ onOpenSimulator, onSelectPoster }) {
             <div style={{ display: 'inline-flex', marginBottom: '20px' }}>
               <div className="badge-gold pulse-gold">
                 <Sparkles size={14} />
-                <span>NUEVA COLECCIÓN DECO VINTAGE 2026</span>
+                <span>COLECCIÓN EXCLUSIVA DECO VINTAGE</span>
               </div>
             </div>
 
@@ -86,9 +86,9 @@ export default function HeroCarousel({ onOpenSimulator, onSelectPoster }) {
                 <ArrowRight size={18} />
               </a>
 
-              <a href="#simulador" className="btn-secondary" style={{ padding: '16px 28px', fontSize: '1rem' }}>
-                <Sliders size={18} color="#f59e0b" />
-                <span>Simulador de Pared</span>
+              <a href="#productos" className="btn-secondary" style={{ padding: '16px 28px', fontSize: '1rem' }}>
+                <Info size={18} color="#f59e0b" />
+                <span>Más sobre nuestros productos</span>
               </a>
             </div>
 
@@ -167,7 +167,7 @@ export default function HeroCarousel({ onOpenSimulator, onSelectPoster }) {
                   fontSize: '0.75rem',
                   marginBottom: '8px'
                 }}>
-                  DESTACADO DE LA SEMANA
+                  DESTACADO
                 </div>
 
                 <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
@@ -189,8 +189,7 @@ export default function HeroCarousel({ onOpenSimulator, onSelectPoster }) {
                     Desde Q 25.00
                   </span>
                   <span style={{ fontSize: '0.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Sliders size={14} color="#f59e0b" />
-                    Probar en Simulador
+                    Ver 6 Tamaños ➔
                   </span>
                 </div>
               </div>

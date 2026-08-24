@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import HeroCarousel from './components/HeroCarousel';
-import WallSimulator from './components/WallSimulator';
 import CategoryShelf from './components/CategoryShelf';
 import QualitySection from './components/QualitySection';
 import ProductModal from './components/ProductModal';
 import JarvisAgent from './components/JarvisAgent';
 import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
-import { Bot, Sparkles } from 'lucide-react';
+import { Bot } from 'lucide-react';
 
 export default function App() {
   const [cart, setCart] = useState([]);
@@ -50,34 +49,22 @@ export default function App() {
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="ambient-bg" />
 
-      {/* Top Fixed Navbar */}
+      {/* Top Fixed Minimalist Navbar */}
       <Navbar
         cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenJarvis={() => setIsJarvisOpen(true)}
-        onSelectCategory={setSelectedCategory}
-        selectedCategory={selectedCategory}
         onSearch={setSearchQuery}
         searchQuery={searchQuery}
       />
 
       <main>
-        {/* Hero Showcase */}
+        {/* Hero Showcase (Marvel Unlimited Style) */}
         <HeroCarousel
-          onOpenSimulator={() => {
-            const simEl = document.getElementById('simulador');
-            if (simEl) simEl.scrollIntoView({ behavior: 'smooth' });
-          }}
           onSelectPoster={(p) => setSelectedPosterForModal(p)}
         />
 
-        {/* Interactive Wall & Size Simulator */}
-        <WallSimulator
-          onAddToCart={handleAddToCart}
-          onQuickWhatsApp={handleQuickWhatsApp}
-        />
-
-        {/* Dynamic Shelf Catalog */}
+        {/* Dynamic Shelf Catalog (MeowMeow Style) */}
         <CategoryShelf
           onSelectPoster={(p) => setSelectedPosterForModal(p)}
           onAddToCart={handleAddToCart}
@@ -86,7 +73,7 @@ export default function App() {
           searchQuery={searchQuery}
         />
 
-        {/* Technical Quality & Production Standards */}
+        {/* Technical Quality, Sizes & Materials */}
         <QualitySection />
       </main>
 

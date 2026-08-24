@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Phone, MessageSquare, Instagram, ShieldCheck, Heart, Sparkles } from 'lucide-react';
+import { MapPin, MessageSquare } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -20,10 +20,15 @@ export default function Footer() {
           
           {/* Col 1: Brand */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <img src="/logos/logo Deco Vintage 30.png" alt="Deco Vintage" style={{ height: '36px' }} onError={e => e.target.src = '/logos/logo 1.png'} />
-              <span style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fff' }}>
-                DECO <span className="text-gradient-gold">VINTAGE</span>
+            <div style={{ marginBottom: '16px' }}>
+              <span style={{
+                fontFamily: 'var(--font-bebas)',
+                fontSize: '2.2rem',
+                letterSpacing: '0.06em',
+                color: '#fff',
+                display: 'block'
+              }}>
+                DECO <span style={{ color: 'var(--accent-gold)' }}>VINTAGE</span>
               </span>
             </div>
             <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '20px' }}>
@@ -56,9 +61,9 @@ export default function Footer() {
               Navegación Rápida
             </h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.88rem' }}>
-              <li><a href="#simulador" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Simulador de Pared 3D</a></li>
-              <li><a href="#catalogo" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Catálogo por Colecciones</a></li>
-              <li><a href="#calidad" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Materiales HP Látex & Tessa</a></li>
+              <li><a href="#catalogo" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>+ Catálogo por Colecciones</a></li>
+              <li><a href="#productos" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>+ Más Sobre Nuestros Productos</a></li>
+              <li><a href="https://wa.me/?text=Hola%20Deco%20Vintage,%20quiero%20cotizar%20un%20p%C3%B3ster%20personalizado" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>+ Pedidos Personalizados</a></li>
             </ul>
           </div>
 

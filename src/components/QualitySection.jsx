@@ -1,32 +1,86 @@
 import React from 'react';
-import { ShieldCheck, Cpu, Layers, Hammer, Sparkles, CheckCircle2, Clock } from 'lucide-react';
+import { ShieldCheck, Cpu, Layers, Hammer, Sparkles, CheckCircle2, Clock, Ruler, PackageCheck, MessageSquare } from 'lucide-react';
+import { OFFICIAL_SIZES } from '../data/catalogData';
 
 export default function QualitySection() {
   return (
-    <section id="calidad" style={{ padding: '90px 0', position: 'relative', background: 'rgba(11, 15, 23, 0.6)' }}>
+    <section id="productos" style={{ padding: '90px 0', position: 'relative', background: 'rgba(9, 12, 19, 0.7)' }}>
       <div className="container">
         
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '50px' }}>
           <div className="badge-gold">
             <ShieldCheck size={14} />
             <span>ESTÁNDARES DE FABRICACIÓN</span>
           </div>
           <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', fontWeight: 900, marginBottom: '16px' }}>
-            Proceso de Producción & <span className="text-gradient-gold">Materiales de Élite</span>
+            Más Sobre <span className="text-gradient-gold">Nuestros Productos</span>
           </h2>
-          <p style={{ color: 'var(--text-secondary)', maxWidth: '700px', margin: '0 auto', fontSize: '1.05rem' }}>
-            La calidad de Deco Vintage se fundamenta en procesos técnicos especializados. Diseñados para durar años con la máxima vivacidad de color.
+          <p style={{ color: 'var(--text-secondary)', maxWidth: '720px', margin: '0 auto', fontSize: '1.05rem' }}>
+            La calidad de Deco Vintage Guate se fundamenta en procesos técnicos especializados. Combinamos impresión de alta gama con soportes rígidos duraderos y fijación limpia sin herramientas.
           </p>
         </div>
 
-        {/* 3 Pillars Grid */}
+        {/* Official 6 Sizes & Prices Table Card */}
+        <div className="glass-card" style={{
+          padding: '36px',
+          marginBottom: '50px',
+          border: '1px solid rgba(245, 158, 11, 0.3)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+            <Ruler size={24} color="var(--accent-gold)" />
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>
+              Los 6 Tamaños Oficiales & Precios en Quetzales
+            </h3>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: '16px'
+          }}>
+            {OFFICIAL_SIZES.map((s) => (
+              <div
+                key={s.id}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '18px 20px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff' }}>
+                    {s.name}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    {s.dimensions}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', marginTop: '4px', fontWeight: 600 }}>
+                    {s.badge}
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#00f5a0' }}>
+                    Q {s.price.toFixed(2)}
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>MDF 5.5mm</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 3 Pillars Grid (Materials & Tech) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
           gap: '28px',
-          maxWidth: '1150px',
-          margin: '0 auto'
+          marginBottom: '50px'
         }}>
           
           {/* Pillar 1: HP Latex */}
@@ -119,6 +173,42 @@ export default function QualitySection() {
             </div>
           </div>
 
+        </div>
+
+        {/* Custom Orders Banner */}
+        <div className="glass-card" style={{
+          padding: '32px',
+          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(13, 17, 26, 0.95) 100%)',
+          border: '1px solid rgba(245, 158, 11, 0.3)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '24px'
+        }}>
+          <div>
+            <div className="badge-gold" style={{ marginBottom: '8px' }}>
+              <Sparkles size={14} />
+              <span>¿BUSCAS ALGO ÚNICO?</span>
+            </div>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
+              Fabricamos Pedidos Personalizados con tu Propia Foto o Diseño
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '650px' }}>
+              Envíos en 3 días hábiles sobre madera MDF 5.5mm o PVC 5mm impermeable. Modalidad 50% de anticipo y 50% contra entrega.
+            </p>
+          </div>
+
+          <a
+            href="https://wa.me/?text=Hola%20Deco%20Vintage,%20quiero%20cotizar%20un%20p%C3%B3ster%20personalizado"
+            target="_blank"
+            rel="noreferrer"
+            className="btn-gold"
+            style={{ padding: '14px 26px', fontSize: '0.95rem' }}
+          >
+            <MessageSquare size={18} />
+            <span>Cotizar en WhatsApp</span>
+          </a>
         </div>
 
       </div>
