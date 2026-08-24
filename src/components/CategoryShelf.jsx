@@ -46,7 +46,7 @@ export default function CategoryShelf({
             Explora Nuestras <span className="text-gradient-cyan">Colecciones Oficiales</span>
           </h2>
           <p style={{ color: 'var(--text-secondary)', maxWidth: '650px', margin: '0 auto', fontSize: '1.05rem' }}>
-            Desliza horizontalmente para descubrir cada obra. Todos nuestros pósters están disponibles en los 6 tamaños sobre madera rígida MDF de 5.5mm.
+            Desliza horizontalmente para descubrir cada obra. Diseños en orientación horizontal y vertical disponibles en los 6 tamaños sobre madera rígida MDF de 5.5mm.
           </p>
         </div>
 
@@ -152,29 +152,37 @@ export default function CategoryShelf({
                       cursor: 'pointer',
                       position: 'relative',
                       background: '#090d16',
-                      border: '1px solid rgba(0, 242, 254, 0.18)'
+                      border: '1px solid rgba(0, 242, 254, 0.18)',
+                      display: 'flex',
+                      flexDirection: 'column'
                     }}
                     onClick={() => onSelectPoster(poster)}
                   >
-                    {/* Poster Card Image Container with Optimized WebP & Shimmer */}
+                    {/* Poster Exhibition Frame: Keeps 100% full uncropped proportions */}
                     <div style={{
                       width: '100%',
-                      height: '340px',
+                      height: '270px',
                       position: 'relative',
-                      overflow: 'hidden',
-                      background: '#06080e'
+                      background: 'radial-gradient(circle at center, #0a0f1a 0%, #04060a 100%)',
+                      padding: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
                     }}>
                       <OptimizedImage
                         src={poster.thumb || poster.image}
                         alt={poster.title}
+                        objectFit="contain"
+                        style={{ background: 'transparent' }}
                       />
 
                       {/* Top Badges */}
                       <div style={{
                         position: 'absolute',
-                        top: '12px',
-                        left: '12px',
-                        right: '12px',
+                        top: '10px',
+                        left: '10px',
+                        right: '10px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -182,9 +190,9 @@ export default function CategoryShelf({
                       }}>
                         <div style={{
                           background: 'rgba(6, 8, 14, 0.85)',
-                          padding: '4px 8px',
+                          padding: '3px 8px',
                           borderRadius: 'var(--radius-full)',
-                          fontSize: '0.75rem',
+                          fontSize: '0.72rem',
                           fontWeight: 700,
                           color: '#fff',
                           display: 'flex',
@@ -200,7 +208,7 @@ export default function CategoryShelf({
                           background: 'var(--grad-cyan)',
                           color: '#06080e',
                           fontWeight: 800,
-                          fontSize: '0.7rem',
+                          fontSize: '0.68rem',
                           padding: '3px 8px',
                           borderRadius: 'var(--radius-full)'
                         }}>
@@ -232,28 +240,25 @@ export default function CategoryShelf({
                     </div>
 
                     {/* Poster Card Details */}
-                    <div style={{ padding: '18px' }}>
-                      <h4 style={{
-                        fontSize: '1.1rem',
-                        fontWeight: 800,
-                        color: '#fff',
-                        marginBottom: '4px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {poster.title}
-                      </h4>
-                      <p style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--text-secondary)',
-                        marginBottom: '14px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {poster.subtitle}
-                      </p>
+                    <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <h4 style={{
+                          fontSize: '1rem',
+                          fontWeight: 800,
+                          color: '#fff',
+                          marginBottom: '4px',
+                          lineHeight: '1.3'
+                        }}>
+                          {poster.title}
+                        </h4>
+                        <p style={{
+                          fontSize: '0.78rem',
+                          color: 'var(--text-secondary)',
+                          marginBottom: '14px'
+                        }}>
+                          {poster.subtitle}
+                        </p>
+                      </div>
 
                       <div style={{
                         display: 'flex',
@@ -263,7 +268,7 @@ export default function CategoryShelf({
                         borderTop: '1px solid rgba(255, 255, 255, 0.06)'
                       }}>
                         <div>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Desde</span>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Desde</span>
                           <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
                             Q 25.00
                           </span>

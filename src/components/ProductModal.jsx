@@ -90,26 +90,34 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
           
           {/* Left Column: Full HD Optimized Image Preview */}
           <div style={{
-            background: '#06080e',
-            padding: '30px',
+            background: 'radial-gradient(circle at center, #0b111c 0%, #04060a 100%)',
+            padding: '24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            position: 'relative'
+            position: 'relative',
+            minHeight: '380px'
           }}>
             <div style={{
               width: '100%',
-              maxWidth: '340px',
-              aspectRatio: '3/4',
+              maxWidth: '380px',
+              maxHeight: '420px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               borderRadius: '8px',
               overflow: 'hidden',
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 242, 254, 0.25)',
-              border: '3px solid rgba(0, 242, 254, 0.3)'
+              border: '2px solid rgba(0, 242, 254, 0.3)',
+              padding: '12px',
+              background: '#06080e'
             }}>
               <OptimizedImage
                 src={poster.image || poster.thumb}
                 alt={poster.title}
+                objectFit="contain"
                 priority={true}
+                style={{ background: 'transparent' }}
               />
             </div>
           </div>

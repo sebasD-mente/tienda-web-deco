@@ -5,7 +5,7 @@ export default function OptimizedImage({
   alt = 'Póster Deco Vintage',
   className = '',
   style = {},
-  aspectRatio = '3/4',
+  objectFit = 'contain',
   priority = false
 }) {
   const [loaded, setLoaded] = useState(false);
@@ -18,7 +18,10 @@ export default function OptimizedImage({
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        backgroundColor: '#090d16',
+        backgroundColor: '#04060a',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         ...style
       }}
       className={className}
@@ -29,7 +32,7 @@ export default function OptimizedImage({
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(90deg, rgba(13,18,28,0.8) 0%, rgba(26,36,56,0.8) 50%, rgba(13,18,28,0.8) 100%)',
+            background: 'linear-gradient(90deg, rgba(10,14,22,0.8) 0%, rgba(20,28,44,0.8) 50%, rgba(10,14,22,0.8) 100%)',
             backgroundSize: '200% 100%',
             animation: 'shimmer 1.5s infinite linear',
             zIndex: 1
@@ -37,7 +40,7 @@ export default function OptimizedImage({
         />
       )}
 
-      {/* The Actual Optimized WebP Image */}
+      {/* The Actual Optimized WebP Image (Preserves Exact Proportions without Cropping) */}
       <img
         src={src}
         alt={alt}
@@ -49,13 +52,16 @@ export default function OptimizedImage({
           setLoaded(true);
         }}
         style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          width: 'auto',
+          height: 'auto',
+          objectFit: objectFit,
           display: 'block',
           opacity: loaded ? 1 : 0,
-          transition: 'opacity 0.35s ease, transform 0.4s ease',
-          transform: 'translateZ(0)'
+          transition: 'opacity 0.35s ease, transform 0.3s ease',
+          borderRadius: '4px',
+          boxShadow: '0 6px 20px rgba(0, 0, 0, 0.7)'
         }}
       />
 

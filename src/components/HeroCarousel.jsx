@@ -61,7 +61,7 @@ export default function HeroCarousel({ onSelectPoster }) {
           maxWidth: '720px',
           margin: '0 auto 36px auto'
         }}>
-          Pósters rígidos premium impresos con tecnología <strong>HP Línea Látex</strong> sobre madera sólida MDF de 5.5mm. Incluyen cinta industrial Tessa para instalar en segundos sin clavos ni marcos costosos.
+          Pósters rígidos premium impresos con tecnología <strong>HP Línea Látex</strong> sobre madera sólida MDF de 5.5mm. Diseños horizontales y verticales listos para instalar con cinta industrial Tessa sin clavos.
         </p>
 
         {/* Action Buttons */}
@@ -77,7 +77,7 @@ export default function HeroCarousel({ onSelectPoster }) {
           </a>
         </div>
 
-        {/* 4 Standout Featured Cards Grid with Optimized WebP & Shimmer */}
+        {/* 4 Standout Featured Cards Grid (Preserves 100% Exact Proportions) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
@@ -96,16 +96,30 @@ export default function HeroCarousel({ onSelectPoster }) {
                 cursor: 'pointer',
                 border: '1px solid rgba(0, 242, 254, 0.25)',
                 background: '#090d16',
-                position: 'relative'
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column'
               }}
               onClick={() => onSelectPoster(poster)}
             >
-              {/* Poster Image with Optimized Progressive Loading */}
-              <div style={{ width: '100%', height: '320px', overflow: 'hidden', position: 'relative' }}>
+              {/* Poster Exhibition Frame: Shows Horizontal and Vertical images completely */}
+              <div style={{
+                width: '100%',
+                height: '290px',
+                position: 'relative',
+                background: 'radial-gradient(circle at center, #0b101a 0%, #04060a 100%)',
+                padding: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+              }}>
                 <OptimizedImage
                   src={poster.thumb || poster.image}
                   alt={poster.title}
+                  objectFit="contain"
                   priority={index < 2}
+                  style={{ background: 'transparent' }}
                 />
 
                 <div style={{
@@ -127,23 +141,23 @@ export default function HeroCarousel({ onSelectPoster }) {
               </div>
 
               {/* Card Bottom Details */}
-              <div style={{ padding: '18px 20px' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
-                  {poster.category}
+              <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
+                    {poster.category}
+                  </div>
+                  <h4 style={{
+                    fontSize: '1.05rem',
+                    fontWeight: 800,
+                    color: '#fff',
+                    marginBottom: '12px',
+                    lineHeight: '1.3'
+                  }}>
+                    {poster.title}
+                  </h4>
                 </div>
-                <h4 style={{
-                  fontSize: '1.1rem',
-                  fontWeight: 800,
-                  color: '#fff',
-                  marginBottom: '12px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}>
-                  {poster.title}
-                </h4>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
                   <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
                     Desde Q 25.00
                   </span>
