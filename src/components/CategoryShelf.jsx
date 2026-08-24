@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight, Eye, Star, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { CATEGORIES, CATALOG_POSTERS } from '../data/catalogData';
 import OptimizedImage from './OptimizedImage';
 
@@ -33,61 +33,48 @@ export default function CategoryShelf({
   };
 
   return (
-    <section id="catalogo" style={{ padding: '80px 0', position: 'relative' }}>
+    <section id="catalogo" style={{ padding: '0 0 80px 0', position: 'relative', background: '#060910' }}>
       <div className="container">
         
-        {/* Section Header */}
-        <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-          <div className="badge-cyan">
-            <Sparkles size={14} />
-            <span>CATÁLOGO DINÁMICO MEOWMEOW STYLE</span>
-          </div>
-          <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', fontWeight: 900, marginBottom: '14px' }}>
-            Explora Nuestras <span className="text-gradient-cyan">Colecciones Oficiales</span>
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', maxWidth: '650px', margin: '0 auto', fontSize: '1.05rem' }}>
-            Desliza horizontalmente para descubrir cada obra. Diseños en orientación horizontal y vertical disponibles en los 6 tamaños sobre madera rígida MDF de 5.5mm.
-          </p>
-        </div>
-
         {/* Categories Shelves Loop */}
         {displayedCategories.map((category) => {
           const posters = filterPosters(category.id);
           if (posters.length === 0) return null;
 
           return (
-            <div key={category.id} style={{ marginBottom: '60px' }}>
+            <div key={category.id} style={{ marginBottom: '65px' }}>
               
-              {/* Shelf Category Header */}
+              {/* Shelf Category Header (Same Typography as BEST SELLERS + Design Count) */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '16px',
-                borderBottom: '1px solid var(--border-subtle)',
+                alignItems: 'flex-end',
+                marginBottom: '20px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                 paddingBottom: '12px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '10px',
-                    background: 'rgba(0, 242, 254, 0.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--accent-cyan)'
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap' }}>
+                  <h2 style={{
+                    fontFamily: 'var(--font-bebas)',
+                    fontSize: '2.8rem',
+                    letterSpacing: '0.05em',
+                    color: '#ffffff',
+                    textTransform: 'uppercase',
+                    lineHeight: 1,
+                    margin: 0
                   }}>
-                    <Sparkles size={18} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>
-                      {category.name}
-                    </h3>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {posters.length} diseños disponibles
-                    </span>
-                  </div>
+                    {category.name}
+                  </h2>
+                  <span style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    color: 'var(--text-secondary)',
+                    fontFamily: 'var(--font-display)',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase'
+                  }}>
+                    ({posters.length} DISEÑOS)
+                  </span>
                 </div>
 
                 {/* Left/Right Carousel Nav Arrows */}
@@ -98,8 +85,8 @@ export default function CategoryShelf({
                       width: '38px',
                       height: '38px',
                       borderRadius: '50%',
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid var(--border-subtle)',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
                       color: '#fff',
                       display: 'flex',
                       alignItems: 'center',
@@ -107,20 +94,27 @@ export default function CategoryShelf({
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
-                    title="Desplazar a la izquierda"
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(0, 242, 254, 0.2)';
+                      e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.6)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    }}
+                    title="Anterior"
                   >
                     <ChevronLeft size={20} />
                   </button>
+
                   <button
                     onClick={() => handleScroll(category.id, 'right')}
                     style={{
                       width: '38px',
                       height: '38px',
                       borderRadius: '50%',
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid var(--border-subtle)',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
                       color: '#fff',
                       display: 'flex',
                       alignItems: 'center',
@@ -128,43 +122,51 @@ export default function CategoryShelf({
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
-                    title="Desplazar a la derecha"
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(0, 242, 254, 0.2)';
+                      e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.6)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    }}
+                    title="Siguiente"
                   >
                     <ChevronRight size={20} />
                   </button>
                 </div>
               </div>
 
-              {/* Horizontal Scroll Shelf Track */}
+              {/* Horizontal Scrollable Shelf Track */}
               <div
                 ref={el => scrollRefs.current[category.id] = el}
                 className="shelf-track"
+                style={{ paddingBottom: '16px' }}
               >
-                {posters.map((poster) => (
+                {posters.map((poster, index) => (
                   <div
                     key={poster.id}
                     className="shelf-item glass-card"
                     style={{
-                      padding: '0',
+                      padding: 0,
                       overflow: 'hidden',
                       cursor: 'pointer',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      background: '#070b12',
                       position: 'relative',
-                      background: '#090d16',
-                      border: '1px solid rgba(0, 242, 254, 0.18)',
                       display: 'flex',
-                      flexDirection: 'column'
+                      flexDirection: 'column',
+                      borderRadius: '16px'
                     }}
                     onClick={() => onSelectPoster(poster)}
                   >
-                    {/* Poster Exhibition Frame: Keeps 100% full uncropped proportions */}
+                    {/* Poster Frame (100% Complete Proportion Contain without Cropping) */}
                     <div style={{
                       width: '100%',
-                      height: '270px',
+                      height: '240px',
                       position: 'relative',
-                      background: 'radial-gradient(circle at center, #0a0f1a 0%, #04060a 100%)',
-                      padding: '16px',
+                      background: '#040609',
+                      padding: '14px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -174,90 +176,51 @@ export default function CategoryShelf({
                         src={poster.thumb || poster.image}
                         alt={poster.title}
                         objectFit="contain"
+                        priority={index < 3}
                         style={{ background: 'transparent' }}
                       />
 
-                      {/* Top Badges */}
+                      {/* MDF 5.5mm Pill Badge */}
                       <div style={{
                         position: 'absolute',
-                        top: '10px',
-                        left: '10px',
-                        right: '10px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
+                        top: '12px',
+                        right: '12px',
+                        background: 'rgba(4, 6, 9, 0.85)',
+                        border: '1px solid rgba(0, 242, 254, 0.4)',
+                        color: 'var(--accent-cyan)',
+                        fontWeight: 800,
+                        fontSize: '0.7rem',
+                        padding: '3px 10px',
+                        borderRadius: 'var(--radius-full)',
+                        backdropFilter: 'blur(8px)',
                         zIndex: 2
                       }}>
-                        <div style={{
-                          background: 'rgba(6, 8, 14, 0.85)',
-                          padding: '3px 8px',
-                          borderRadius: 'var(--radius-full)',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          color: '#fff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          backdropFilter: 'blur(6px)'
-                        }}>
-                          <Star size={12} color="#00f2fe" fill="#00f2fe" />
-                          <span>{poster.rating}</span>
-                        </div>
-
-                        <div style={{
-                          background: 'var(--grad-cyan)',
-                          color: '#06080e',
-                          fontWeight: 800,
-                          fontSize: '0.68rem',
-                          padding: '3px 8px',
-                          borderRadius: 'var(--radius-full)'
-                        }}>
-                          MDF 5.5mm
-                        </div>
-                      </div>
-
-                      {/* Hover Overlay Button */}
-                      <div style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'rgba(6, 8, 14, 0.65)',
-                        opacity: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'opacity 0.25s ease',
-                        backdropFilter: 'blur(3px)',
-                        zIndex: 3
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                      onMouseLeave={e => e.currentTarget.style.opacity = '0'}
-                      >
-                        <span className="btn-cyan" style={{ padding: '10px 18px', fontSize: '0.85rem' }}>
-                          <Eye size={16} />
-                          <span>Ver Tamaños</span>
-                        </span>
+                        MDF 5.5mm
                       </div>
                     </div>
 
-                    {/* Poster Card Details */}
-                    <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    {/* Card Bottom Details */}
+                    <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                       <div>
-                        <h4 style={{
-                          fontSize: '1rem',
+                        <div style={{
+                          fontSize: '0.72rem',
+                          color: 'var(--accent-cyan)',
                           fontWeight: 800,
-                          color: '#fff',
-                          marginBottom: '4px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          marginBottom: '4px'
+                        }}>
+                          {poster.category}
+                        </div>
+                        <h4 style={{
+                          fontSize: '0.98rem',
+                          fontWeight: 800,
+                          color: '#ffffff',
+                          marginBottom: '12px',
                           lineHeight: '1.3'
                         }}>
                           {poster.title}
                         </h4>
-                        <p style={{
-                          fontSize: '0.78rem',
-                          color: 'var(--text-secondary)',
-                          marginBottom: '14px'
-                        }}>
-                          {poster.subtitle}
-                        </p>
                       </div>
 
                       <div style={{
@@ -265,42 +228,22 @@ export default function CategoryShelf({
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         paddingTop: '10px',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.06)'
+                        borderTop: '1px solid rgba(255, 255, 255, 0.05)'
                       }}>
-                        <div>
-                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Desde</span>
-                          <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
-                            Q 25.00
-                          </span>
-                        </div>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectPoster(poster);
-                          }}
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid var(--border-subtle)',
-                            color: '#fff',
-                            padding: '8px 12px',
-                            borderRadius: 'var(--radius-full)',
-                            fontSize: '0.8rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.background = 'var(--grad-cyan)';
-                            e.currentTarget.style.color = '#06080e';
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                            e.currentTarget.style.color = '#fff';
-                          }}
-                        >
-                          Configurar
-                        </button>
+                        <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
+                          Desde Q 25.00
+                        </span>
+                        
+                        <span style={{
+                          fontSize: '0.8rem',
+                          fontWeight: 800,
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          Ver Tamaños ➔
+                        </span>
                       </div>
                     </div>
 
