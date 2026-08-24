@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ShoppingBag, Bot, X, Menu, Sparkles, ChevronDown } from 'lucide-react';
+import { Search, ShoppingBag, Bot, X, Menu, Sparkles } from 'lucide-react';
 
 export default function Navbar({
   cartCount,
@@ -20,16 +20,16 @@ export default function Navbar({
 
   return (
     <>
-      {/* Top Utility Announcement Bar (Vice Press Style) */}
+      {/* Top Utility Announcement Bar */}
       <div style={{
-        background: '#040609',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+        background: '#04060a',
+        borderBottom: '1px solid rgba(0, 242, 254, 0.15)',
         padding: '6px 0',
         fontSize: '0.75rem',
         fontWeight: 700,
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
-        color: 'var(--accent-gold)',
+        color: 'var(--accent-cyan)',
         textAlign: 'center',
         position: 'fixed',
         top: 0,
@@ -48,15 +48,15 @@ export default function Navbar({
         right: 0,
         zIndex: 101,
         transition: 'all 0.3s ease',
-        background: scrolled ? 'rgba(7, 9, 14, 0.92)' : 'rgba(7, 9, 14, 0.75)',
+        background: scrolled ? 'rgba(6, 8, 14, 0.94)' : 'rgba(6, 8, 14, 0.8)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        borderBottom: '1px solid rgba(0, 242, 254, 0.12)',
         padding: '14px 0'
       }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           
-          {/* 1. Left: Typographical Brand Logo (Clean & Protagonist) */}
+          {/* 1. Left: Typographical Brand Logo */}
           <a
             href="#"
             style={{
@@ -73,7 +73,7 @@ export default function Navbar({
               color: '#ffffff',
               display: 'inline-block'
             }}>
-              DECO <span style={{ color: 'var(--accent-gold)' }}>VINTAGE</span>
+              DECO <span style={{ color: 'var(--accent-cyan)' }}>VINTAGE</span>
             </span>
           </a>
 
@@ -94,10 +94,10 @@ export default function Navbar({
                 gap: '4px',
                 transition: 'color 0.2s ease'
               }}
-              onMouseEnter={e => e.target.style.color = '#f59e0b'}
+              onMouseEnter={e => e.target.style.color = '#00f2fe'}
               onMouseLeave={e => e.target.style.color = '#e2e8f0'}
             >
-              <span style={{ color: 'var(--accent-gold)', fontWeight: 800 }}>+</span> CATÁLOGO
+              <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>+</span> CATÁLOGO
             </a>
 
             <a
@@ -115,10 +115,10 @@ export default function Navbar({
                 gap: '4px',
                 transition: 'color 0.2s ease'
               }}
-              onMouseEnter={e => e.target.style.color = '#f59e0b'}
+              onMouseEnter={e => e.target.style.color = '#00f2fe'}
               onMouseLeave={e => e.target.style.color = '#e2e8f0'}
             >
-              <span style={{ color: 'var(--accent-gold)', fontWeight: 800 }}>+</span> MÁS SOBRE NUESTROS PRODUCTOS
+              <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>+</span> MÁS SOBRE NUESTROS PRODUCTOS
             </a>
 
             <a
@@ -138,10 +138,10 @@ export default function Navbar({
                 gap: '4px',
                 transition: 'color 0.2s ease'
               }}
-              onMouseEnter={e => e.target.style.color = '#f59e0b'}
+              onMouseEnter={e => e.target.style.color = '#00f2fe'}
               onMouseLeave={e => e.target.style.color = '#e2e8f0'}
             >
-              <span style={{ color: 'var(--accent-gold)', fontWeight: 800 }}>+</span> PERSONALIZADOS
+              <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>+</span> PERSONALIZADOS
             </a>
           </nav>
 
@@ -161,19 +161,19 @@ export default function Navbar({
                 alignItems: 'center',
                 transition: 'color 0.2s ease'
               }}
-              onMouseEnter={e => e.currentTarget.style.color = '#f59e0b'}
+              onMouseEnter={e => e.currentTarget.style.color = '#00f2fe'}
               onMouseLeave={e => e.currentTarget.style.color = '#f0f6fc'}
               title="Buscar póster"
             >
               <Search size={22} strokeWidth={2} />
             </button>
 
-            {/* Jarvis AI Icon Button (Single Line / Icon Style) */}
+            {/* Jarvis AI Icon Button */}
             <button
               onClick={onOpenJarvis}
               style={{
-                background: 'rgba(0, 242, 254, 0.08)',
-                border: '1px solid rgba(0, 242, 254, 0.25)',
+                background: 'rgba(0, 242, 254, 0.1)',
+                border: '1px solid rgba(0, 242, 254, 0.35)',
                 color: 'var(--accent-cyan)',
                 padding: '8px 14px',
                 borderRadius: 'var(--radius-full)',
@@ -206,7 +206,7 @@ export default function Navbar({
                 position: 'relative',
                 transition: 'color 0.2s ease'
               }}
-              onMouseEnter={e => e.currentTarget.style.color = '#f59e0b'}
+              onMouseEnter={e => e.currentTarget.style.color = '#00f2fe'}
               onMouseLeave={e => e.currentTarget.style.color = '#f0f6fc'}
               title="Ver Carrito de Compras"
             >
@@ -216,8 +216,8 @@ export default function Navbar({
                   position: 'absolute',
                   top: '-2px',
                   right: '-4px',
-                  background: 'var(--grad-gold)',
-                  color: '#07090e',
+                  background: 'var(--grad-cyan)',
+                  color: '#06080e',
                   fontSize: '0.7rem',
                   fontWeight: 900,
                   width: '18px',
@@ -226,7 +226,7 @@ export default function Navbar({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 0 10px rgba(245, 158, 11, 0.5)'
+                  boxShadow: '0 0 10px rgba(0, 242, 254, 0.6)'
                 }}>
                   {cartCount}
                 </span>
@@ -254,7 +254,7 @@ export default function Navbar({
         </div>
       </header>
 
-      {/* Pop-up Search Modal (Minimalist) */}
+      {/* Pop-up Search Modal */}
       {searchModalOpen && (
         <div
           className="modal-backdrop"
@@ -267,14 +267,14 @@ export default function Navbar({
               width: '100%',
               maxWidth: '650px',
               padding: '24px 32px',
-              background: '#0a0d14',
-              border: '2px solid rgba(245, 158, 11, 0.4)',
+              background: '#090d16',
+              border: '2px solid rgba(0, 242, 254, 0.45)',
               position: 'relative'
             }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px', marginBottom: '16px' }}>
-              <Search size={24} color="var(--accent-gold)" />
+              <Search size={24} color="var(--accent-cyan)" />
               <input
                 type="text"
                 autoFocus
@@ -306,7 +306,7 @@ export default function Navbar({
                 <a
                   href="#catalogo"
                   onClick={() => setSearchModalOpen(false)}
-                  style={{ color: 'var(--accent-gold)', textDecoration: 'none', fontWeight: 700 }}
+                  style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontWeight: 700 }}
                 >
                   Ver resultados en catálogo ➔
                 </a>
@@ -323,8 +323,8 @@ export default function Navbar({
           top: '85px',
           left: 0,
           right: 0,
-          background: 'rgba(7, 9, 14, 0.98)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'rgba(6, 8, 14, 0.98)',
+          borderBottom: '1px solid rgba(0, 242, 254, 0.2)',
           padding: '24px',
           zIndex: 100,
           display: 'flex',
@@ -350,7 +350,7 @@ export default function Navbar({
             target="_blank"
             rel="noreferrer"
             onClick={() => setMobileMenuOpen(false)}
-            style={{ color: 'var(--accent-gold)', textDecoration: 'none', fontSize: '1.1rem', fontWeight: 700 }}
+            style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontSize: '1.1rem', fontWeight: 700 }}
           >
             + PEDIDOS PERSONALIZADOS
           </a>

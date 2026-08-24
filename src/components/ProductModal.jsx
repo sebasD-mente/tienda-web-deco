@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { X, ShoppingBag, MessageSquare, Check, Sparkles, Star, ShieldCheck, Truck, Layers } from 'lucide-react';
+import { X, ShoppingBag, MessageSquare, Check, Sparkles, Star } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 
 export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhatsApp }) {
-  const [selectedSize, setSelectedSize] = useState(OFFICIAL_SIZES[3]); // Mediano as default
+  const [selectedSize, setSelectedSize] = useState(OFFICIAL_SIZES[3]); // Mediano default
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -22,10 +22,10 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
     
     // Confetti effect on add to cart
     confetti({
-      particleCount: 40,
+      particleCount: 45,
       spread: 60,
       origin: { y: 0.8 },
-      colors: ['#f59e0b', '#fbbf24', '#00f2fe']
+      colors: ['#00f2fe', '#38bdf8', '#00f5a0']
     });
 
     setAdded(true);
@@ -52,8 +52,8 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
           overflowY: 'auto',
           padding: '0',
           position: 'relative',
-          border: '2px solid rgba(245, 158, 11, 0.4)',
-          background: '#0a0d14'
+          border: '2px solid rgba(0, 242, 254, 0.45)',
+          background: '#090d16'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -89,7 +89,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
           
           {/* Left Column: Image Preview */}
           <div style={{
-            background: '#06080d',
+            background: '#06080e',
             padding: '30px',
             display: 'flex',
             alignItems: 'center',
@@ -102,8 +102,8 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
               aspectRatio: '3/4',
               borderRadius: '8px',
               overflow: 'hidden',
-              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 158, 11, 0.2)',
-              border: '4px solid #10141d'
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 242, 254, 0.25)',
+              border: '3px solid rgba(0, 242, 254, 0.3)'
             }}>
               <img
                 src={poster.image}
@@ -117,11 +117,11 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
           <div style={{ padding: '36px' }}>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge-gold" style={{ fontSize: '0.75rem', padding: '3px 10px' }}>
+              <span className="badge-cyan" style={{ fontSize: '0.75rem', padding: '3px 10px' }}>
                 {poster.category}
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: '#f59e0b', fontWeight: 700 }}>
-                <Star size={14} fill="#f59e0b" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                <Star size={14} fill="#00f2fe" color="#00f2fe" />
                 <span>{poster.rating} ({poster.reviewsCount} reseñas)</span>
               </div>
             </div>
@@ -139,7 +139,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
 
             {/* Official 6 Sizes Grid */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-gold)', marginBottom: '10px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-cyan)', marginBottom: '10px' }}>
                 Selecciona tu Tamaño Oficial:
               </label>
 
@@ -153,15 +153,15 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
                       style={{
                         padding: '10px 12px',
                         borderRadius: 'var(--radius-sm)',
-                        background: isSelected ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                        border: isSelected ? '2px solid var(--accent-gold)' : '1px solid var(--border-subtle)',
+                        background: isSelected ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                        border: isSelected ? '2px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease'
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '0.85rem' }}>
-                        <span style={{ color: isSelected ? 'var(--accent-gold)' : '#fff' }}>{s.name}</span>
-                        <span style={{ color: '#00f5a0' }}>Q {s.price.toFixed(2)}</span>
+                        <span style={{ color: isSelected ? 'var(--accent-cyan)' : '#fff' }}>{s.name}</span>
+                        <span style={{ color: '#00f2fe' }}>Q {s.price.toFixed(2)}</span>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                         {s.dimensions}
@@ -174,7 +174,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
 
             {/* Price & Quantity Box */}
             <div style={{
-              background: 'rgba(6, 9, 14, 0.9)',
+              background: 'rgba(6, 8, 14, 0.9)',
               padding: '20px',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-subtle)',
@@ -183,7 +183,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>Total a Pagar:</span>
-                  <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-gold)' }}>
+                  <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
                     Q {currentPrice.toFixed(2)}
                   </span>
                 </div>
@@ -231,7 +231,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 onClick={handleAdd}
-                className="btn-gold"
+                className="btn-cyan"
                 style={{ flex: 1, justifyContent: 'center', padding: '14px' }}
               >
                 {added ? <Check size={18} /> : <ShoppingBag size={18} />}

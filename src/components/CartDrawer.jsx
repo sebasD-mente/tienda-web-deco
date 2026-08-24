@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { X, ShoppingBag, Trash2, MessageSquare, ArrowRight, CheckCircle, Sparkles } from 'lucide-react';
+import { X, ShoppingBag, Trash2, MessageSquare, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, onUpdateQuantity, onClearCart }) {
+export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, onClearCart }) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -36,7 +36,8 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, o
     confetti({
       particleCount: 60,
       spread: 70,
-      origin: { y: 0.6 }
+      origin: { y: 0.6 },
+      colors: ['#00f2fe', '#38bdf8', '#00f5a0']
     });
 
     const encoded = encodeURIComponent(message);
@@ -55,8 +56,8 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, o
           width: '460px',
           maxWidth: '100vw',
           borderRadius: '0',
-          borderLeft: '2px solid rgba(245, 158, 11, 0.4)',
-          background: '#07090e',
+          borderLeft: '2px solid rgba(0, 242, 254, 0.4)',
+          background: '#06080e',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 1001,
@@ -67,14 +68,14 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, o
         {/* Cart Header */}
         <div style={{
           padding: '20px 24px',
-          background: 'rgba(12, 16, 25, 0.95)',
+          background: 'rgba(10, 14, 24, 0.95)',
           borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <ShoppingBag size={22} color="var(--accent-gold)" />
+            <ShoppingBag size={22} color="var(--accent-cyan)" />
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>
               Tu Carrito ({cartItems.length})
             </h3>
@@ -113,7 +114,7 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, o
                   padding: '12px',
                   borderRadius: 'var(--radius-md)',
                   background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid var(--border-subtle)',
+                  border: '1px solid rgba(0, 242, 254, 0.15)',
                   alignItems: 'center'
                 }}
               >
@@ -140,10 +141,10 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, o
                   }}>
                     {item.poster.title}
                   </h4>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-gold)' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
                     {item.size.name} • {item.size.dimensions}
                   </div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#00f5a0', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--accent-cyan)', marginTop: '2px' }}>
                     Q {(item.price * item.quantity).toFixed(2)}
                   </div>
                 </div>
@@ -170,7 +171,7 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, o
         {cartItems.length > 0 && (
           <div style={{
             padding: '24px',
-            background: 'rgba(10, 13, 20, 0.98)',
+            background: 'rgba(9, 13, 20, 0.98)',
             borderTop: '1px solid var(--border-subtle)'
           }}>
             {/* Quick Customer Inputs */}
@@ -216,7 +217,7 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, o
             }}>
               <div>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total Estimado:</span>
-                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-gold)' }}>
+                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
                   Q {total.toFixed(2)}
                 </div>
               </div>
@@ -228,7 +229,7 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onRemoveItem, o
             {/* WhatsApp Checkout Button */}
             <button
               onClick={handleCheckoutWhatsApp}
-              className="btn-gold"
+              className="btn-cyan"
               style={{
                 width: '100%',
                 justifyContent: 'center',

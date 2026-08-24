@@ -5,7 +5,7 @@ export default function Footer() {
   return (
     <footer style={{
       background: 'rgba(5, 7, 12, 0.98)',
-      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+      borderTop: '1px solid rgba(0, 242, 254, 0.15)',
       padding: '60px 0 30px 0',
       color: 'var(--text-secondary)'
     }}>
@@ -28,13 +28,13 @@ export default function Footer() {
                 color: '#fff',
                 display: 'block'
               }}>
-                DECO <span style={{ color: 'var(--accent-gold)' }}>VINTAGE</span>
+                DECO <span style={{ color: 'var(--accent-cyan)' }}>VINTAGE</span>
               </span>
             </div>
             <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '20px' }}>
               Fabricación y distribución de cuadros y pósters rígidos de alta calidad en madera MDF de 5.5mm. Presencia activa en las mejores convenciones de Guatemala.
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-gold)', fontSize: '0.85rem', fontWeight: 700 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-cyan)', fontSize: '0.85rem', fontWeight: 700 }}>
               <MapPin size={16} />
               <span>Guatemala, C.A.</span>
             </div>
@@ -46,12 +46,12 @@ export default function Footer() {
               Tamaños Oficiales (MDF 5.5mm)
             </h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-              <li>• Mini (14 x 21 cm) ➔ <strong style={{ color: '#00f5a0' }}>Q25.00</strong></li>
-              <li>• Pequeño (21 x 27 cm) ➔ <strong style={{ color: '#00f5a0' }}>Q35.00</strong></li>
-              <li>• Portada de Álbum (30 x 30 cm) ➔ <strong style={{ color: '#00f5a0' }}>Q55.00</strong></li>
-              <li>• Mediano (30 x 45 cm) ➔ <strong style={{ color: '#00f5a0' }}>Q65.00</strong></li>
-              <li>• Grande (45 x 60 cm) ➔ <strong style={{ color: '#00f5a0' }}>Q125.00</strong></li>
-              <li>• Gigante (60 x 100 cm) ➔ <strong style={{ color: '#00f5a0' }}>Q210.00</strong></li>
+              <li>• Mini (14 x 21 cm) ➔ <strong style={{ color: 'var(--accent-cyan)' }}>Q25.00</strong></li>
+              <li>• Pequeño (21 x 27 cm) ➔ <strong style={{ color: 'var(--accent-cyan)' }}>Q35.00</strong></li>
+              <li>• Portada de Álbum (30 x 30 cm) ➔ <strong style={{ color: 'var(--accent-cyan)' }}>Q55.00</strong></li>
+              <li>• Mediano (30 x 45 cm) ➔ <strong style={{ color: 'var(--accent-cyan)' }}>Q65.00</strong></li>
+              <li>• Grande (45 x 60 cm) ➔ <strong style={{ color: 'var(--accent-cyan)' }}>Q125.00</strong></li>
+              <li>• Gigante (60 x 100 cm) ➔ <strong style={{ color: 'var(--accent-cyan)' }}>Q210.00</strong></li>
             </ul>
           </div>
 
@@ -79,7 +79,7 @@ export default function Footer() {
               href="https://wa.me/?text=Hola%20Deco%20Vintage,%20quiero%20cotizar%20un%20p%C3%B3ster%20personalizado"
               target="_blank"
               rel="noreferrer"
-              className="btn-gold"
+              className="btn-cyan"
               style={{ padding: '10px 18px', fontSize: '0.85rem' }}
             >
               <MessageSquare size={16} />

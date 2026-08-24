@@ -1,11 +1,10 @@
 import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight, ShoppingBag, Eye, Star, Sparkles, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Star, Sparkles } from 'lucide-react';
 import { CATEGORIES, CATALOG_POSTERS } from '../data/catalogData';
 
 export default function CategoryShelf({
   onSelectPoster,
   onAddToCart,
-  onQuickWhatsApp,
   filterCategory,
   searchQuery
 }) {
@@ -19,7 +18,6 @@ export default function CategoryShelf({
     }
   };
 
-  // Filter categories and posters based on active filters & search
   const displayedCategories = filterCategory && filterCategory !== 'TODOS'
     ? CATEGORIES.filter(c => c.id === filterCategory)
     : CATEGORIES.filter(c => c.id !== 'TODOS');
@@ -40,15 +38,15 @@ export default function CategoryShelf({
         
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-          <div className="badge-gold">
+          <div className="badge-cyan">
             <Sparkles size={14} />
             <span>CATÁLOGO DINÁMICO MEOWMEOW STYLE</span>
           </div>
           <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', fontWeight: 900, marginBottom: '14px' }}>
-            Explora Nuestras <span className="text-gradient-gold">Colecciones Oficiales</span>
+            Explora Nuestras <span className="text-gradient-cyan">Colecciones Oficiales</span>
           </h2>
           <p style={{ color: 'var(--text-secondary)', maxWidth: '650px', margin: '0 auto', fontSize: '1.05rem' }}>
-            Desliza horizontalmente para descubrir cada obra. Todos nuestros pósters están disponibles en los 6 tamaños sobre madera rígida.
+            Desliza horizontalmente para descubrir cada obra. Todos nuestros pósters están disponibles en los 6 tamaños sobre madera rígida MDF de 5.5mm.
           </p>
         </div>
 
@@ -74,11 +72,11 @@ export default function CategoryShelf({
                     width: '36px',
                     height: '36px',
                     borderRadius: '10px',
-                    background: 'rgba(245, 158, 11, 0.12)',
+                    background: 'rgba(0, 242, 254, 0.12)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--accent-gold)'
+                    color: 'var(--accent-cyan)'
                   }}>
                     <Sparkles size={18} />
                   </div>
@@ -109,8 +107,8 @@ export default function CategoryShelf({
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
-                    onMouseEnter={e => e.target.style.borderColor = 'var(--accent-gold)'}
-                    onMouseLeave={e => e.target.style.borderColor = 'var(--border-subtle)'}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
                     title="Desplazar a la izquierda"
                   >
                     <ChevronLeft size={20} />
@@ -130,8 +128,8 @@ export default function CategoryShelf({
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
-                    onMouseEnter={e => e.target.style.borderColor = 'var(--accent-gold)'}
-                    onMouseLeave={e => e.target.style.borderColor = 'var(--border-subtle)'}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
                     title="Desplazar a la derecha"
                   >
                     <ChevronRight size={20} />
@@ -153,7 +151,8 @@ export default function CategoryShelf({
                       overflow: 'hidden',
                       cursor: 'pointer',
                       position: 'relative',
-                      background: '#0c1017'
+                      background: '#090d16',
+                      border: '1px solid rgba(0, 242, 254, 0.18)'
                     }}
                     onClick={() => onSelectPoster(poster)}
                   >
@@ -163,7 +162,7 @@ export default function CategoryShelf({
                       height: '340px',
                       position: 'relative',
                       overflow: 'hidden',
-                      background: '#07090e'
+                      background: '#06080e'
                     }}>
                       <img
                         src={poster.image}
@@ -190,7 +189,7 @@ export default function CategoryShelf({
                         alignItems: 'center'
                       }}>
                         <div style={{
-                          background: 'rgba(7, 9, 14, 0.85)',
+                          background: 'rgba(6, 8, 14, 0.85)',
                           padding: '4px 8px',
                           borderRadius: 'var(--radius-full)',
                           fontSize: '0.75rem',
@@ -201,13 +200,13 @@ export default function CategoryShelf({
                           gap: '4px',
                           backdropFilter: 'blur(6px)'
                         }}>
-                          <Star size={12} color="#f59e0b" fill="#f59e0b" />
+                          <Star size={12} color="#00f2fe" fill="#00f2fe" />
                           <span>{poster.rating}</span>
                         </div>
 
                         <div style={{
-                          background: 'var(--grad-gold)',
-                          color: '#07090e',
+                          background: 'var(--grad-cyan)',
+                          color: '#06080e',
                           fontWeight: 800,
                           fontSize: '0.7rem',
                           padding: '3px 8px',
@@ -221,7 +220,7 @@ export default function CategoryShelf({
                       <div style={{
                         position: 'absolute',
                         inset: 0,
-                        background: 'rgba(7, 9, 14, 0.6)',
+                        background: 'rgba(6, 8, 14, 0.65)',
                         opacity: 0,
                         display: 'flex',
                         alignItems: 'center',
@@ -232,7 +231,7 @@ export default function CategoryShelf({
                       onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                       onMouseLeave={e => e.currentTarget.style.opacity = '0'}
                       >
-                        <span className="btn-gold" style={{ padding: '10px 18px', fontSize: '0.85rem' }}>
+                        <span className="btn-cyan" style={{ padding: '10px 18px', fontSize: '0.85rem' }}>
                           <Eye size={16} />
                           <span>Ver Tamaños</span>
                         </span>
@@ -272,7 +271,7 @@ export default function CategoryShelf({
                       }}>
                         <div>
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Desde</span>
-                          <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--accent-gold)' }}>
+                          <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
                             Q 25.00
                           </span>
                         </div>
@@ -294,12 +293,12 @@ export default function CategoryShelf({
                             transition: 'all 0.2s'
                           }}
                           onMouseEnter={e => {
-                            e.target.style.background = 'var(--grad-gold)';
-                            e.target.style.color = '#07090e';
+                            e.currentTarget.style.background = 'var(--grad-cyan)';
+                            e.currentTarget.style.color = '#06080e';
                           }}
                           onMouseLeave={e => {
-                            e.target.style.background = 'rgba(255, 255, 255, 0.05)';
-                            e.target.style.color = '#fff';
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                            e.currentTarget.style.color = '#fff';
                           }}
                         >
                           Configurar
