@@ -1,7 +1,17 @@
 import React from 'react';
-import { Sparkles, ArrowRight, Layers, CheckCircle2 } from 'lucide-react';
 import { CATALOG_POSTERS } from '../data/catalogData';
 import OptimizedImage from './OptimizedImage';
+
+// Popular Franchise Categories directly matching the user's mockup
+const FRANCHISE_BADGES = [
+  { name: 'Avengers', label: 'AVENGERS', icon: '🅰️', color: '#881337', borderColor: '#e11d48' },
+  { name: 'Dragon Ball', label: 'DRAGON BALL', icon: '🐉', color: '#7c2d12', borderColor: '#ea580c' },
+  { name: 'Walt Disney', label: 'WALT DISNEY', icon: '🏰', color: '#1e293b', borderColor: '#64748b' },
+  { name: 'NBA', label: 'NBA', icon: '🏀', color: '#1e3a8a', borderColor: '#3b82f6' },
+  { name: 'Back To The Future', label: 'BACK TO THE FUTURE', icon: '⚡', color: '#854d0e', borderColor: '#eab308' },
+  { name: 'DC Comics', label: 'DC COMICS', icon: '🦇', color: '#1e1b4b', borderColor: '#6366f1' },
+  { name: 'Star Wars', label: 'STAR WARS', icon: '🌌', color: '#09090b', borderColor: '#e2e8f0' }
+];
 
 export default function HeroCarousel({ onSelectPoster }) {
   const featuredPosters = CATALOG_POSTERS.filter(p => p.isFeatured).slice(0, 4);
@@ -9,80 +19,155 @@ export default function HeroCarousel({ onSelectPoster }) {
   return (
     <section style={{
       paddingTop: '160px',
-      paddingBottom: '80px',
+      paddingBottom: '70px',
       position: 'relative',
       overflow: 'hidden'
     }}>
       
-      {/* Cyan Ambient Spotlight Glows */}
+      {/* Background Comic / Pop Art Collage Texture Overlay */}
       <div style={{
         position: 'absolute',
-        top: '20%',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '620px',
+        backgroundImage: 'radial-gradient(circle at center, rgba(6, 9, 15, 0.7) 0%, rgba(4, 6, 10, 0.98) 100%), url("/posters/optimized/full/wallpaper.webp")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        opacity: 0.28,
+        filter: 'grayscale(60%)',
+        pointerEvents: 'none',
+        zIndex: 0
+      }} />
+
+      {/* Cyan Ambient Spotlight */}
+      <div style={{
+        position: 'absolute',
+        top: '25%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        width: '750px',
-        height: '450px',
-        background: 'radial-gradient(ellipse at center, rgba(0, 242, 254, 0.14) 0%, rgba(2, 132, 199, 0.05) 50%, transparent 75%)',
-        filter: 'blur(75px)',
+        width: '800px',
+        height: '400px',
+        background: 'radial-gradient(ellipse at center, rgba(0, 242, 254, 0.12) 0%, transparent 70%)',
+        filter: 'blur(80px)',
         pointerEvents: 'none',
         zIndex: 0
       }} />
 
       <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
         
-        {/* Top Badge */}
-        <div style={{ display: 'inline-flex', marginBottom: '20px' }}>
-          <div className="badge-cyan pulse-cyan">
-            <Sparkles size={14} />
-            <span>RETRO REVIVAL | DECO VINTAGE 2026</span>
-          </div>
-        </div>
-
-        {/* Central Impactful Headline */}
+        {/* Main Central Giant Headline (Exact from Mockup) */}
         <h1 style={{
-          fontSize: 'clamp(2.4rem, 4.8vw, 4.2rem)',
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(2.5rem, 5.8vw, 4.8rem)',
           fontWeight: 900,
-          lineHeight: 1.1,
-          marginBottom: '20px',
+          lineHeight: 1.08,
+          marginBottom: '16px',
           letterSpacing: '-0.02em',
-          maxWidth: '950px',
-          margin: '0 auto 20px auto'
+          textTransform: 'uppercase',
+          maxWidth: '1050px',
+          margin: '0 auto 16px auto'
         }}>
-          DESCUBRE PÓSTERS ICÓNICOS DE <br />
-          <span className="text-gradient-cyan">AUTOS, ANIME, CINE & GAMING</span>
+          DESCUBRE POSTERS <br />
+          ICÓNICOS DE <br />
+          <span style={{ color: '#38bdf8', textShadow: '0 0 35px rgba(56, 189, 248, 0.4)' }}>
+            AUTOS, ANIME, CINE Y MUCHO MAS
+          </span>
         </h1>
 
-        {/* Subtitle */}
-        <p style={{
-          fontSize: 'clamp(1rem, 1.8vw, 1.2rem)',
-          color: 'var(--text-secondary)',
-          marginBottom: '36px',
-          lineHeight: 1.6,
-          maxWidth: '720px',
-          margin: '0 auto 36px auto'
-        }}>
-          Pósters rígidos premium impresos con tecnología <strong>HP Línea Látex</strong> sobre madera sólida MDF de 5.5mm. Diseños horizontales y verticales listos para instalar con cinta industrial Tessa sin clavos.
-        </p>
-
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '60px' }}>
-          <a href="#catalogo" className="btn-cyan" style={{ padding: '16px 36px', fontSize: '1rem' }}>
-            <Layers size={18} />
-            <span>Explorar Colecciones</span>
-            <ArrowRight size={18} />
-          </a>
-
-          <a href="#productos" className="btn-secondary" style={{ padding: '16px 30px', fontSize: '1rem' }}>
-            <span>Más sobre nuestros productos</span>
+        {/* White Pill Button (Exact from Mockup) */}
+        <div style={{ margin: '30px 0 50px 0' }}>
+          <a
+            href="#catalogo"
+            style={{
+              display: 'inline-block',
+              background: '#ffffff',
+              color: '#07090e',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 900,
+              fontSize: '0.95rem',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              padding: '16px 36px',
+              borderRadius: 'var(--radius-full)',
+              textDecoration: 'none',
+              boxShadow: '0 6px 30px rgba(255, 255, 255, 0.25)',
+              transition: 'all 0.25s ease'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 10px 40px rgba(0, 242, 254, 0.45)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 6px 30px rgba(255, 255, 255, 0.25)';
+            }}
+          >
+            EXPLORA LAS CATEGORIAS DISPONIBLES
           </a>
         </div>
 
-        {/* 4 Standout Featured Cards Grid (Preserves 100% Exact Proportions) */}
+        {/* Franchise Category Icons Grid (Exact from Mockup) */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '16px',
+          flexWrap: 'wrap',
+          marginBottom: '65px'
+        }}>
+          {FRANCHISE_BADGES.map((badge, idx) => (
+            <a
+              key={idx}
+              href="#catalogo"
+              style={{
+                width: '88px',
+                height: '88px',
+                borderRadius: '18px',
+                background: 'linear-gradient(145deg, rgba(226, 232, 240, 0.95) 0%, rgba(148, 163, 184, 0.85) 100%)',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                padding: '8px',
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                border: '1px solid rgba(255, 255, 255, 0.6)'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-6px) scale(1.06)';
+                e.currentTarget.style.boxShadow = '0 15px 35px rgba(0, 242, 254, 0.4)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.5)';
+              }}
+            >
+              <span style={{ fontSize: '1.8rem', marginBottom: '2px', display: 'block' }}>
+                {badge.icon}
+              </span>
+              <span style={{
+                fontSize: '0.62rem',
+                fontWeight: 900,
+                color: '#0f172a',
+                textAlign: 'center',
+                lineHeight: 1.1,
+                fontFamily: 'var(--font-display)',
+                textTransform: 'uppercase'
+              }}>
+                {badge.label}
+              </span>
+            </a>
+          ))}
+        </div>
+
+        {/* 4 Standout Featured Cards Grid (Exact Design from Mockup) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: '24px',
-          maxWidth: '1200px',
+          gap: '20px',
+          maxWidth: '1280px',
           margin: '0 auto',
           textAlign: 'left'
         }}>
@@ -95,20 +180,21 @@ export default function HeroCarousel({ onSelectPoster }) {
                 overflow: 'hidden',
                 cursor: 'pointer',
                 border: '1px solid rgba(0, 242, 254, 0.25)',
-                background: '#090d16',
+                background: '#070b12',
                 position: 'relative',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                borderRadius: '16px'
               }}
               onClick={() => onSelectPoster(poster)}
             >
-              {/* Poster Exhibition Frame: Shows Horizontal and Vertical images completely */}
+              {/* Poster Frame (100% Horizontal & Vertical Proportion without Cropping) */}
               <div style={{
                 width: '100%',
-                height: '290px',
+                height: '240px',
                 position: 'relative',
-                background: 'radial-gradient(circle at center, #0b101a 0%, #04060a 100%)',
-                padding: '16px',
+                background: '#040609',
+                padding: '14px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -122,16 +208,17 @@ export default function HeroCarousel({ onSelectPoster }) {
                   style={{ background: 'transparent' }}
                 />
 
+                {/* MDF 5.5mm Pill Badge */}
                 <div style={{
                   position: 'absolute',
                   top: '12px',
                   right: '12px',
-                  background: 'rgba(6, 8, 14, 0.85)',
+                  background: 'rgba(4, 6, 9, 0.85)',
                   border: '1px solid rgba(0, 242, 254, 0.4)',
                   color: 'var(--accent-cyan)',
                   fontWeight: 800,
-                  fontSize: '0.72rem',
-                  padding: '4px 10px',
+                  fontSize: '0.7rem',
+                  padding: '3px 10px',
                   borderRadius: 'var(--radius-full)',
                   backdropFilter: 'blur(8px)',
                   zIndex: 2
@@ -140,32 +227,45 @@ export default function HeroCarousel({ onSelectPoster }) {
                 </div>
               </div>
 
-              {/* Card Bottom Details */}
-              <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              {/* Card Bottom Details (Exact Typography & Layout) */}
+              <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
+                  <div style={{
+                    fontSize: '0.72rem',
+                    color: 'var(--accent-cyan)',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    marginBottom: '4px'
+                  }}>
                     {poster.category}
                   </div>
                   <h4 style={{
-                    fontSize: '1.05rem',
+                    fontSize: '0.98rem',
                     fontWeight: 800,
-                    color: '#fff',
+                    color: '#ffffff',
                     marginBottom: '12px',
-                    lineHeight: '1.3'
+                    lineHeight: 1.3
                   }}>
                     {poster.title}
                   </h4>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingTop: '10px',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.05)'
+                }}>
+                  <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
                     Desde Q 25.00
                   </span>
                   
                   <span style={{
                     fontSize: '0.8rem',
-                    fontWeight: 700,
-                    color: '#fff',
+                    fontWeight: 800,
+                    color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px'
@@ -177,34 +277,6 @@ export default function HeroCarousel({ onSelectPoster }) {
 
             </div>
           ))}
-        </div>
-
-        {/* Feature Checkpoints */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '32px',
-          flexWrap: 'wrap',
-          fontSize: '0.9rem',
-          color: 'var(--text-secondary)',
-          marginTop: '45px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={18} color="#00f2fe" />
-            <span>Impresión HP Látex Inalterable</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={18} color="#00f2fe" />
-            <span>Madera Rígida MDF 5.5mm</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={18} color="#00f2fe" />
-            <span>Cinta Doble Cara Tessa Incluida</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={18} color="#00f2fe" />
-            <span>6 Tamaños Oficiales en Quetzales</span>
-          </div>
         </div>
 
       </div>

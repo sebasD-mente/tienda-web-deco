@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, ShoppingBag, Bot, X, Menu, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, ShoppingBag, Bot, X } from 'lucide-react';
 
 export default function Navbar({
   cartCount,
@@ -8,117 +8,111 @@ export default function Navbar({
   onSearch,
   searchQuery
 }) {
-  const [scrolled, setScrolled] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   return (
     <>
-      {/* Top Utility Announcement Bar */}
+      {/* Top Banner with Brand Header Title (Exact Requirement) */}
       <div style={{
-        background: '#04060a',
-        borderBottom: '1px solid rgba(0, 242, 254, 0.15)',
-        padding: '6px 0',
-        fontSize: '0.75rem',
-        fontWeight: 700,
-        letterSpacing: '0.12em',
-        textTransform: 'uppercase',
-        color: 'var(--accent-cyan)',
+        background: '#040609',
         textAlign: 'center',
+        padding: '12px 0 6px 0',
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         zIndex: 102
       }}>
-        ✨ ENVÍOS A TODA GUATEMALA • PÓSTERS RÍGIDOS MDF 5.5MM • TECNOLOGÍA HP LÁTEX
+        <a href="#" style={{ textDecoration: 'none' }}>
+          <span style={{
+            fontFamily: 'var(--font-bebas)',
+            fontSize: '2.4rem',
+            letterSpacing: '0.08em',
+            color: '#ffffff',
+            display: 'inline-block',
+            lineHeight: 1
+          }}>
+            DECO VINTAGE
+          </span>
+        </a>
       </div>
 
-      {/* Main Navbar */}
+      {/* Main Navigation Bar */}
       <header style={{
         position: 'fixed',
-        top: '31px',
+        top: '48px',
         left: 0,
         right: 0,
         zIndex: 101,
-        transition: 'all 0.3s ease',
-        background: scrolled ? 'rgba(6, 8, 14, 0.94)' : 'rgba(6, 8, 14, 0.8)',
+        background: 'rgba(5, 7, 12, 0.95)',
         backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(0, 242, 254, 0.12)',
-        padding: '14px 0'
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        padding: '10px 0'
       }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           
-          {/* 1. Left: Typographical Brand Logo */}
+          {/* 1. Left: Circular Deco Vintage Guate Logo */}
           <a
             href="#"
             style={{
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
-              lineHeight: 1
+              position: 'relative'
             }}
           >
-            <span style={{
-              fontFamily: 'var(--font-bebas)',
-              fontSize: '2.3rem',
-              letterSpacing: '0.06em',
-              color: '#ffffff',
-              display: 'inline-block'
-            }}>
-              DECO <span style={{ color: 'var(--accent-cyan)' }}>VINTAGE</span>
-            </span>
+            <img
+              src="/logos/logo 1.png"
+              alt="Deco Vintage Guate"
+              style={{
+                height: '56px',
+                width: '56px',
+                borderRadius: '50%',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 0 10px rgba(0, 242, 254, 0.25))'
+              }}
+              onError={e => {
+                e.target.src = '/logos/logo Deco Vintage 30.png';
+              }}
+            />
           </a>
 
-          {/* 2. Center: Minimalist Vice Press Style Navigation */}
+          {/* 2. Center Links (Exact: CATALOGO | MÁS SOBRE NUESTROS POSTERS | PERSONALIZADOS) */}
           <nav style={{ display: 'none', alignItems: 'center', gap: '32px' }} className="desktop-menu">
             <a
               href="#catalogo"
               style={{
-                color: '#e2e8f0',
+                color: '#ffffff',
                 textDecoration: 'none',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
+                fontSize: '0.95rem',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
                 textTransform: 'uppercase',
                 fontFamily: 'var(--font-display)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
                 transition: 'color 0.2s ease'
               }}
               onMouseEnter={e => e.target.style.color = '#00f2fe'}
-              onMouseLeave={e => e.target.style.color = '#e2e8f0'}
+              onMouseLeave={e => e.target.style.color = '#ffffff'}
             >
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>+</span> CATÁLOGO
+              CATALOGO
             </a>
 
             <a
               href="#productos"
               style={{
-                color: '#e2e8f0',
+                color: '#ffffff',
                 textDecoration: 'none',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
+                fontSize: '0.95rem',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
                 textTransform: 'uppercase',
                 fontFamily: 'var(--font-display)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
                 transition: 'color 0.2s ease'
               }}
               onMouseEnter={e => e.target.style.color = '#00f2fe'}
-              onMouseLeave={e => e.target.style.color = '#e2e8f0'}
+              onMouseLeave={e => e.target.style.color = '#ffffff'}
             >
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>+</span> MÁS SOBRE NUESTROS PRODUCTOS
+              MÁS SOBRE NUESTROS POSTERS
             </a>
 
             <a
@@ -126,91 +120,82 @@ export default function Navbar({
               target="_blank"
               rel="noreferrer"
               style={{
-                color: '#e2e8f0',
+                color: '#ffffff',
                 textDecoration: 'none',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
+                fontSize: '0.95rem',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
                 textTransform: 'uppercase',
                 fontFamily: 'var(--font-display)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
                 transition: 'color 0.2s ease'
               }}
               onMouseEnter={e => e.target.style.color = '#00f2fe'}
-              onMouseLeave={e => e.target.style.color = '#e2e8f0'}
+              onMouseLeave={e => e.target.style.color = '#ffffff'}
             >
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>+</span> PERSONALIZADOS
+              PERSONALIZADOS
             </a>
           </nav>
 
-          {/* 3. Right: Clean Icon Tools */}
+          {/* 3. Right: Jarvis Pill + Search + Cart */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             
-            {/* Search Trigger Icon */}
+            {/* Jarvis Pill (Exact Style from Requirement) */}
+            <button
+              onClick={onOpenJarvis}
+              style={{
+                background: 'rgba(0, 40, 55, 0.8)',
+                border: '1px solid rgba(0, 242, 254, 0.35)',
+                color: '#38bdf8',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-full)',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                fontFamily: 'var(--font-display)',
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              title="Asistente de IA Jarvis"
+            >
+              <span>ASISTENTE DE IA JARVIS</span>
+            </button>
+
+            {/* Search Icon */}
             <button
               onClick={() => setSearchModalOpen(true)}
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#f0f6fc',
+                color: '#ffffff',
                 cursor: 'pointer',
                 padding: '6px',
                 display: 'flex',
-                alignItems: 'center',
-                transition: 'color 0.2s ease'
+                alignItems: 'center'
               }}
-              onMouseEnter={e => e.currentTarget.style.color = '#00f2fe'}
-              onMouseLeave={e => e.currentTarget.style.color = '#f0f6fc'}
               title="Buscar póster"
             >
-              <Search size={22} strokeWidth={2} />
+              <Search size={24} strokeWidth={2.2} />
             </button>
 
-            {/* Jarvis AI Icon Button */}
-            <button
-              onClick={onOpenJarvis}
-              style={{
-                background: 'rgba(0, 242, 254, 0.1)',
-                border: '1px solid rgba(0, 242, 254, 0.35)',
-                color: 'var(--accent-cyan)',
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-full)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                fontFamily: 'var(--font-display)',
-                transition: 'all 0.25s ease'
-              }}
-              title="Asistente Jarvis IA"
-            >
-              <Bot size={16} />
-              <span>Jarvis IA</span>
-            </button>
-
-            {/* Cart Icon */}
+            {/* Shopping Cart Icon */}
             <button
               onClick={onOpenCart}
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#f0f6fc',
+                color: '#ffffff',
                 cursor: 'pointer',
                 padding: '6px',
                 display: 'flex',
                 alignItems: 'center',
-                position: 'relative',
-                transition: 'color 0.2s ease'
+                position: 'relative'
               }}
-              onMouseEnter={e => e.currentTarget.style.color = '#00f2fe'}
-              onMouseLeave={e => e.currentTarget.style.color = '#f0f6fc'}
-              title="Ver Carrito de Compras"
+              title="Ver Carrito"
             >
-              <ShoppingBag size={22} strokeWidth={2} />
+              <ShoppingBag size={24} strokeWidth={2.2} />
               {cartCount > 0 && (
                 <span style={{
                   position: 'absolute',
@@ -231,22 +216,6 @@ export default function Navbar({
                   {cartCount}
                 </span>
               )}
-            </button>
-
-            {/* Mobile Menu Trigger */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              style={{
-                display: 'none',
-                background: 'none',
-                border: 'none',
-                color: '#fff',
-                cursor: 'pointer',
-                padding: '6px'
-              }}
-              className="mobile-toggle-btn"
-            >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
 
           </div>
@@ -278,7 +247,7 @@ export default function Navbar({
               <input
                 type="text"
                 autoFocus
-                placeholder="Buscar póster (ej. Porsche, Skyline, Batman, Star Wars...)"
+                placeholder="Buscar póster (ej. Porsche, Spider-Man, Skyline, Batman...)"
                 value={searchQuery}
                 onChange={e => onSearch(e.target.value)}
                 style={{
@@ -316,54 +285,10 @@ export default function Navbar({
         </div>
       )}
 
-      {/* Mobile Drawer Menu */}
-      {mobileMenuOpen && (
-        <div style={{
-          position: 'fixed',
-          top: '85px',
-          left: 0,
-          right: 0,
-          background: 'rgba(6, 8, 14, 0.98)',
-          borderBottom: '1px solid rgba(0, 242, 254, 0.2)',
-          padding: '24px',
-          zIndex: 100,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '18px'
-        }}>
-          <a
-            href="#catalogo"
-            onClick={() => setMobileMenuOpen(false)}
-            style={{ color: '#fff', textDecoration: 'none', fontSize: '1.1rem', fontWeight: 700 }}
-          >
-            + CATÁLOGO
-          </a>
-          <a
-            href="#productos"
-            onClick={() => setMobileMenuOpen(false)}
-            style={{ color: '#fff', textDecoration: 'none', fontSize: '1.1rem', fontWeight: 700 }}
-          >
-            + MÁS SOBRE NUESTROS PRODUCTOS
-          </a>
-          <a
-            href="https://wa.me/?text=Hola%20Deco%20Vintage,%20quiero%20cotizar%20un%20p%C3%B3ster%20personalizado"
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => setMobileMenuOpen(false)}
-            style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontSize: '1.1rem', fontWeight: 700 }}
-          >
-            + PEDIDOS PERSONALIZADOS
-          </a>
-        </div>
-      )}
-
       {/* Responsive Inline CSS */}
       <style>{`
         @media (min-width: 860px) {
           .desktop-menu { display: flex !important; }
-        }
-        @media (max-width: 859px) {
-          .mobile-toggle-btn { display: flex !important; }
         }
       `}</style>
     </>
