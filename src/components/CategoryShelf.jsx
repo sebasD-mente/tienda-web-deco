@@ -1,10 +1,10 @@
 import React, { useRef } from 'react';
 import { ChevronLeft, ChevronRight, Eye, Star, Sparkles } from 'lucide-react';
 import { CATEGORIES, CATALOG_POSTERS } from '../data/catalogData';
+import OptimizedImage from './OptimizedImage';
 
 export default function CategoryShelf({
   onSelectPoster,
-  onAddToCart,
   filterCategory,
   searchQuery
 }) {
@@ -156,7 +156,7 @@ export default function CategoryShelf({
                     }}
                     onClick={() => onSelectPoster(poster)}
                   >
-                    {/* Poster Card Image Container */}
+                    {/* Poster Card Image Container with Optimized WebP & Shimmer */}
                     <div style={{
                       width: '100%',
                       height: '340px',
@@ -164,18 +164,9 @@ export default function CategoryShelf({
                       overflow: 'hidden',
                       background: '#06080e'
                     }}>
-                      <img
-                        src={poster.image}
+                      <OptimizedImage
+                        src={poster.thumb || poster.image}
                         alt={poster.title}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          display: 'block',
-                          transition: 'transform 0.4s ease'
-                        }}
-                        onMouseEnter={e => e.target.style.transform = 'scale(1.06)'}
-                        onMouseLeave={e => e.target.style.transform = 'scale(1.0)'}
                       />
 
                       {/* Top Badges */}
@@ -186,7 +177,8 @@ export default function CategoryShelf({
                         right: '12px',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        zIndex: 2
                       }}>
                         <div style={{
                           background: 'rgba(6, 8, 14, 0.85)',
@@ -226,7 +218,8 @@ export default function CategoryShelf({
                         alignItems: 'center',
                         justifyContent: 'center',
                         transition: 'opacity 0.25s ease',
-                        backdropFilter: 'blur(3px)'
+                        backdropFilter: 'blur(3px)',
+                        zIndex: 3
                       }}
                       onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                       onMouseLeave={e => e.currentTarget.style.opacity = '0'}

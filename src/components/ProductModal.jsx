@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, ShoppingBag, MessageSquare, Check, Sparkles, Star } from 'lucide-react';
+import { X, ShoppingBag, MessageSquare, Check, Star } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OFFICIAL_SIZES } from '../data/catalogData';
+import OptimizedImage from './OptimizedImage';
 
 export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhatsApp }) {
   const [selectedSize, setSelectedSize] = useState(OFFICIAL_SIZES[3]); // Mediano default
@@ -87,7 +88,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
           gap: '0'
         }}>
           
-          {/* Left Column: Image Preview */}
+          {/* Left Column: Full HD Optimized Image Preview */}
           <div style={{
             background: '#06080e',
             padding: '30px',
@@ -105,10 +106,10 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 242, 254, 0.25)',
               border: '3px solid rgba(0, 242, 254, 0.3)'
             }}>
-              <img
-                src={poster.image}
+              <OptimizedImage
+                src={poster.image || poster.thumb}
                 alt={poster.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                priority={true}
               />
             </div>
           </div>

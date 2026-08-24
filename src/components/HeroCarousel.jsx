@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Sparkles, ArrowRight, Eye, Layers, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import React from 'react';
+import { Sparkles, ArrowRight, Layers, CheckCircle2 } from 'lucide-react';
 import { CATALOG_POSTERS } from '../data/catalogData';
+import OptimizedImage from './OptimizedImage';
 
 export default function HeroCarousel({ onSelectPoster }) {
   const featuredPosters = CATALOG_POSTERS.filter(p => p.isFeatured).slice(0, 4);
@@ -76,7 +77,7 @@ export default function HeroCarousel({ onSelectPoster }) {
           </a>
         </div>
 
-        {/* 4 Standout Featured Cards Grid (Proposal 2 Style) */}
+        {/* 4 Standout Featured Cards Grid with Optimized WebP & Shimmer */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
@@ -85,7 +86,7 @@ export default function HeroCarousel({ onSelectPoster }) {
           margin: '0 auto',
           textAlign: 'left'
         }}>
-          {featuredPosters.map((poster) => (
+          {featuredPosters.map((poster, index) => (
             <div
               key={poster.id}
               className="glass-card"
@@ -99,20 +100,12 @@ export default function HeroCarousel({ onSelectPoster }) {
               }}
               onClick={() => onSelectPoster(poster)}
             >
-              {/* Poster Image */}
+              {/* Poster Image with Optimized Progressive Loading */}
               <div style={{ width: '100%', height: '320px', overflow: 'hidden', position: 'relative' }}>
-                <img
-                  src={poster.image}
+                <OptimizedImage
+                  src={poster.thumb || poster.image}
                   alt={poster.title}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'block',
-                    transition: 'transform 0.4s ease'
-                  }}
-                  onMouseEnter={e => e.target.style.transform = 'scale(1.06)'}
-                  onMouseLeave={e => e.target.style.transform = 'scale(1.0)'}
+                  priority={index < 2}
                 />
 
                 <div style={{
@@ -126,7 +119,8 @@ export default function HeroCarousel({ onSelectPoster }) {
                   fontSize: '0.72rem',
                   padding: '4px 10px',
                   borderRadius: 'var(--radius-full)',
-                  backdropFilter: 'blur(8px)'
+                  backdropFilter: 'blur(8px)',
+                  zIndex: 2
                 }}>
                   MDF 5.5mm
                 </div>
