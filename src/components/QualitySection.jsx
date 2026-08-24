@@ -1,10 +1,9 @@
 import React from 'react';
-import { ShieldCheck, Cpu, Layers, Hammer, Sparkles, CheckCircle2, Ruler, MessageSquare } from 'lucide-react';
-import { OFFICIAL_SIZES } from '../data/catalogData';
+import { ShieldCheck, Cpu, Layers, Hammer, Sparkles, CheckCircle2, MessageSquare } from 'lucide-react';
 
 export default function QualitySection() {
   return (
-    <section id="productos" style={{ padding: '90px 0', position: 'relative', background: 'rgba(9, 13, 20, 0.7)' }}>
+    <section id="productos" style={{ padding: '80px 0', position: 'relative', background: '#060910' }}>
       <div className="container">
         
         {/* Header */}
@@ -21,65 +20,11 @@ export default function QualitySection() {
           </p>
         </div>
 
-        {/* Official 6 Sizes & Prices Table Card */}
-        <div className="glass-card" style={{
-          padding: '36px',
-          marginBottom: '50px',
-          border: '1px solid rgba(0, 242, 254, 0.25)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
-            <Ruler size={24} color="var(--accent-cyan)" />
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>
-              Los 6 Tamaños Oficiales & Precios en Quetzales
-            </h3>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '16px'
-          }}>
-            {OFFICIAL_SIZES.map((s) => (
-              <div
-                key={s.id}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '18px 20px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff' }}>
-                    {s.name}
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    {s.dimensions}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', marginTop: '4px', fontWeight: 600 }}>
-                    {s.badge}
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
-                    Q {s.price.toFixed(2)}
-                  </div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>MDF 5.5mm</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* 3 Pillars Grid (Materials & Tech) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '28px',
+          gap: '24px',
           marginBottom: '50px'
         }}>
           
