@@ -12,212 +12,228 @@ export default function Navbar({
 
   return (
     <>
-      {/* Top Banner with Brand Header Title (Exact Requirement) */}
       <div style={{
-        background: '#040609',
-        textAlign: 'center',
-        padding: '12px 0 6px 0',
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
-        zIndex: 102
+        zIndex: 100
       }}>
-        <a href="#" style={{ textDecoration: 'none' }}>
-          <span style={{
-            fontFamily: 'var(--font-bebas)',
-            fontSize: '2.4rem',
-            letterSpacing: '0.08em',
-            color: '#ffffff',
-            display: 'inline-block',
-            lineHeight: 1
-          }}>
-            DECO VINTAGE
-          </span>
-        </a>
-      </div>
+        {/* 1. Top Header (Outside the black bar, on dark canvas background) */}
+        <div style={{
+          background: '#060910',
+          textAlign: 'center',
+          padding: '8px 0 4px 0',
+          lineHeight: 1
+        }}>
+          <a href="#" style={{ textDecoration: 'none' }}>
+            <span style={{
+              fontFamily: 'var(--font-bebas)',
+              fontSize: '2.1rem',
+              letterSpacing: '0.08em',
+              color: '#ffffff',
+              display: 'inline-block'
+            }}>
+              DECO VINTAGE
+            </span>
+          </a>
+        </div>
 
-      {/* Main Navigation Bar */}
-      <header style={{
-        position: 'fixed',
-        top: '48px',
-        left: 0,
-        right: 0,
-        zIndex: 101,
-        background: 'rgba(5, 7, 12, 0.95)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        padding: '8px 0'
-      }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          
-          {/* 1. Left: Official Logo Navbar (User Export) */}
-          <a
-            href="#"
-            style={{
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              position: 'relative'
-            }}
-          >
-            <img
-              src="/assets/logo-navbar.png"
-              alt="Deco Vintage Guate"
+        {/* 2. Solid Black Compact Navigation Bar */}
+        <header style={{
+          background: '#000000',
+          height: '56px',
+          display: 'flex',
+          alignItems: 'center',
+          position: 'relative',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+        }}>
+          <div className="container" style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            position: 'relative'
+          }}>
+            
+            {/* 3. Overlapping Protagonist Circular Logo */}
+            <a
+              href="#"
               style={{
-                height: '58px',
-                width: '58px',
-                objectFit: 'contain',
+                position: 'absolute',
+                left: '0px',
+                top: '-28px',
+                zIndex: 20,
+                textDecoration: 'none',
                 display: 'block'
               }}
-            />
-          </a>
-
-          {/* 2. Center Links: CATALOGO | MÁS SOBRE NUESTROS POSTERS | PERSONALIZADOS */}
-          <nav style={{ display: 'none', alignItems: 'center', gap: '32px' }} className="desktop-menu">
-            <a
-              href="#catalogo"
-              style={{
-                color: '#ffffff',
-                textDecoration: 'none',
-                fontSize: '0.95rem',
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                fontFamily: 'var(--font-display)',
-                transition: 'color 0.2s ease'
-              }}
-              onMouseEnter={e => e.target.style.color = '#00f2fe'}
-              onMouseLeave={e => e.target.style.color = '#ffffff'}
             >
-              CATALOGO
+              <img
+                src="/assets/logo-navbar.png"
+                alt="Deco Vintage Guate"
+                style={{
+                  height: '110px',
+                  width: '110px',
+                  objectFit: 'contain',
+                  display: 'block',
+                  filter: 'drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9))'
+                }}
+              />
             </a>
 
-            <a
-              href="#productos"
-              style={{
-                color: '#ffffff',
-                textDecoration: 'none',
-                fontSize: '0.95rem',
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                fontFamily: 'var(--font-display)',
-                transition: 'color 0.2s ease'
-              }}
-              onMouseEnter={e => e.target.style.color = '#00f2fe'}
-              onMouseLeave={e => e.target.style.color = '#ffffff'}
-            >
-              MÁS SOBRE NUESTROS POSTERS
-            </a>
+            {/* 4. Center Links (Indented to clear the overlapping logo) */}
+            <nav style={{
+              display: 'none',
+              alignItems: 'center',
+              gap: '36px',
+              marginLeft: '125px'
+            }} className="desktop-menu">
+              <a
+                href="#catalogo"
+                style={{
+                  color: '#ffffff',
+                  textDecoration: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  fontFamily: 'var(--font-display)',
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseEnter={e => e.target.style.color = '#00f2fe'}
+                onMouseLeave={e => e.target.style.color = '#ffffff'}
+              >
+                CATALOGO
+              </a>
 
-            <a
-              href="https://wa.me/?text=Hola%20Deco%20Vintage,%20quiero%20cotizar%20un%20p%C3%B3ster%20personalizado"
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                color: '#ffffff',
-                textDecoration: 'none',
-                fontSize: '0.95rem',
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                fontFamily: 'var(--font-display)',
-                transition: 'color 0.2s ease'
-              }}
-              onMouseEnter={e => e.target.style.color = '#00f2fe'}
-              onMouseLeave={e => e.target.style.color = '#ffffff'}
-            >
-              PERSONALIZADOS
-            </a>
-          </nav>
+              <a
+                href="#productos"
+                style={{
+                  color: '#ffffff',
+                  textDecoration: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  fontFamily: 'var(--font-display)',
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseEnter={e => e.target.style.color = '#00f2fe'}
+                onMouseLeave={e => e.target.style.color = '#ffffff'}
+              >
+                MÁS SOBRE NUESTROS POSTERS
+              </a>
 
-          {/* 3. Right: Jarvis Pill + Search + Cart */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            
-            {/* Jarvis Pill */}
-            <button
-              onClick={onOpenJarvis}
-              style={{
-                background: 'rgba(0, 40, 55, 0.85)',
-                border: '1px solid rgba(0, 242, 254, 0.35)',
-                color: '#38bdf8',
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-full)',
-                cursor: 'pointer',
-                fontSize: '0.8rem',
-                fontWeight: 800,
-                fontFamily: 'var(--font-display)',
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-              title="Asistente de IA Jarvis"
-            >
-              <span>ASISTENTE DE IA JARVIS</span>
-            </button>
+              <a
+                href="https://wa.me/?text=Hola%20Deco%20Vintage,%20quiero%20cotizar%20un%20p%C3%B3ster%20personalizado"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color: '#ffffff',
+                  textDecoration: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  fontFamily: 'var(--font-display)',
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseEnter={e => e.target.style.color = '#00f2fe'}
+                onMouseLeave={e => e.target.style.color = '#ffffff'}
+              >
+                PERSONALIZADOS
+              </a>
+            </nav>
 
-            {/* Search Icon */}
-            <button
-              onClick={() => setSearchModalOpen(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#ffffff',
-                cursor: 'pointer',
-                padding: '6px',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-              title="Buscar póster"
-            >
-              <Search size={24} strokeWidth={2.2} />
-            </button>
-
-            {/* Shopping Cart Icon */}
-            <button
-              onClick={onOpenCart}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#ffffff',
-                cursor: 'pointer',
-                padding: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                position: 'relative'
-              }}
-              title="Ver Carrito"
-            >
-              <ShoppingBag size={24} strokeWidth={2.2} />
-              {cartCount > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '-2px',
-                  right: '-4px',
-                  background: 'var(--grad-cyan)',
-                  color: '#06080e',
-                  fontSize: '0.7rem',
-                  fontWeight: 900,
-                  width: '18px',
-                  height: '18px',
-                  borderRadius: '50%',
+            {/* 5. Right Items: Jarvis Pill + Search + Cart */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+              
+              {/* Jarvis Pill (Dark Teal with Cyan Text) */}
+              <button
+                onClick={onOpenJarvis}
+                style={{
+                  background: 'rgba(0, 32, 44, 0.95)',
+                  border: '1px solid rgba(0, 242, 254, 0.35)',
+                  color: '#5eead4',
+                  padding: '7px 16px',
+                  borderRadius: 'var(--radius-full)',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  fontFamily: 'var(--font-display)',
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 0 10px rgba(0, 242, 254, 0.6)'
-                }}>
-                  {cartCount}
-                </span>
-              )}
-            </button>
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#00f2fe'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.35)'}
+                title="Asistente de IA Jarvis"
+              >
+                <span>ASISTENTE DE IA JARVIS</span>
+              </button>
+
+              {/* Search Icon */}
+              <button
+                onClick={() => setSearchModalOpen(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title="Buscar póster"
+              >
+                <Search size={22} strokeWidth={2.4} />
+              </button>
+
+              {/* Shopping Cart Icon */}
+              <button
+                onClick={onOpenCart}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  position: 'relative'
+                }}
+                title="Ver Carrito"
+              >
+                <ShoppingBag size={22} strokeWidth={2.4} />
+                {cartCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-2px',
+                    right: '-4px',
+                    background: 'var(--grad-cyan)',
+                    color: '#06080e',
+                    fontSize: '0.7rem',
+                    fontWeight: 900,
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 0 10px rgba(0, 242, 254, 0.6)'
+                  }}>
+                    {cartCount}
+                  </span>
+                )}
+              </button>
+
+            </div>
 
           </div>
-
-        </div>
-      </header>
+        </header>
+      </div>
 
       {/* Pop-up Search Modal */}
       {searchModalOpen && (
