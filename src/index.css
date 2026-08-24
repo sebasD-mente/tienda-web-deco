@@ -1,9 +1,9 @@
 :root {
-  --bg-darkest: #06080e;
-  --bg-main: #090c14;
-  --bg-card: rgba(13, 18, 28, 0.75);
-  --bg-card-hover: rgba(20, 28, 44, 0.95);
-  --bg-glass: rgba(13, 18, 28, 0.7);
+  --bg-darkest: #060910;
+  --bg-main: #080c14;
+  --bg-card: #0b101c;
+  --bg-card-hover: #101726;
+  --bg-glass: rgba(11, 16, 28, 0.95);
   
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-cyan: rgba(0, 242, 254, 0.35);
@@ -13,7 +13,7 @@
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
   
-  /* Brand Accents - Proposal 2: Cyan Cibernético & Ice Blue */
+  /* Brand Accents - Cyan Cibernético & Ice Blue */
   --accent-cyan: #00f2fe;
   --accent-blue: #38bdf8;
   --accent-cobalt: #0284c7;
@@ -23,7 +23,7 @@
   /* Gradients */
   --grad-cyan: linear-gradient(135deg, #00f2fe 0%, #00c6ff 50%, #0284c7 100%);
   --grad-ice: linear-gradient(135deg, #38bdf8 0%, #00f2fe 100%);
-  --grad-dark: linear-gradient(180deg, rgba(13, 18, 28, 0.9) 0%, rgba(6, 8, 14, 0.95) 100%);
+  --grad-dark: #080c14;
   
   /* Typography */
   --font-bebas: 'Bebas Neue', sans-serif;
@@ -33,7 +33,7 @@
   
   --radius-sm: 8px;
   --radius-md: 14px;
-  --radius-lg: 22px;
+  --radius-lg: 20px;
   --radius-full: 9999px;
   
   --shadow-card: 0 15px 35px -10px rgba(0, 0, 0, 0.7);
@@ -55,22 +55,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Background Ambient Cyber Lighting */
+/* Solid Clean Background - No Reflections */
 .ambient-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    radial-gradient(circle at 15% 10%, rgba(0, 242, 254, 0.08) 0%, transparent 45%),
-    radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.06) 0%, transparent 45%),
-    radial-gradient(circle at 50% 90%, rgba(2, 132, 199, 0.07) 0%, transparent 55%),
-    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 64px 64px, 64px 64px;
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .container {
@@ -93,32 +80,25 @@ h1, h2, h3, h4, .font-display {
 }
 
 .text-gradient-cyan {
-  background: var(--grad-cyan);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #38bdf8;
 }
 
 .text-gradient-ice {
-  background: var(--grad-ice);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #00f2fe;
 }
 
-/* Glassmorphism Cards */
+/* Cards */
 .glass-card {
   background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.3s ease;
 }
 
 .glass-card:hover {
   border-color: rgba(0, 242, 254, 0.45);
-  box-shadow: var(--shadow-cyan-glow), var(--shadow-card);
-  transform: translateY(-4px);
+  box-shadow: 0 0 25px rgba(0, 242, 254, 0.25), var(--shadow-card);
 }
 
 /* Buttons */
@@ -135,13 +115,13 @@ h1, h2, h3, h4, .font-display {
   border: none;
   cursor: pointer;
   text-decoration: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 25px rgba(0, 242, 254, 0.35);
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px rgba(0, 242, 254, 0.3);
 }
 
 .btn-cyan:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 242, 254, 0.55);
+  box-shadow: 0 6px 28px rgba(0, 242, 254, 0.45);
 }
 
 .btn-secondary {
@@ -157,12 +137,11 @@ h1, h2, h3, h4, .font-display {
   border: 1px solid var(--border-subtle);
   cursor: pointer;
   text-decoration: none;
-  backdrop-filter: blur(12px);
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
   border-color: rgba(0, 242, 254, 0.4);
   transform: translateY(-2px);
 }
@@ -181,7 +160,7 @@ h1, h2, h3, h4, .font-display {
   color: var(--accent-cyan);
 }
 
-/* Horizontal Shelf Carousel Styling (MeowMeow style) */
+/* Horizontal Shelf Carousel Styling */
 .shelf-track {
   display: flex;
   gap: 20px;
@@ -210,24 +189,13 @@ h1, h2, h3, h4, .font-display {
 .shelf-item {
   scroll-snap-align: start;
   flex: 0 0 280px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.3s ease;
 }
 
 @media (max-width: 640px) {
   .shelf-item {
     flex: 0 0 240px;
   }
-}
-
-/* Pulse animation */
-@keyframes pulseGlowCyan {
-  0% { transform: scale(0.95); opacity: 0.75; }
-  50% { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 12px var(--accent-cyan)); }
-  100% { transform: scale(0.95); opacity: 0.75; }
-}
-
-.pulse-cyan {
-  animation: pulseGlowCyan 2.5s infinite;
 }
 
 /* Smooth Scrolling */
@@ -242,7 +210,7 @@ html {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(4, 6, 10, 0.88);
+  background: rgba(4, 6, 10, 0.9);
   backdrop-filter: blur(14px);
   display: flex;
   align-items: center;

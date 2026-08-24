@@ -3,57 +3,26 @@ import { CATALOG_POSTERS } from '../data/catalogData';
 import OptimizedImage from './OptimizedImage';
 
 const FRANCHISES = [
-  { id: 'avengers', name: 'Avengers', img: '/franchises/avengers.webp', category: 'SUPERHEROES' },
-  { id: 'dragon-ball', name: 'Dragon Ball', img: '/franchises/dragon-ball.webp', category: 'ANIME' },
-  { id: 'disney', name: 'Walt Disney', img: '/franchises/disney.webp', category: 'CINE' },
-  { id: 'nba', name: 'NBA', img: '/franchises/nba.webp', category: 'AUTOS' },
-  { id: 'back-to-future', name: 'Back to the Future', img: '/franchises/back-to-future.webp', category: 'AUTOS' },
-  { id: 'dc', name: 'DC Comics', img: '/franchises/dc.webp', category: 'SUPERHEROES' },
-  { id: 'star-wars', name: 'Star Wars', img: '/franchises/star-wars.webp', category: 'CINE' }
+  { id: 'avengers', name: 'Avengers', img: '/franchises/avengers.png', category: 'SUPERHEROES' },
+  { id: 'dragon-ball', name: 'Dragon Ball', img: '/franchises/dragon-ball.png', category: 'ANIME' },
+  { id: 'disney', name: 'Walt Disney', img: '/franchises/disney.png', category: 'CINE' },
+  { id: 'nba', name: 'NBA', img: '/franchises/nba.png', category: 'AUTOS' },
+  { id: 'back-to-future', name: 'Back to the Future', img: '/franchises/back-to-future.png', category: 'AUTOS' },
+  { id: 'dc', name: 'DC Comics', img: '/franchises/dc.png', category: 'SUPERHEROES' },
+  { id: 'star-wars', name: 'Star Wars', img: '/franchises/star-wars.png', category: 'CINE' }
 ];
 
 export default function HeroCarousel({ onSelectPoster }) {
   const featuredPosters = CATALOG_POSTERS.filter(p => p.isFeatured).slice(0, 4);
-  const [hoveredCard, setHoveredCard] = useState('toyota-supra'); // Supra highlighted as in mockup
+  const [hoveredCard, setHoveredCard] = useState('toyota-supra');
 
   return (
     <section style={{
       paddingTop: '160px',
       paddingBottom: '80px',
       position: 'relative',
-      overflow: 'hidden'
+      background: '#060910'
     }}>
-      
-      {/* Background Comic / Manga Collage Texture */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '680px',
-        backgroundImage: 'radial-gradient(circle at center, rgba(6, 9, 15, 0.75) 0%, rgba(4, 6, 10, 0.98) 100%), url("/franchises/comic-bg.webp")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        opacity: 0.35,
-        filter: 'grayscale(70%)',
-        pointerEvents: 'none',
-        zIndex: 0
-      }} />
-
-      {/* Subtle Cyan Ambient Glow */}
-      <div style={{
-        position: 'absolute',
-        top: '22%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: '850px',
-        height: '420px',
-        background: 'radial-gradient(ellipse at center, rgba(0, 242, 254, 0.14) 0%, transparent 70%)',
-        filter: 'blur(80px)',
-        pointerEvents: 'none',
-        zIndex: 0
-      }} />
-
       <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
         
         {/* Main Central Giant Headline (Exact from Illustrator Mockup) */}
@@ -66,11 +35,12 @@ export default function HeroCarousel({ onSelectPoster }) {
           letterSpacing: '-0.02em',
           textTransform: 'uppercase',
           maxWidth: '1050px',
-          margin: '0 auto 16px auto'
+          margin: '0 auto 16px auto',
+          color: '#ffffff'
         }}>
           DESCUBRE POSTERS <br />
           ICÓNICOS DE <br />
-          <span style={{ color: '#38bdf8', textShadow: '0 0 35px rgba(56, 189, 248, 0.45)' }}>
+          <span style={{ color: '#38bdf8' }}>
             AUTOS, ANIME, CINE Y MUCHO MAS
           </span>
         </h1>
@@ -91,28 +61,27 @@ export default function HeroCarousel({ onSelectPoster }) {
               padding: '16px 38px',
               borderRadius: 'var(--radius-full)',
               textDecoration: 'none',
-              boxShadow: '0 6px 30px rgba(255, 255, 255, 0.25)',
               transition: 'all 0.25s ease'
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-              e.currentTarget.style.boxShadow = '0 10px 40px rgba(0, 242, 254, 0.5)';
+              e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 242, 254, 0.4)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = '0 6px 30px rgba(255, 255, 255, 0.25)';
+              e.currentTarget.style.boxShadow = 'none';
             }}
           >
             EXPLORA LAS CATEGORIAS DISPONIBLES
           </a>
         </div>
 
-        {/* Franchise Category Icons Grid (7 Exact Logos from Illustrator) */}
+        {/* Franchise Category Icons Grid (7 Exact User-Exported PNG Buttons) */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          gap: '18px',
+          gap: '16px',
           flexWrap: 'wrap',
           marginBottom: '75px'
         }}>
@@ -123,26 +92,20 @@ export default function HeroCarousel({ onSelectPoster }) {
               style={{
                 width: '92px',
                 height: '92px',
-                borderRadius: '20px',
-                overflow: 'hidden',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 textDecoration: 'none',
                 transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: '#090d16'
+                cursor: 'pointer'
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-6px) scale(1.06)';
-                e.currentTarget.style.boxShadow = '0 15px 35px rgba(0, 242, 254, 0.45)';
-                e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.6)';
+                e.currentTarget.style.transform = 'translateY(-6px) scale(1.08)';
+                e.currentTarget.style.filter = 'drop-shadow(0 10px 20px rgba(0, 242, 254, 0.4))';
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.6)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                e.currentTarget.style.filter = 'none';
               }}
             >
               <img
@@ -151,7 +114,7 @@ export default function HeroCarousel({ onSelectPoster }) {
                 style={{
                   width: '100%',
                   height: '100%',
-                  objectFit: 'cover',
+                  objectFit: 'contain',
                   display: 'block'
                 }}
               />
@@ -173,7 +136,7 @@ export default function HeroCarousel({ onSelectPoster }) {
           </h2>
         </div>
 
-        {/* 4 Standout Featured Cards Grid with Cyan Active Glow (Exact from Illustrator) */}
+        {/* 4 Standout Featured Cards Grid (Exact from Illustrator) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
