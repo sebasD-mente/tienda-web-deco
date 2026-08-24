@@ -1,54 +1,54 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CATALOG_POSTERS } from '../data/catalogData';
 import OptimizedImage from './OptimizedImage';
 
-// Popular Franchise Categories directly matching the user's mockup
-const FRANCHISE_BADGES = [
-  { name: 'Avengers', label: 'AVENGERS', icon: '🅰️', color: '#881337', borderColor: '#e11d48' },
-  { name: 'Dragon Ball', label: 'DRAGON BALL', icon: '🐉', color: '#7c2d12', borderColor: '#ea580c' },
-  { name: 'Walt Disney', label: 'WALT DISNEY', icon: '🏰', color: '#1e293b', borderColor: '#64748b' },
-  { name: 'NBA', label: 'NBA', icon: '🏀', color: '#1e3a8a', borderColor: '#3b82f6' },
-  { name: 'Back To The Future', label: 'BACK TO THE FUTURE', icon: '⚡', color: '#854d0e', borderColor: '#eab308' },
-  { name: 'DC Comics', label: 'DC COMICS', icon: '🦇', color: '#1e1b4b', borderColor: '#6366f1' },
-  { name: 'Star Wars', label: 'STAR WARS', icon: '🌌', color: '#09090b', borderColor: '#e2e8f0' }
+const FRANCHISES = [
+  { id: 'avengers', name: 'Avengers', img: '/franchises/avengers.webp', category: 'SUPERHEROES' },
+  { id: 'dragon-ball', name: 'Dragon Ball', img: '/franchises/dragon-ball.webp', category: 'ANIME' },
+  { id: 'disney', name: 'Walt Disney', img: '/franchises/disney.webp', category: 'CINE' },
+  { id: 'nba', name: 'NBA', img: '/franchises/nba.webp', category: 'AUTOS' },
+  { id: 'back-to-future', name: 'Back to the Future', img: '/franchises/back-to-future.webp', category: 'AUTOS' },
+  { id: 'dc', name: 'DC Comics', img: '/franchises/dc.webp', category: 'SUPERHEROES' },
+  { id: 'star-wars', name: 'Star Wars', img: '/franchises/star-wars.webp', category: 'CINE' }
 ];
 
 export default function HeroCarousel({ onSelectPoster }) {
   const featuredPosters = CATALOG_POSTERS.filter(p => p.isFeatured).slice(0, 4);
+  const [hoveredCard, setHoveredCard] = useState('toyota-supra'); // Supra highlighted as in mockup
 
   return (
     <section style={{
       paddingTop: '160px',
-      paddingBottom: '70px',
+      paddingBottom: '80px',
       position: 'relative',
       overflow: 'hidden'
     }}>
       
-      {/* Background Comic / Pop Art Collage Texture Overlay */}
+      {/* Background Comic / Manga Collage Texture */}
       <div style={{
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        height: '620px',
-        backgroundImage: 'radial-gradient(circle at center, rgba(6, 9, 15, 0.7) 0%, rgba(4, 6, 10, 0.98) 100%), url("/posters/optimized/full/wallpaper.webp")',
+        height: '680px',
+        backgroundImage: 'radial-gradient(circle at center, rgba(6, 9, 15, 0.75) 0%, rgba(4, 6, 10, 0.98) 100%), url("/franchises/comic-bg.webp")',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        opacity: 0.28,
-        filter: 'grayscale(60%)',
+        opacity: 0.35,
+        filter: 'grayscale(70%)',
         pointerEvents: 'none',
         zIndex: 0
       }} />
 
-      {/* Cyan Ambient Spotlight */}
+      {/* Subtle Cyan Ambient Glow */}
       <div style={{
         position: 'absolute',
-        top: '25%',
+        top: '22%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        width: '800px',
-        height: '400px',
-        background: 'radial-gradient(ellipse at center, rgba(0, 242, 254, 0.12) 0%, transparent 70%)',
+        width: '850px',
+        height: '420px',
+        background: 'radial-gradient(ellipse at center, rgba(0, 242, 254, 0.14) 0%, transparent 70%)',
         filter: 'blur(80px)',
         pointerEvents: 'none',
         zIndex: 0
@@ -56,7 +56,7 @@ export default function HeroCarousel({ onSelectPoster }) {
 
       <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
         
-        {/* Main Central Giant Headline (Exact from Mockup) */}
+        {/* Main Central Giant Headline (Exact from Illustrator Mockup) */}
         <h1 style={{
           fontFamily: 'var(--font-display)',
           fontSize: 'clamp(2.5rem, 5.8vw, 4.8rem)',
@@ -70,12 +70,12 @@ export default function HeroCarousel({ onSelectPoster }) {
         }}>
           DESCUBRE POSTERS <br />
           ICÓNICOS DE <br />
-          <span style={{ color: '#38bdf8', textShadow: '0 0 35px rgba(56, 189, 248, 0.4)' }}>
+          <span style={{ color: '#38bdf8', textShadow: '0 0 35px rgba(56, 189, 248, 0.45)' }}>
             AUTOS, ANIME, CINE Y MUCHO MAS
           </span>
         </h1>
 
-        {/* White Pill Button (Exact from Mockup) */}
+        {/* White Pill Button (Exact from Illustrator Mockup) */}
         <div style={{ margin: '30px 0 50px 0' }}>
           <a
             href="#catalogo"
@@ -88,7 +88,7 @@ export default function HeroCarousel({ onSelectPoster }) {
               fontSize: '0.95rem',
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
-              padding: '16px 36px',
+              padding: '16px 38px',
               borderRadius: 'var(--radius-full)',
               textDecoration: 'none',
               boxShadow: '0 6px 30px rgba(255, 255, 255, 0.25)',
@@ -96,7 +96,7 @@ export default function HeroCarousel({ onSelectPoster }) {
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-              e.currentTarget.style.boxShadow = '0 10px 40px rgba(0, 242, 254, 0.45)';
+              e.currentTarget.style.boxShadow = '0 10px 40px rgba(0, 242, 254, 0.5)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0) scale(1)';
@@ -107,62 +107,73 @@ export default function HeroCarousel({ onSelectPoster }) {
           </a>
         </div>
 
-        {/* Franchise Category Icons Grid (Exact from Mockup) */}
+        {/* Franchise Category Icons Grid (7 Exact Logos from Illustrator) */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          gap: '16px',
+          gap: '18px',
           flexWrap: 'wrap',
-          marginBottom: '65px'
+          marginBottom: '75px'
         }}>
-          {FRANCHISE_BADGES.map((badge, idx) => (
+          {FRANCHISES.map((franchise) => (
             <a
-              key={idx}
+              key={franchise.id}
               href="#catalogo"
               style={{
-                width: '88px',
-                height: '88px',
-                borderRadius: '18px',
-                background: 'linear-gradient(145deg, rgba(226, 232, 240, 0.95) 0%, rgba(148, 163, 184, 0.85) 100%)',
-                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                width: '92px',
+                height: '92px',
+                borderRadius: '20px',
+                overflow: 'hidden',
+                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6)',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 textDecoration: 'none',
-                padding: '8px',
                 transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                border: '1px solid rgba(255, 255, 255, 0.6)'
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: '#090d16'
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = 'translateY(-6px) scale(1.06)';
-                e.currentTarget.style.boxShadow = '0 15px 35px rgba(0, 242, 254, 0.4)';
+                e.currentTarget.style.boxShadow = '0 15px 35px rgba(0, 242, 254, 0.45)';
+                e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.6)';
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.5)';
+                e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.6)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
               }}
             >
-              <span style={{ fontSize: '1.8rem', marginBottom: '2px', display: 'block' }}>
-                {badge.icon}
-              </span>
-              <span style={{
-                fontSize: '0.62rem',
-                fontWeight: 900,
-                color: '#0f172a',
-                textAlign: 'center',
-                lineHeight: 1.1,
-                fontFamily: 'var(--font-display)',
-                textTransform: 'uppercase'
-              }}>
-                {badge.label}
-              </span>
+              <img
+                src={franchise.img}
+                alt={franchise.name}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+              />
             </a>
           ))}
         </div>
 
-        {/* 4 Standout Featured Cards Grid (Exact Design from Mockup) */}
+        {/* BEST SELLERS Header (Exact from Illustrator Mockup) */}
+        <div style={{ textAlign: 'left', marginBottom: '22px' }}>
+          <h2 style={{
+            fontFamily: 'var(--font-bebas)',
+            fontSize: '2.8rem',
+            letterSpacing: '0.05em',
+            color: '#ffffff',
+            textTransform: 'uppercase',
+            lineHeight: 1
+          }}>
+            BEST SELLERS
+          </h2>
+        </div>
+
+        {/* 4 Standout Featured Cards Grid with Cyan Active Glow (Exact from Illustrator) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
@@ -171,112 +182,118 @@ export default function HeroCarousel({ onSelectPoster }) {
           margin: '0 auto',
           textAlign: 'left'
         }}>
-          {featuredPosters.map((poster, index) => (
-            <div
-              key={poster.id}
-              className="glass-card"
-              style={{
-                padding: '0',
-                overflow: 'hidden',
-                cursor: 'pointer',
-                border: '1px solid rgba(0, 242, 254, 0.25)',
-                background: '#070b12',
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                borderRadius: '16px'
-              }}
-              onClick={() => onSelectPoster(poster)}
-            >
-              {/* Poster Frame (100% Horizontal & Vertical Proportion without Cropping) */}
-              <div style={{
-                width: '100%',
-                height: '240px',
-                position: 'relative',
-                background: '#040609',
-                padding: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
-              }}>
-                <OptimizedImage
-                  src={poster.thumb || poster.image}
-                  alt={poster.title}
-                  objectFit="contain"
-                  priority={index < 2}
-                  style={{ background: 'transparent' }}
-                />
-
-                {/* MDF 5.5mm Pill Badge */}
+          {featuredPosters.map((poster, index) => {
+            const isHighlighted = hoveredCard === poster.id;
+            return (
+              <div
+                key={poster.id}
+                className="glass-card"
+                style={{
+                  padding: '0',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  border: isHighlighted ? '2px solid rgba(0, 242, 254, 0.8)' : '1px solid rgba(255, 255, 255, 0.08)',
+                  boxShadow: isHighlighted ? '0 0 35px rgba(0, 242, 254, 0.4), 0 20px 40px rgba(0,0,0,0.8)' : '0 15px 35px rgba(0,0,0,0.7)',
+                  background: '#070b12',
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: '16px',
+                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
+                onMouseEnter={() => setHoveredCard(poster.id)}
+                onClick={() => onSelectPoster(poster)}
+              >
+                {/* Poster Frame (100% Horizontal & Vertical Proportion without Cropping) */}
                 <div style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  background: 'rgba(4, 6, 9, 0.85)',
-                  border: '1px solid rgba(0, 242, 254, 0.4)',
-                  color: 'var(--accent-cyan)',
-                  fontWeight: 800,
-                  fontSize: '0.7rem',
-                  padding: '3px 10px',
-                  borderRadius: 'var(--radius-full)',
-                  backdropFilter: 'blur(8px)',
-                  zIndex: 2
+                  width: '100%',
+                  height: '240px',
+                  position: 'relative',
+                  background: '#040609',
+                  padding: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
                 }}>
-                  MDF 5.5mm
-                </div>
-              </div>
+                  <OptimizedImage
+                    src={poster.thumb || poster.image}
+                    alt={poster.title}
+                    objectFit="contain"
+                    priority={index < 2}
+                    style={{ background: 'transparent' }}
+                  />
 
-              {/* Card Bottom Details (Exact Typography & Layout) */}
-              <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
+                  {/* MDF 5.5mm Pill Badge */}
                   <div style={{
-                    fontSize: '0.72rem',
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    background: 'rgba(4, 6, 9, 0.85)',
+                    border: '1px solid rgba(0, 242, 254, 0.4)',
                     color: 'var(--accent-cyan)',
                     fontWeight: 800,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    marginBottom: '4px'
+                    fontSize: '0.7rem',
+                    padding: '3px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    backdropFilter: 'blur(8px)',
+                    zIndex: 2
                   }}>
-                    {poster.category}
+                    MDF 5.5mm
                   </div>
-                  <h4 style={{
-                    fontSize: '0.98rem',
-                    fontWeight: 800,
-                    color: '#ffffff',
-                    marginBottom: '12px',
-                    lineHeight: 1.3
-                  }}>
-                    {poster.title}
-                  </h4>
                 </div>
 
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingTop: '10px',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.05)'
-                }}>
-                  <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
-                    Desde Q 25.00
-                  </span>
-                  
-                  <span style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 800,
-                    color: '#ffffff',
+                {/* Card Bottom Details */}
+                <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{
+                      fontSize: '0.72rem',
+                      color: 'var(--accent-cyan)',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      marginBottom: '4px'
+                    }}>
+                      {poster.category}
+                    </div>
+                    <h4 style={{
+                      fontSize: '0.98rem',
+                      fontWeight: 800,
+                      color: '#ffffff',
+                      marginBottom: '12px',
+                      lineHeight: '1.3'
+                    }}>
+                      {poster.title}
+                    </h4>
+                  </div>
+
+                  <div style={{
                     display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '4px'
+                    paddingTop: '10px',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.05)'
                   }}>
-                    Ver Tamaños ➔
-                  </span>
+                    <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
+                      Desde Q 25.00
+                    </span>
+                    
+                    <span style={{
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      Ver Tamaños ➔
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
       </div>
