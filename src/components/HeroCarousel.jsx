@@ -23,6 +23,23 @@ export default function HeroCarousel({ onSelectPoster }) {
       position: 'relative',
       background: '#060910'
     }}>
+      
+      {/* Background Hero (User Exported Comic Background) */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '620px',
+        backgroundImage: 'radial-gradient(circle at center, rgba(6, 9, 16, 0.6) 0%, rgba(4, 6, 10, 0.98) 100%), url("/assets/fondo-hero.webp")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center top',
+        opacity: 0.38,
+        filter: 'grayscale(70%)',
+        pointerEvents: 'none',
+        zIndex: 0
+      }} />
+
       <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
         
         {/* Main Central Giant Headline (Exact from Illustrator Mockup) */}
@@ -45,34 +62,33 @@ export default function HeroCarousel({ onSelectPoster }) {
           </span>
         </h1>
 
-        {/* White Pill Button (Exact from Illustrator Mockup) */}
-        <div style={{ margin: '30px 0 50px 0' }}>
+        {/* User Exported Button: Botón Categorías Disponibles */}
+        <div style={{ margin: '30px 0 50px 0', display: 'flex', justifyContent: 'center' }}>
           <a
             href="#catalogo"
             style={{
               display: 'inline-block',
-              background: '#ffffff',
-              color: '#07090e',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 900,
-              fontSize: '0.95rem',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              padding: '16px 38px',
-              borderRadius: 'var(--radius-full)',
               textDecoration: 'none',
-              transition: 'all 0.25s ease'
+              transition: 'transform 0.25s ease, filter 0.25s ease'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-              e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 242, 254, 0.4)';
+              e.currentTarget.style.transform = 'translateY(-2px) scale(1.03)';
+              e.currentTarget.style.filter = 'drop-shadow(0 8px 25px rgba(0, 242, 254, 0.45))';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.filter = 'none';
             }}
           >
-            EXPLORA LAS CATEGORIAS DISPONIBLES
+            <img
+              src="/assets/boton-categorias.png"
+              alt="Explora las Categorías Disponibles"
+              style={{
+                height: '52px',
+                width: 'auto',
+                display: 'block'
+              }}
+            />
           </a>
         </div>
 

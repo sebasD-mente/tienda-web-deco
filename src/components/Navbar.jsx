@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShoppingBag, Bot, X } from 'lucide-react';
+import { Search, ShoppingBag, X } from 'lucide-react';
 
 export default function Navbar({
   cartCount,
@@ -47,11 +47,11 @@ export default function Navbar({
         background: 'rgba(5, 7, 12, 0.95)',
         backdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        padding: '10px 0'
+        padding: '8px 0'
       }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           
-          {/* 1. Left: Circular Deco Vintage Guate Logo */}
+          {/* 1. Left: Official Logo Navbar (User Export) */}
           <a
             href="#"
             style={{
@@ -62,22 +62,18 @@ export default function Navbar({
             }}
           >
             <img
-              src="/logos/logo 1.png"
+              src="/assets/logo-navbar.png"
               alt="Deco Vintage Guate"
               style={{
-                height: '56px',
-                width: '56px',
-                borderRadius: '50%',
+                height: '58px',
+                width: '58px',
                 objectFit: 'contain',
-                filter: 'drop-shadow(0 0 10px rgba(0, 242, 254, 0.25))'
-              }}
-              onError={e => {
-                e.target.src = '/logos/logo Deco Vintage 30.png';
+                display: 'block'
               }}
             />
           </a>
 
-          {/* 2. Center Links (Exact: CATALOGO | MÁS SOBRE NUESTROS POSTERS | PERSONALIZADOS) */}
+          {/* 2. Center Links: CATALOGO | MÁS SOBRE NUESTROS POSTERS | PERSONALIZADOS */}
           <nav style={{ display: 'none', alignItems: 'center', gap: '32px' }} className="desktop-menu">
             <a
               href="#catalogo"
@@ -139,11 +135,11 @@ export default function Navbar({
           {/* 3. Right: Jarvis Pill + Search + Cart */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             
-            {/* Jarvis Pill (Exact Style from Requirement) */}
+            {/* Jarvis Pill */}
             <button
               onClick={onOpenJarvis}
               style={{
-                background: 'rgba(0, 40, 55, 0.8)',
+                background: 'rgba(0, 40, 55, 0.85)',
                 border: '1px solid rgba(0, 242, 254, 0.35)',
                 color: '#38bdf8',
                 padding: '8px 16px',
