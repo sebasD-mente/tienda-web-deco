@@ -59,13 +59,16 @@ export const OFFICIAL_SIZES = [
 export const CATEGORIES = [
   { id: 'TODOS', name: 'Todas las Obras', icon: 'Sparkles' },
   { id: 'AUTOS', name: 'Autos & Patentes Clásicas', icon: 'Car' },
-  { id: 'SUPERHEROES', name: 'Superhéroes & Cómics', icon: 'Shield' },
+  { id: 'SUPERHEROES', name: 'Superhéroes & Marvel Cómics', icon: 'Shield' },
   { id: 'ANIME', name: 'Anime & Manga', icon: 'Flame' },
   { id: 'CINE', name: 'Cine de Culto & Sci-Fi', icon: 'Film' },
   { id: 'MUSICA', name: 'Música & Portadas de Álbum', icon: 'Music' }
 ];
 
 export const CATALOG_POSTERS = [
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 1. COLECCIÓN AUTOS & PATENTES TÉCNICAS
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   {
     id: 'porsche-gt3',
     title: 'Porsche 911 GT3 RS Patente Técnica',
@@ -209,95 +212,99 @@ export const CATALOG_POSTERS = [
     reviewsCount: 16,
     description: 'El roadster más vendido del mundo en un esquema patentado para coleccionistas.'
   },
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 2. COLECCIÓN SUPERHÉROES & MARVEL CÓMICS (DISEÑOS REALES)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   {
-    id: 'batman-dark-knight',
-    title: 'The Dark Knight: Gotham Protector',
-    subtitle: 'Edición Cinematográfica Noir',
+    id: 'amazing-fantasy-15',
+    title: 'Amazing Fantasy #15 (Debut Histórico de Spider-Man 1962)',
+    subtitle: 'La Portada de Cómic Más Legendaria de la Historia',
     category: 'SUPERHEROES',
-    image: '/posters/optimized/full/wallpaper.webp',
-    thumb: '/posters/optimized/thumb/wallpaper.webp',
-    tags: ['Batman', 'DC', 'Gotham', 'Comic', 'Hero'],
-    isFeatured: false,
+    image: '/posters/optimized/full/6326644814-(3).webp',
+    thumb: '/posters/optimized/thumb/6326644814-(3).webp',
+    tags: ['SpiderMan', 'AmazingFantasy', 'Marvel', 'StanLee', 'Vintage', 'Comic'],
+    isFeatured: true,
     rating: 5.0,
-    reviewsCount: 65,
-    description: 'El caballero de la noche vigilando Gotham. Negros absolutos y alto rango dinámico gracias a la tecnología HP Látex.'
+    reviewsCount: 68,
+    description: 'La portada histórica de agosto de 1962 donde el mundo conoció por primera vez a Peter Parker y Spider-Man. Impresión sobre MDF 5.5mm con fidelidad tipográfica y de color.'
   },
   {
-    id: 'miles-morales',
-    title: 'Spider-Man: Across The Spider-Verse',
-    subtitle: 'Arte Visual & Neón Multiverso',
+    id: 'spiderman-venom-316',
+    title: 'The Amazing Spider-Man #316: Venom is Back!',
+    subtitle: 'Obra Maestra de Todd McFarlane (1989)',
     category: 'SUPERHEROES',
-    image: '/posters/optimized/full/wallpaper.webp',
-    thumb: '/posters/optimized/thumb/wallpaper.webp',
-    tags: ['Spiderman', 'Marvel', 'MilesMorales', 'Comic'],
-    isFeatured: false,
-    rating: 4.9,
-    reviewsCount: 48,
-    description: 'Una explosión de color y dinamismo. Disponible en todos los tamaños oficiales.'
-  },
-  {
-    id: 'attack-on-titan',
-    title: 'Shingeki no Kyojin: Wings of Freedom',
-    subtitle: 'El Retumbar & Cuerpo de Exploración',
-    category: 'ANIME',
-    image: '/posters/optimized/full/wallpaper.webp',
-    thumb: '/posters/optimized/thumb/wallpaper.webp',
-    tags: ['AOT', 'Eren', 'Levi', 'Anime', 'Manga'],
-    isFeatured: false,
-    rating: 4.9,
-    reviewsCount: 39,
-    description: 'El símbolo del Cuerpo de Exploración. Obra de coleccionista para fanáticos del anime de culto.'
-  },
-  {
-    id: 'cyberpunk-edgerunners',
-    title: 'Cyberpunk Edgerunners: Night City Neon',
-    subtitle: 'Estética Retro-Futurista',
-    category: 'ANIME',
-    image: '/posters/optimized/full/wallpaper.webp',
-    thumb: '/posters/optimized/thumb/wallpaper.webp',
-    tags: ['Cyberpunk', 'Edgerunners', 'Anime', 'Neon', 'SciFi'],
+    image: '/posters/optimized/full/e8yxpkzvgaqvyyp-(3).webp',
+    thumb: '/posters/optimized/thumb/e8yxpkzvgaqvyyp-(3).webp',
+    tags: ['SpiderMan', 'Venom', 'ToddMcFarlane', 'Marvel', 'Comic', 'Symbiote'],
     isFeatured: false,
     rating: 5.0,
-    reviewsCount: 33,
-    description: 'Colores eléctricos y atmósfera distópica de Night City en alta definición.'
+    reviewsCount: 54,
+    description: 'La icónica ilustración de Todd McFarlane con Venom dominando a Spider-Man sobre fondo rosa vibrante. Un clásico imprescindible para los amantes del cómic.'
   },
   {
-    id: 'interstellar-gargantua',
-    title: 'Interstellar: Gargantua Black Hole',
-    subtitle: 'Obra Maestra de Christopher Nolan',
-    category: 'CINE',
-    image: '/posters/optimized/full/wallpaper.webp',
-    thumb: '/posters/optimized/thumb/wallpaper.webp',
-    tags: ['Interstellar', 'Nolan', 'SciFi', 'Cinema', 'Space'],
+    id: 'spiderman-no-way-home',
+    title: 'Spider-Man: No Way Home (Los Tres Héroes Unidos)',
+    subtitle: 'Tobey Maguire, Andrew Garfield & Tom Holland vs Doc Ock',
+    category: 'SUPERHEROES',
+    image: '/posters/optimized/full/whatsapp-image-2022-12-13-at-5.17.42-pm-(1).webp',
+    thumb: '/posters/optimized/thumb/whatsapp-image-2022-12-13-at-5.17.42-pm-(1).webp',
+    tags: ['SpiderMan', 'NoWayHome', 'TobeyMaguire', 'AndrewGarfield', 'TomHolland', 'DocOck', 'Marvel', 'Cinema'],
     isFeatured: false,
     rating: 5.0,
-    reviewsCount: 57,
-    description: 'La singularidad de Gargantua en una composición cósmica imponente para salas o habitaciones.'
+    reviewsCount: 72,
+    description: 'Composición épica con los tres Spider-Man cinematográficos esquivando los tentáculos mecánicos de Doctor Octopus en medio de relámpagos dorados.'
   },
   {
-    id: 'pink-floyd-prism',
-    title: 'Pink Floyd: The Dark Side of the Moon',
-    subtitle: 'Portada Vinilo Clásico Cuadrada 30x30 cm',
-    category: 'MUSICA',
-    image: '/posters/optimized/full/wallpaper.webp',
-    thumb: '/posters/optimized/thumb/wallpaper.webp',
-    tags: ['PinkFloyd', 'Rock', 'Music', 'Vinyl', 'Prism'],
+    id: 'miles-morales-hoodie',
+    title: 'Miles Morales: Into The Spider-Verse',
+    subtitle: 'Estilo Urbano con Capucha & Zapatillas Jordan',
+    category: 'SUPERHEROES',
+    image: '/posters/optimized/full/whatsapp-image-2022-12-13-at-5.15.33-pm.webp',
+    thumb: '/posters/optimized/thumb/whatsapp-image-2022-12-13-at-5.15.33-pm.webp',
+    tags: ['MilesMorales', 'SpiderVerse', 'Marvel', 'Urban', 'Graffiti', 'AnimeStyle'],
     isFeatured: false,
     rating: 4.9,
-    reviewsCount: 42,
-    description: 'El prisma más famoso de la historia de la música, perfecto para el formato Portada de Álbum 30x30 cm.'
+    reviewsCount: 49,
+    description: 'Ilustración artística de Miles Morales con su icónica sudadera roja y traje negro, con trazos de graffiti y contraste amarillo eléctrico.'
   },
   {
-    id: 'daft-punk-helmets',
-    title: 'Daft Punk: Random Access Memories',
-    subtitle: 'El Dúo Robótico Francés',
-    category: 'MUSICA',
-    image: '/posters/optimized/full/wallpaper.webp',
-    thumb: '/posters/optimized/thumb/wallpaper.webp',
-    tags: ['DaftPunk', 'Electronic', 'Music', 'RAM', 'Vinyl'],
+    id: 'spiderman-ps4-art',
+    title: 'Spider-Man Advanced Suit (Insomniac Art Edition)',
+    subtitle: 'Diseño Salpicadura & Textura Óleo Cinematográfica',
+    category: 'SUPERHEROES',
+    image: '/posters/optimized/full/03a7036fdfcef43eeedce692adbcdba0-(1).webp',
+    thumb: '/posters/optimized/thumb/03a7036fdfcef43eeedce692adbcdba0-(1).webp',
+    tags: ['SpiderMan', 'Insomniac', 'PS5', 'Gaming', 'Art', 'Marvel'],
+    isFeatured: false,
+    rating: 4.9,
+    reviewsCount: 37,
+    description: 'El traje Advanced con la araña blanca en un acabado artístico con textura de lienzo y salpicaduras de pintura roja y azul cobalto.'
+  },
+  {
+    id: 'spiderman-spider-verse-assemble',
+    title: 'Spider-Verse: All Spiders Assemble (Marvel Now!)',
+    subtitle: 'Gwen Stacy, Spider-Ham, Spider-Man Noir & Spiders del Multiverso',
+    category: 'SUPERHEROES',
+    image: '/posters/optimized/full/origin-(3).webp',
+    thumb: '/posters/optimized/thumb/origin-(3).webp',
+    tags: ['SpiderVerse', 'SpiderGwen', 'SpiderManNoir', 'MarvelNow', 'Multiverse', 'Comic'],
+    isFeatured: false,
+    rating: 5.0,
+    reviewsCount: 43,
+    description: 'Portada oficial de Marvel Now ilustrada por Olivier Coipel, reuniendo a Spider-Gwen, Miles Morales, Peter Parker y todo el ejército arácnido.'
+  },
+  {
+    id: 'spiderman-classic-villains',
+    title: 'The Amazing Spider-Man vs Green Goblin & Doc Ock',
+    subtitle: 'Batalla Vertical Aérea en Manhattan',
+    category: 'SUPERHEROES',
+    image: '/posters/optimized/full/gwsyhwshsh-(1).webp',
+    thumb: '/posters/optimized/thumb/gwsyhwshsh-(1).webp',
+    tags: ['SpiderMan', 'GreenGoblin', 'DocOck', 'Vintage', 'ComicArt', 'Marvel'],
     isFeatured: false,
     rating: 4.8,
-    reviewsCount: 36,
-    description: 'Elegancia robótica en madera MDF de 5.5mm con calidad de galería de arte.'
+    reviewsCount: 31,
+    description: 'Dramática perspectiva aérea con Spider-Man balanceándose en picada entre los rascacielos mientras el Duende Verde y el Doctor Octopus atacan.'
   }
 ];
