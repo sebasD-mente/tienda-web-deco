@@ -39,14 +39,14 @@ export default function Navbar({
           </a>
         </div>
 
-        {/* 2. Solid Black Compact Navigation Bar */}
+        {/* 2. Solid Black Navigation Bar with slightly increased thickness */}
         <header style={{
           background: '#000000',
-          height: '56px',
+          height: '68px',
           display: 'flex',
           alignItems: 'center',
           position: 'relative',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
         }}>
           <div className="container" style={{
             display: 'flex',
@@ -56,13 +56,14 @@ export default function Navbar({
             position: 'relative'
           }}>
             
-            {/* 3. Overlapping Protagonist Circular Logo */}
+            {/* 3. Vertically Centered Overlapping Circular Logo */}
             <a
               href="#"
               style={{
                 position: 'absolute',
                 left: '0px',
-                top: '-28px',
+                top: '50%',
+                transform: 'translateY(-50%)',
                 zIndex: 20,
                 textDecoration: 'none',
                 display: 'block'
@@ -72,21 +73,21 @@ export default function Navbar({
                 src="/assets/logo-navbar.png"
                 alt="Deco Vintage Guate"
                 style={{
-                  height: '110px',
-                  width: '110px',
+                  height: '115px',
+                  width: '115px',
                   objectFit: 'contain',
                   display: 'block',
-                  filter: 'drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9))'
+                  filter: 'drop-shadow(0 6px 16px rgba(0, 0, 0, 0.95))'
                 }}
               />
             </a>
 
-            {/* 4. Center Links (Indented to clear the overlapping logo) */}
+            {/* 4. Center Links (Indented to clear the overlapping centered logo) */}
             <nav style={{
               display: 'none',
               alignItems: 'center',
               gap: '36px',
-              marginLeft: '125px'
+              marginLeft: '135px'
             }} className="desktop-menu">
               <a
                 href="#catalogo"
@@ -155,7 +156,7 @@ export default function Navbar({
                   background: 'rgba(0, 32, 44, 0.95)',
                   border: '1px solid rgba(0, 242, 254, 0.35)',
                   color: '#5eead4',
-                  padding: '7px 16px',
+                  padding: '8px 18px',
                   borderRadius: 'var(--radius-full)',
                   cursor: 'pointer',
                   fontSize: '0.78rem',

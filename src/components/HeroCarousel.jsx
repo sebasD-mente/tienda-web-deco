@@ -18,7 +18,7 @@ export default function HeroCarousel({ onSelectPoster }) {
 
   return (
     <section style={{
-      paddingTop: '96px',
+      paddingTop: '108px',
       position: 'relative',
       background: '#060910'
     }}>
