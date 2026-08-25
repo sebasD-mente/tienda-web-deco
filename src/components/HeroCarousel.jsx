@@ -1,6 +1,16 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { CATALOG_POSTERS } from '../data/catalogData';
 import OptimizedImage from './OptimizedImage';
+
+// Fisher-Yates shuffle algorithm
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 const FRANCHISES = [
   { id: 'avengers', name: 'Avengers', img: '/franchises/avengers.png', category: 'SUPERHEROES' },
@@ -13,8 +23,12 @@ const FRANCHISES = [
 ];
 
 export default function HeroCarousel({ onSelectPoster, posters = CATALOG_POSTERS }) {
-  const featured = posters.filter(p => p.isFeatured);
-  const featuredPosters = featured.length > 0 ? featured.slice(0, 4) : posters.slice(0, 4);
+  // Randomize featured best sellers on load
+  const featuredPosters = useMemo(() => {
+    const featured = posters.filter(p => p.isFeatured);
+    const pool = featured.length >= 4 ? featured : posters;
+    return shuffleArray(pool).slice(0, 4);
+  }, [posters]);
 
   return (
     <section style={{

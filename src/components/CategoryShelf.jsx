@@ -1,7 +1,17 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { CATEGORIES as DEFAULT_CATEGORIES, CATALOG_POSTERS as DEFAULT_POSTERS } from '../data/catalogData';
 import OptimizedImage from './OptimizedImage';
+
+// Fisher-Yates shuffle algorithm for truly random & fair distribution
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 export default function CategoryShelf({
   onSelectPoster,
@@ -11,6 +21,16 @@ export default function CategoryShelf({
   categories = DEFAULT_CATEGORIES
 }) {
   const scrollRefs = useRef({});
+
+  // Randomize posters per category shelf on load or when catalog changes
+  const shuffledPostersByCategory = useMemo(() => {
+    const map = {};
+    categories.forEach(cat => {
+      const catItems = posters.filter(p => p.category === cat.id);
+      map[cat.id] = shuffleArray(catItems);
+    });
+    return map;
+  }, [posters, categories]);
 
   const handleScroll = (catId, direction) => {
     const container = scrollRefs.current[catId];
@@ -25,14 +45,13 @@ export default function CategoryShelf({
     : categories.filter(c => c.id !== 'TODOS');
 
   const filterPosters = (catId) => {
-    return posters.filter(p => {
-      const matchesCategory = p.category === catId;
-      const matchesSearch = !searchQuery ||
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.subtitle && p.subtitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (p.tags && p.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
-      return matchesCategory && matchesSearch;
-    });
+    const pool = shuffledPostersByCategory[catId] || [];
+    if (!searchQuery) return pool;
+    return pool.filter(p => 
+      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.subtitle && p.subtitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.tags && p.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())))
+    );
   };
 
   return (
