@@ -14,7 +14,6 @@ const FRANCHISES = [
 
 export default function HeroCarousel({ onSelectPoster }) {
   const featuredPosters = CATALOG_POSTERS.filter(p => p.isFeatured).slice(0, 4);
-  const [hoveredCard, setHoveredCard] = useState('toyota-supra');
 
   return (
     <section style={{
@@ -163,28 +162,23 @@ export default function HeroCarousel({ onSelectPoster }) {
             margin: '0 auto',
             textAlign: 'left'
           }}>
-            {featuredPosters.map((poster, index) => {
-              const isHighlighted = hoveredCard === poster.id;
-              return (
-                <div
-                  key={poster.id}
-                  className="glass-card"
-                  style={{
-                    padding: '0',
-                    overflow: 'hidden',
-                    cursor: 'pointer',
-                    border: isHighlighted ? '2px solid rgba(0, 242, 254, 0.8)' : '1px solid rgba(255, 255, 255, 0.08)',
-                    boxShadow: isHighlighted ? '0 0 35px rgba(0, 242, 254, 0.4), 0 20px 40px rgba(0,0,0,0.8)' : '0 15px 35px rgba(0,0,0,0.7)',
-                    background: '#070b12',
-                    position: 'relative',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    borderRadius: '16px',
-                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-                  }}
-                  onMouseEnter={() => setHoveredCard(poster.id)}
-                  onClick={() => onSelectPoster(poster)}
-                >
+            {featuredPosters.map((poster, index) => (
+              <div
+                key={poster.id}
+                className="glass-card"
+                style={{
+                  padding: '0',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: '#070b12',
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: '16px'
+                }}
+                onClick={() => onSelectPoster(poster)}
+              >
                   {/* Poster Frame (100% Horizontal & Vertical Proportion without Cropping) */}
                   <div style={{
                     width: '100%',
@@ -273,8 +267,7 @@ export default function HeroCarousel({ onSelectPoster }) {
                   </div>
 
                 </div>
-              );
-            })}
+            ))}
           </div>
 
         </div>
