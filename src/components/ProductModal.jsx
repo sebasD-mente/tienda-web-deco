@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { X, ShoppingBag, MessageSquare, Check, Star } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OFFICIAL_SIZES } from '../data/catalogData';
-import OptimizedImage from './OptimizedImage';
 
 export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhatsApp }) {
   const [quantity, setQuantity] = useState(1);
@@ -68,13 +67,14 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
         className="glass-card"
         style={{
           width: '100%',
-          maxWidth: '900px',
-          maxHeight: '90vh',
+          maxWidth: '960px',
+          maxHeight: '92vh',
           overflowY: 'auto',
           padding: '0',
           position: 'relative',
           border: '2px solid rgba(0, 242, 254, 0.45)',
-          background: '#090d16'
+          background: '#090d16',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(0, 242, 254, 0.2)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -88,7 +88,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
             width: '36px',
             height: '36px',
             borderRadius: '50%',
-            background: 'rgba(0, 0, 0, 0.6)',
+            background: 'rgba(0, 0, 0, 0.7)',
             border: '1px solid var(--border-subtle)',
             color: '#fff',
             display: 'flex',
@@ -96,85 +96,127 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
             justifyContent: 'center',
             cursor: 'pointer',
             zIndex: 10,
-            transition: 'all 0.2s'
+            transition: 'all 0.2s ease'
           }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
+          onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
         >
           <X size={18} />
         </button>
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
           gap: '0'
         }}>
           
-          {/* Left Column: Full HD Optimized Image Preview */}
+          {/* Left Column: Image (Top-Justified, Uncropped Full Ratio) & Description Underneath */}
           <div style={{
-            background: 'radial-gradient(circle at center, #0b111c 0%, #04060a 100%)',
-            padding: '24px',
+            background: 'radial-gradient(circle at top, #0c121e 0%, #04060a 100%)',
+            padding: '28px 24px',
             display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
             alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            minHeight: '380px'
+            borderRight: '1px solid rgba(255, 255, 255, 0.06)'
           }}>
+            {/* Poster Image Frame */}
             <div style={{
               width: '100%',
-              maxWidth: '380px',
-              maxHeight: '420px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: '8px',
+              borderRadius: '12px',
               overflow: 'hidden',
-              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 242, 254, 0.25)',
-              border: '2px solid rgba(0, 242, 254, 0.3)',
-              padding: '12px',
-              background: '#06080e'
+              boxShadow: '0 15px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(0, 242, 254, 0.2)',
+              border: '2px solid rgba(0, 242, 254, 0.35)',
+              padding: '8px',
+              background: '#040609',
+              marginBottom: '18px'
             }}>
-              <OptimizedImage
+              <img
                 src={poster.image || poster.thumb}
                 alt={poster.title}
-                objectFit="contain"
-                priority={true}
-                style={{ background: 'transparent' }}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '380px',
+                  width: 'auto',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  display: 'block',
+                  borderRadius: '6px'
+                }}
               />
             </div>
+
+            {/* Poster Description Box Underneath the Image */}
+            {poster.description && (
+              <div style={{
+                width: '100%',
+                background: 'rgba(255, 255, 255, 0.025)',
+                border: '1px solid rgba(255, 255, 255, 0.06)',
+                borderRadius: '10px',
+                padding: '14px 16px',
+                boxSizing: 'border-box'
+              }}>
+                <div style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  color: 'var(--accent-cyan)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '6px'
+                }}>
+                  Detalles de la Obra
+                </div>
+                <p style={{
+                  fontSize: '0.84rem',
+                  color: 'var(--text-secondary)',
+                  lineHeight: '1.55',
+                  margin: 0
+                }}>
+                  {poster.description}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Right Column: Size Picker & Configuration */}
-          <div style={{ padding: '36px' }}>
+          {/* Right Column: Details, Size Picker & Purchase Controls (Compact & Scroll-Free) */}
+          <div style={{
+            padding: '28px 30px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start'
+          }}>
             
+            {/* Category Badge & Rating */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge-cyan" style={{ fontSize: '0.75rem', padding: '3px 10px' }}>
+              <span className="badge-cyan" style={{ fontSize: '0.72rem', padding: '2px 10px' }}>
                 {poster.category}
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
-                <Star size={14} fill="#00f2fe" color="#00f2fe" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                <Star size={13} fill="#00f2fe" color="#00f2fe" />
                 <span>{poster.rating} ({poster.reviewsCount} reseñas)</span>
               </div>
             </div>
 
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', marginBottom: '4px', lineHeight: 1.2 }}>
+            {/* Main Title & Subtitle */}
+            <h2 style={{ fontSize: '1.55rem', fontWeight: 900, color: '#fff', marginBottom: '4px', lineHeight: 1.2 }}>
               {poster.title}
             </h2>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '18px' }}>
               {poster.subtitle}
             </p>
 
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '24px' }}>
-              {poster.description}
-            </p>
-
             {/* Official Sizes Section */}
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '18px' }}>
               {availableSizes.length === 1 ? (
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-cyan)', marginBottom: '10px' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-cyan)', marginBottom: '8px' }}>
                     Tamaño Disponible:
                   </label>
                   <div style={{
-                    padding: '12px 16px',
+                    padding: '12px 14px',
                     borderRadius: 'var(--radius-sm)',
                     background: 'rgba(0, 242, 254, 0.12)',
                     border: '2px solid var(--accent-cyan)',
@@ -183,10 +225,10 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
                     alignItems: 'center'
                   }}>
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--accent-cyan)' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--accent-cyan)' }}>
                         {availableSizes[0].name} ({availableSizes[0].dimensions})
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                         {availableSizes[0].badge || 'Formato Oficial Grande para Salas y Oficinas'}
                       </div>
                     </div>
@@ -197,7 +239,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
                 </div>
               ) : (
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-cyan)', marginBottom: '10px' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-cyan)', marginBottom: '8px' }}>
                     Selecciona tu Tamaño Oficial ({availableSizes.length} disponibles):
                   </label>
 
@@ -209,7 +251,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
                           key={s.id}
                           onClick={() => setSelectedSizeId(s.id)}
                           style={{
-                            padding: '10px 12px',
+                            padding: '9px 11px',
                             borderRadius: 'var(--radius-sm)',
                             background: isSelected ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255, 255, 255, 0.03)',
                             border: isSelected ? '2px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
@@ -217,11 +259,11 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
                             transition: 'all 0.2s ease'
                           }}
                         >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '0.85rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '0.82rem' }}>
                             <span style={{ color: isSelected ? 'var(--accent-cyan)' : '#fff' }}>{s.name}</span>
                             <span style={{ color: '#00f2fe' }}>Q {s.price.toFixed(2)}</span>
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                             {s.dimensions}
                           </div>
                         </div>
@@ -235,15 +277,15 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
             {/* Price & Quantity Box */}
             <div style={{
               background: 'rgba(6, 8, 14, 0.9)',
-              padding: '20px',
+              padding: '15px 18px',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-subtle)',
-              marginBottom: '20px'
+              marginBottom: '16px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>Total a Pagar:</span>
-                  <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'block' }}>Total a Pagar:</span>
+                  <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
                     Q {currentPrice.toFixed(2)}
                   </span>
                 </div>
@@ -260,7 +302,10 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
                       border: 'none',
                       color: '#fff',
                       fontSize: '1.1rem',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                   >
                     -
@@ -278,7 +323,10 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
                       border: 'none',
                       color: '#fff',
                       fontSize: '1.1rem',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                   >
                     +
@@ -292,7 +340,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
               <button
                 onClick={handleAdd}
                 className="btn-cyan"
-                style={{ flex: 1, justifyContent: 'center', padding: '14px' }}
+                style={{ flex: 1, justifyContent: 'center', padding: '13px' }}
               >
                 {added ? <Check size={18} /> : <ShoppingBag size={18} />}
                 <span>{added ? '¡Añadido!' : 'Añadir al Carrito'}</span>
@@ -301,7 +349,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
               <button
                 onClick={handleWhatsApp}
                 className="btn-secondary"
-                style={{ padding: '14px 20px', borderColor: '#25d366', color: '#25d366' }}
+                style={{ padding: '13px 18px', borderColor: '#25d366', color: '#25d366' }}
                 title="Comprar por WhatsApp"
               >
                 <MessageSquare size={18} />
