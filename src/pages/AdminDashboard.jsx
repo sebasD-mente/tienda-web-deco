@@ -907,10 +907,98 @@ export default function AdminDashboard({ onNavigate }) {
                   </div>
                 </div>
 
-                {/* 5. Tags & Featured */}
+                {/* 5. Poster Description / Detalles Técnicos */}
+                <div style={{ marginBottom: '22px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      5. Descripción & Detalles Técnicos de la Obra:
+                    </label>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                      (Aparece debajo del póster al abrirlo)
+                    </span>
+                  </div>
+
+                  {/* Quick Auto-Fill Template Buttons */}
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                      Plantillas rápidas:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDescription(`Patente técnica de ingeniería y despiece detallado del modelo ${title || 'automotriz'}. Impresión fotográfica de alta definición sobre base sólida de MDF 5.5mm (45x60 cm). Incluye cinta industrial Tessa para instalación inmediata sin perforar paredes.`)}
+                      style={{
+                        background: 'rgba(0, 242, 254, 0.08)',
+                        border: '1px solid rgba(0, 242, 254, 0.25)',
+                        color: '#5eead4',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.72rem',
+                        cursor: 'pointer',
+                        fontWeight: 700
+                      }}
+                    >
+                      + Patente Autos
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDescription(`Portada icónica y arte gráfico de alta fidelidad con colores vivos y profundos. Montado sobre soporte rígido de MDF 5.5mm con acabado mate antirreflejos. Incluye cinta Tessa de montaje limpio sin clavos.`)}
+                      style={{
+                        background: 'rgba(0, 242, 254, 0.08)',
+                        border: '1px solid rgba(0, 242, 254, 0.25)',
+                        color: '#5eead4',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.72rem',
+                        cursor: 'pointer',
+                        fontWeight: 700
+                      }}
+                    >
+                      + Superhéroes / Cómics
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDescription(`Impresión fotográfica de alta definición con tintas ecológicas HP Látex sobre base sólida de MDF 5.5mm. Colores vibrantes y resistentes a la luz solar UV. Incluye cinta Tessa para instalación en 30 segundos.`)}
+                      style={{
+                        background: 'rgba(0, 242, 254, 0.08)',
+                        border: '1px solid rgba(0, 242, 254, 0.25)',
+                        color: '#5eead4',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.72rem',
+                        cursor: 'pointer',
+                        fontWeight: 700
+                      }}
+                    >
+                      + General Calidad
+                    </button>
+                  </div>
+
+                  <textarea
+                    rows={4}
+                    placeholder="Escribe la descripción de la obra, detalles de la patente, historia del diseño o acabados técnicos..."
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      background: '#0a0e18',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      fontSize: '0.88rem',
+                      lineHeight: '1.5',
+                      outline: 'none',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                {/* 6. Tags & Featured */}
                 <div style={{ marginBottom: '18px' }}>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                    Etiquetas / Estilos (separadas por coma)
+                    6. Etiquetas / Estilos (separadas por coma)
                   </label>
                   <input
                     type="text"
@@ -1058,6 +1146,18 @@ export default function AdminDashboard({ onNavigate }) {
                     </div>
                   </div>
                 </div>
+
+                {/* Live Preview of Description (Modal View) */}
+                {description && (
+                  <div className="glass-card" style={{ maxWidth: '320px', margin: '16px auto 0 auto', padding: '16px' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                      Vista en Detalle de Producto:
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>
+                      {description}
+                    </p>
+                  </div>
+                )}
               </div>
 
             </div>
