@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShoppingBag, X } from 'lucide-react';
+import { Search, ShoppingBag, X, Sliders } from 'lucide-react';
 
 export default function Navbar({
   cartCount,
@@ -202,6 +202,25 @@ export default function Navbar({
                 title="Asistente de IA Jarvis"
               >
                 <span>ASISTENTE DE IA JARVIS</span>
+              </button>
+
+              {/* Admin Panel Button */}
+              <button
+                onClick={(e) => handleNavClick(e, 'admin')}
+                style={{
+                  background: activePage === 'admin' ? 'rgba(0, 242, 254, 0.2)' : 'none',
+                  border: activePage === 'admin' ? '1px solid var(--accent-cyan)' : 'none',
+                  borderRadius: '8px',
+                  color: activePage === 'admin' ? 'var(--accent-cyan)' : '#ffffff',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  transition: 'all 0.2s ease'
+                }}
+                title="Panel de Administración"
+              >
+                <Sliders size={20} strokeWidth={2.2} />
               </button>
 
               {/* Search Icon */}

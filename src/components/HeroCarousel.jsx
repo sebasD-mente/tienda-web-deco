@@ -12,8 +12,9 @@ const FRANCHISES = [
   { id: 'star-wars', name: 'Star Wars', img: '/franchises/star-wars.png', category: 'CINE' }
 ];
 
-export default function HeroCarousel({ onSelectPoster }) {
-  const featuredPosters = CATALOG_POSTERS.filter(p => p.isFeatured).slice(0, 4);
+export default function HeroCarousel({ onSelectPoster, posters = CATALOG_POSTERS }) {
+  const featured = posters.filter(p => p.isFeatured);
+  const featuredPosters = featured.length > 0 ? featured.slice(0, 4) : posters.slice(0, 4);
 
   return (
     <section style={{

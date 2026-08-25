@@ -1,23 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import HeroCarousel from './components/HeroCarousel';
 import CategoryShelf from './components/CategoryShelf';
 import AboutPostersPage from './pages/AboutPostersPage';
 import CustomPostersPage from './pages/CustomPostersPage';
+import AdminDashboard from './pages/AdminDashboard';
 import ProductModal from './components/ProductModal';
 import JarvisAgent from './components/JarvisAgent';
 import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
 import { Bot } from 'lucide-react';
+import { getStoredPosters, getStoredCategories } from './utils/catalogStorage';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'about' | 'custom'
+  const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'about' | 'custom' | 'admin'
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isJarvisOpen, setIsJarvisOpen] = useState(false);
   const [selectedPosterForModal, setSelectedPosterForModal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('TODOS');
+
+  // Dynamic state for posters and categories
+  const [posters, setPosters] = useState(getStoredPosters());
+  const [categories, setCategories] = useState(getStoredCategories());
+
+  // Listen to catalog updates from Admin
+  useEffect(() => {
+    const handleUpdate = () => {
+      setPosters(getStoredPosters());
+      setCategories(getStoredCategories());
+    };
+
+    window.addEventListener('deco-catalog-updated', handleUpdate);
+    return () => window.removeEventListener('deco-catalog-updated', handleUpdate);
+  }, []);
 
   const handleNavigate = (page) => {
     setCurrentPage(page);
@@ -73,18 +90,21 @@ export default function App() {
       <main>
         {currentPage === 'home' && (
           <>
-            {/* Hero Showcase (Marvel Unlimited Style) */}
+            {/* Hero Showcase with Dynamic Featured Posters */}
             <HeroCarousel
               onSelectPoster={(p) => setSelectedPosterForModal(p)}
+              posters={posters}
             />
 
-            {/* Dynamic Shelf Catalog (MeowMeow Style) */}
+            {/* Dynamic Shelf Catalog */}
             <CategoryShelf
               onSelectPoster={(p) => setSelectedPosterForModal(p)}
               onAddToCart={handleAddToCart}
               onQuickWhatsApp={handleQuickWhatsApp}
               filterCategory={selectedCategory}
               searchQuery={searchQuery}
+              posters={posters}
+              categories={categories}
             />
           </>
         )}
@@ -95,6 +115,10 @@ export default function App() {
 
         {currentPage === 'custom' && (
           <CustomPostersPage onNavigate={handleNavigate} />
+        )}
+
+        {currentPage === 'admin' && (
+          <AdminDashboard onNavigate={handleNavigate} />
         )}
       </main>
 

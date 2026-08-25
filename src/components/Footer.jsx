@@ -110,6 +110,18 @@ export default function Footer({ onNavigate }) {
                   <span>Pósters Personalizados</span>
                 </a>
               </li>
+              <li>
+                <a
+                  href="#admin"
+                  onClick={(e) => handleNav(e, 'admin')}
+                  style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  onMouseEnter={e => e.target.style.color = '#00f2fe'}
+                  onMouseLeave={e => e.target.style.color = 'var(--text-secondary)'}
+                >
+                  <ArrowRight size={14} color="var(--accent-cyan)" />
+                  <span>Panel de Administración</span>
+                </a>
+              </li>
             </ul>
           </div>
 

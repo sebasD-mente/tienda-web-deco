@@ -1,12 +1,14 @@
 import React, { useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { CATEGORIES, CATALOG_POSTERS } from '../data/catalogData';
+import { CATEGORIES as DEFAULT_CATEGORIES, CATALOG_POSTERS as DEFAULT_POSTERS } from '../data/catalogData';
 import OptimizedImage from './OptimizedImage';
 
 export default function CategoryShelf({
   onSelectPoster,
   filterCategory,
-  searchQuery
+  searchQuery,
+  posters = DEFAULT_POSTERS,
+  categories = DEFAULT_CATEGORIES
 }) {
   const scrollRefs = useRef({});
 
@@ -19,15 +21,16 @@ export default function CategoryShelf({
   };
 
   const displayedCategories = filterCategory && filterCategory !== 'TODOS'
-    ? CATEGORIES.filter(c => c.id === filterCategory)
-    : CATEGORIES.filter(c => c.id !== 'TODOS');
+    ? categories.filter(c => c.id === filterCategory)
+    : categories.filter(c => c.id !== 'TODOS');
 
   const filterPosters = (catId) => {
-    return CATALOG_POSTERS.filter(p => {
+    return posters.filter(p => {
       const matchesCategory = p.category === catId;
       const matchesSearch = !searchQuery ||
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+        (p.subtitle && p.subtitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (p.tags && p.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
       return matchesCategory && matchesSearch;
     });
   };
@@ -38,13 +41,13 @@ export default function CategoryShelf({
         
         {/* Categories Shelves Loop */}
         {displayedCategories.map((category) => {
-          const posters = filterPosters(category.id);
-          if (posters.length === 0) return null;
+          const catPosters = filterPosters(category.id);
+          if (catPosters.length === 0) return null;
 
           return (
             <div key={category.id} style={{ marginBottom: '65px' }}>
               
-              {/* Shelf Category Header (Same Typography as BEST SELLERS + Design Count) */}
+              {/* Shelf Category Header */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -73,7 +76,7 @@ export default function CategoryShelf({
                     letterSpacing: '0.04em',
                     textTransform: 'uppercase'
                   }}>
-                    ({posters.length} DISEÑOS)
+                    ({catPosters.length} DISEÑOS)
                   </span>
                 </div>
 
@@ -143,7 +146,7 @@ export default function CategoryShelf({
                 className="shelf-track"
                 style={{ paddingBottom: '16px' }}
               >
-                {posters.map((poster, index) => (
+                {catPosters.map((poster, index) => (
                   <div
                     key={poster.id}
                     className="shelf-item glass-card"
@@ -160,7 +163,7 @@ export default function CategoryShelf({
                     }}
                     onClick={() => onSelectPoster(poster)}
                   >
-                    {/* Poster Frame (100% Complete Proportion Contain without Cropping) */}
+                    {/* Poster Frame */}
                     <div style={{
                       width: '100%',
                       height: '240px',
