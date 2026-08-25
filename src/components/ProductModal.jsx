@@ -1,16 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ShoppingBag, MessageSquare, Check, Star } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 import OptimizedImage from './OptimizedImage';
 
 export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhatsApp }) {
-  const [selectedSize, setSelectedSize] = useState(OFFICIAL_SIZES[3]); // Mediano default
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
+  const availableSizes = poster?.availableSizes && poster.availableSizes.length > 0
+    ? OFFICIAL_SIZES.filter(s => poster.availableSizes.includes(s.id))
+    : OFFICIAL_SIZES;
+
+  const [selectedSizeId, setSelectedSizeId] = useState(
+    availableSizes.find(s => s.id === 'GRANDE')?.id || availableSizes[0]?.id || 'MEDIANO'
+  );
+
+  useEffect(() => {
+    if (poster) {
+      const valid = poster.availableSizes && poster.availableSizes.length > 0
+        ? OFFICIAL_SIZES.filter(s => poster.availableSizes.includes(s.id))
+        : OFFICIAL_SIZES;
+      if (!valid.some(s => s.id === selectedSizeId)) {
+        setSelectedSizeId(valid.find(s => s.id === 'GRANDE')?.id || valid[0]?.id || 'MEDIANO');
+      }
+      setQuantity(1);
+    }
+  }, [poster]);
+
   if (!poster) return null;
 
+  const selectedSize = availableSizes.find(s => s.id === selectedSizeId) || availableSizes[0] || OFFICIAL_SIZES[0];
   const currentPrice = selectedSize.price * quantity;
 
   const handleAdd = () => {
@@ -146,39 +166,70 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
               {poster.description}
             </p>
 
-            {/* Official 6 Sizes Grid */}
+            {/* Official Sizes Section */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-cyan)', marginBottom: '10px' }}>
-                Selecciona tu Tamaño Oficial:
-              </label>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                {OFFICIAL_SIZES.map((s) => {
-                  const isSelected = selectedSize.id === s.id;
-                  return (
-                    <div
-                      key={s.id}
-                      onClick={() => setSelectedSize(s)}
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: 'var(--radius-sm)',
-                        background: isSelected ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                        border: isSelected ? '2px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '0.85rem' }}>
-                        <span style={{ color: isSelected ? 'var(--accent-cyan)' : '#fff' }}>{s.name}</span>
-                        <span style={{ color: '#00f2fe' }}>Q {s.price.toFixed(2)}</span>
+              {availableSizes.length === 1 ? (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-cyan)', marginBottom: '10px' }}>
+                    Tamaño Disponible:
+                  </label>
+                  <div style={{
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(0, 242, 254, 0.12)',
+                    border: '2px solid var(--accent-cyan)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--accent-cyan)' }}>
+                        {availableSizes[0].name} ({availableSizes[0].dimensions})
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        {s.dimensions}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        {availableSizes[0].badge || 'Formato Oficial Grande para Salas y Oficinas'}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#00f2fe' }}>
+                      Q {availableSizes[0].price.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-cyan)', marginBottom: '10px' }}>
+                    Selecciona tu Tamaño Oficial ({availableSizes.length} disponibles):
+                  </label>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                    {availableSizes.map((s) => {
+                      const isSelected = selectedSize.id === s.id;
+                      return (
+                        <div
+                          key={s.id}
+                          onClick={() => setSelectedSizeId(s.id)}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: isSelected ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                            border: isSelected ? '2px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '0.85rem' }}>
+                            <span style={{ color: isSelected ? 'var(--accent-cyan)' : '#fff' }}>{s.name}</span>
+                            <span style={{ color: '#00f2fe' }}>Q {s.price.toFixed(2)}</span>
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            {s.dimensions}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Price & Quantity Box */}

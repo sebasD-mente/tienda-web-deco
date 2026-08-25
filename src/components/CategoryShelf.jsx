@@ -180,7 +180,7 @@ export default function CategoryShelf({
                         style={{ background: 'transparent' }}
                       />
 
-                      {/* MDF 5.5mm Pill Badge */}
+                      {/* Available Size Pill Badge */}
                       <div style={{
                         position: 'absolute',
                         top: '12px',
@@ -195,7 +195,7 @@ export default function CategoryShelf({
                         backdropFilter: 'blur(8px)',
                         zIndex: 2
                       }}>
-                        MDF 5.5mm
+                        {poster.sizeBadge || (poster.availableSizes?.length === 1 ? '45 x 60 cm' : '6 Tamaños')}
                       </div>
                     </div>
 
@@ -231,7 +231,7 @@ export default function CategoryShelf({
                         borderTop: '1px solid rgba(255, 255, 255, 0.05)'
                       }}>
                         <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
-                          Desde Q 25.00
+                          {poster.priceDisplay || (poster.availableSizes?.length === 1 ? 'Q 125.00' : 'Desde Q 25.00')}
                         </span>
                         
                         <span style={{
@@ -242,7 +242,7 @@ export default function CategoryShelf({
                           alignItems: 'center',
                           gap: '4px'
                         }}>
-                          Ver Tamaños ➔
+                          Ver Detalle ➔
                         </span>
                       </div>
                     </div>
