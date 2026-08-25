@@ -700,92 +700,137 @@ export default function AdminDashboard({ onNavigate }) {
                 </div>
 
                 {/* 2. Title & Subtitle */}
-                <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                    Título de la Obra *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Porsche 911 GT3 RS Patente Técnica"
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '11px 14px',
-                      background: '#0a0e18',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '0.92rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                    Subtítulo / Tagline
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej. Blueprint Automotriz Motorsport"
-                    value={subtitle}
-                    onChange={e => setSubtitle(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '11px 14px',
-                      background: '#0a0e18',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '0.92rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                {/* 3. Category with inline creation button */}
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
-                      Categoría *
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '18px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
+                      2. Título de la Obra *
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowCatModal(true)}
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Porsche 911 GT3 RS Patente Técnica"
+                      value={title}
+                      onChange={e => setTitle(e.target.value)}
                       style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--accent-cyan)',
-                        fontSize: '0.78rem',
-                        fontWeight: 800,
-                        cursor: 'pointer'
+                        width: '100%',
+                        padding: '11px 14px',
+                        background: '#0a0e18',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '0.92rem',
+                        outline: 'none'
                       }}
-                    >
-                      + Nueva Categoría
-                    </button>
+                    />
                   </div>
 
-                  <select
-                    value={category}
-                    onChange={e => setCategory(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '11px 14px',
-                      background: '#0a0e18',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '0.92rem',
-                      outline: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {categories.filter(c => c.id !== 'TODOS').map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
+                      Subtítulo / Tagline
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Blueprint Automotriz Motorsport"
+                      value={subtitle}
+                      onChange={e => setSubtitle(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        background: '#0a0e18',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '0.92rem',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Prominent Category Field with Visual Selectable Pills & Inline Creator */}
+                <div style={{
+                  marginBottom: '24px',
+                  background: 'rgba(0, 242, 254, 0.04)',
+                  padding: '18px 20px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 242, 254, 0.25)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      3. Categoría del Producto *:
+                    </label>
+                    <span style={{ fontSize: '0.78rem', color: '#5eead4', fontWeight: 700 }}>
+                      Seleccionada: <strong style={{ color: '#fff', textDecoration: 'underline' }}>{category}</strong>
+                    </span>
+                  </div>
+
+                  {/* Visual Category Clickable Pills */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+                    {categories.filter(c => c.id !== 'TODOS').map(cat => {
+                      const isSelected = category === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setCategory(cat.id)}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: 'var(--radius-full)',
+                            background: isSelected ? 'var(--grad-cyan)' : 'rgba(255, 255, 255, 0.05)',
+                            border: isSelected ? '1px solid #00f2fe' : '1px solid var(--border-subtle)',
+                            color: isSelected ? '#040609' : '#ffffff',
+                            fontWeight: 800,
+                            fontSize: '0.82rem',
+                            letterSpacing: '0.04em',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease',
+                            boxShadow: isSelected ? '0 0 15px rgba(0, 242, 254, 0.4)' : 'none'
+                          }}
+                        >
+                          {isSelected && <Check size={14} strokeWidth={3} />}
+                          <span>{cat.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Inline Instant New Category Creator */}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="+ O escribe una NUEVA categoría (ej. RETRO, ANIME, ARQUITECTURA)..."
+                      value={newCatName}
+                      onChange={e => setNewCatName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleCreateCategory(e);
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '9px 14px',
+                        background: '#04070e',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '0.85rem',
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateCategory}
+                      className="btn-cyan"
+                      style={{ padding: '9px 16px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
+                    >
+                      <Plus size={15} />
+                      <span>Crear & Asignar</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* 4. Sizes Selection Mode */}
