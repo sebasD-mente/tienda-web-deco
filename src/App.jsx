@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import HeroCarousel from './components/HeroCarousel';
 import CategoryShelf from './components/CategoryShelf';
-import QualitySection from './components/QualitySection';
+import AboutPostersPage from './pages/AboutPostersPage';
+import CustomPostersPage from './pages/CustomPostersPage';
 import ProductModal from './components/ProductModal';
 import JarvisAgent from './components/JarvisAgent';
 import CartDrawer from './components/CartDrawer';
@@ -10,12 +11,18 @@ import Footer from './components/Footer';
 import { Bot } from 'lucide-react';
 
 export default function App() {
+  const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'about' | 'custom'
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isJarvisOpen, setIsJarvisOpen] = useState(false);
   const [selectedPosterForModal, setSelectedPosterForModal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('TODOS');
+
+  const handleNavigate = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Add item to cart or increment existing
   const handleAddToCart = (item) => {
@@ -46,39 +53,53 @@ export default function App() {
   };
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh' }}>
-      <div className="ambient-bg" />
-
+    <div style={{ position: 'relative', minHeight: '100vh', background: '#060910' }}>
+      
       {/* Top Fixed Minimalist Navbar */}
       <Navbar
         cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenJarvis={() => setIsJarvisOpen(true)}
-        onSearch={setSearchQuery}
+        onSearch={(query) => {
+          setSearchQuery(query);
+          if (currentPage !== 'home') setCurrentPage('home');
+        }}
         searchQuery={searchQuery}
+        activePage={currentPage}
+        onNavigate={handleNavigate}
       />
 
+      {/* Main Multi-Page Body */}
       <main>
-        {/* Hero Showcase (Marvel Unlimited Style) */}
-        <HeroCarousel
-          onSelectPoster={(p) => setSelectedPosterForModal(p)}
-        />
+        {currentPage === 'home' && (
+          <>
+            {/* Hero Showcase (Marvel Unlimited Style) */}
+            <HeroCarousel
+              onSelectPoster={(p) => setSelectedPosterForModal(p)}
+            />
 
-        {/* Dynamic Shelf Catalog (MeowMeow Style) */}
-        <CategoryShelf
-          onSelectPoster={(p) => setSelectedPosterForModal(p)}
-          onAddToCart={handleAddToCart}
-          onQuickWhatsApp={handleQuickWhatsApp}
-          filterCategory={selectedCategory}
-          searchQuery={searchQuery}
-        />
+            {/* Dynamic Shelf Catalog (MeowMeow Style) */}
+            <CategoryShelf
+              onSelectPoster={(p) => setSelectedPosterForModal(p)}
+              onAddToCart={handleAddToCart}
+              onQuickWhatsApp={handleQuickWhatsApp}
+              filterCategory={selectedCategory}
+              searchQuery={searchQuery}
+            />
+          </>
+        )}
 
-        {/* Technical Quality, Sizes & Materials */}
-        <QualitySection />
+        {currentPage === 'about' && (
+          <AboutPostersPage onNavigate={handleNavigate} />
+        )}
+
+        {currentPage === 'custom' && (
+          <CustomPostersPage onNavigate={handleNavigate} />
+        )}
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Global Footer with Page Navigation */}
+      <Footer onNavigate={handleNavigate} />
 
       {/* Product Detail Modal */}
       <ProductModal
@@ -117,7 +138,6 @@ export default function App() {
             zIndex: 99,
             transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
-          className="pulse-gold"
           title="Abrir Jarvis IA"
         >
           <Bot size={28} />

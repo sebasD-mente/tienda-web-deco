@@ -6,9 +6,18 @@ export default function Navbar({
   onOpenCart,
   onOpenJarvis,
   onSearch,
-  searchQuery
+  searchQuery,
+  activePage = 'home',
+  onNavigate
 }) {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+
+  const handleNavClick = (e, page) => {
+    e.preventDefault();
+    if (onNavigate) {
+      onNavigate(page);
+    }
+  };
 
   return (
     <>
@@ -26,20 +35,28 @@ export default function Navbar({
           padding: '8px 0 4px 0',
           lineHeight: 1
         }}>
-          <a href="#" style={{ textDecoration: 'none' }}>
+          <a
+            href="#"
+            onClick={(e) => handleNavClick(e, 'home')}
+            style={{ textDecoration: 'none' }}
+          >
             <span style={{
               fontFamily: 'var(--font-bebas)',
               fontSize: '2.1rem',
               letterSpacing: '0.08em',
               color: '#ffffff',
-              display: 'inline-block'
-            }}>
+              display: 'inline-block',
+              transition: 'color 0.2s ease'
+            }}
+            onMouseEnter={e => e.target.style.color = '#00f2fe'}
+            onMouseLeave={e => e.target.style.color = '#ffffff'}
+            >
               DECO VINTAGE
             </span>
           </a>
         </div>
 
-        {/* 2. Solid Black Navigation Bar with slightly increased thickness */}
+        {/* 2. Solid Black Navigation Bar */}
         <header style={{
           background: '#000000',
           height: '68px',
@@ -59,6 +76,7 @@ export default function Navbar({
             {/* 3. Vertically Centered Overlapping Circular Logo */}
             <a
               href="#"
+              onClick={(e) => handleNavClick(e, 'home')}
               style={{
                 position: 'absolute',
                 left: '0px',
@@ -77,70 +95,81 @@ export default function Navbar({
                   width: '115px',
                   objectFit: 'contain',
                   display: 'block',
-                  filter: 'drop-shadow(0 6px 16px rgba(0, 0, 0, 0.95))'
+                  filter: 'drop-shadow(0 6px 16px rgba(0, 0, 0, 0.95))',
+                  transition: 'transform 0.2s ease'
                 }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
               />
             </a>
 
-            {/* 4. Center Links (Indented to clear the overlapping centered logo) */}
+            {/* 4. Center Links (Page Navigation) */}
             <nav style={{
               display: 'none',
               alignItems: 'center',
               gap: '36px',
               marginLeft: '135px'
             }} className="desktop-menu">
+              
               <a
                 href="#catalogo"
+                onClick={(e) => handleNavClick(e, 'home')}
                 style={{
-                  color: '#ffffff',
+                  color: activePage === 'home' ? '#00f2fe' : '#ffffff',
                   textDecoration: 'none',
                   fontSize: '0.95rem',
                   fontWeight: 800,
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   fontFamily: 'var(--font-display)',
-                  transition: 'color 0.2s ease'
+                  transition: 'color 0.2s ease',
+                  borderBottom: activePage === 'home' ? '2px solid #00f2fe' : '2px solid transparent',
+                  paddingBottom: '4px'
                 }}
                 onMouseEnter={e => e.target.style.color = '#00f2fe'}
-                onMouseLeave={e => e.target.style.color = '#ffffff'}
+                onMouseLeave={e => e.target.style.color = activePage === 'home' ? '#00f2fe' : '#ffffff'}
               >
                 CATALOGO
               </a>
 
               <a
-                href="#productos"
+                href="#sobre-nosotros"
+                onClick={(e) => handleNavClick(e, 'about')}
                 style={{
-                  color: '#ffffff',
+                  color: activePage === 'about' ? '#00f2fe' : '#ffffff',
                   textDecoration: 'none',
                   fontSize: '0.95rem',
                   fontWeight: 800,
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   fontFamily: 'var(--font-display)',
-                  transition: 'color 0.2s ease'
+                  transition: 'color 0.2s ease',
+                  borderBottom: activePage === 'about' ? '2px solid #00f2fe' : '2px solid transparent',
+                  paddingBottom: '4px'
                 }}
                 onMouseEnter={e => e.target.style.color = '#00f2fe'}
-                onMouseLeave={e => e.target.style.color = '#ffffff'}
+                onMouseLeave={e => e.target.style.color = activePage === 'about' ? '#00f2fe' : '#ffffff'}
               >
                 MÁS SOBRE NUESTROS POSTERS
               </a>
 
               <a
-                href="https://wa.me/?text=Hola%20Deco%20Vintage,%20quiero%20cotizar%20un%20p%C3%B3ster%20personalizado"
-                target="_blank"
-                rel="noreferrer"
+                href="#personalizados"
+                onClick={(e) => handleNavClick(e, 'custom')}
                 style={{
-                  color: '#ffffff',
+                  color: activePage === 'custom' ? '#00f2fe' : '#ffffff',
                   textDecoration: 'none',
                   fontSize: '0.95rem',
                   fontWeight: 800,
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   fontFamily: 'var(--font-display)',
-                  transition: 'color 0.2s ease'
+                  transition: 'color 0.2s ease',
+                  borderBottom: activePage === 'custom' ? '2px solid #00f2fe' : '2px solid transparent',
+                  paddingBottom: '4px'
                 }}
                 onMouseEnter={e => e.target.style.color = '#00f2fe'}
-                onMouseLeave={e => e.target.style.color = '#ffffff'}
+                onMouseLeave={e => e.target.style.color = activePage === 'custom' ? '#00f2fe' : '#ffffff'}
               >
                 PERSONALIZADOS
               </a>
@@ -149,7 +178,7 @@ export default function Navbar({
             {/* 5. Right Items: Jarvis Pill + Search + Cart */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
               
-              {/* Jarvis Pill (Dark Teal with Cyan Text) */}
+              {/* Jarvis Pill */}
               <button
                 onClick={onOpenJarvis}
                 style={{
@@ -260,7 +289,7 @@ export default function Navbar({
               <input
                 type="text"
                 autoFocus
-                placeholder="Buscar póster (ej. Porsche, Spider-Man, Skyline, Batman...)"
+                placeholder="Buscar póster (ej. Porsche, Spider-Man, Skyline, DeLorean...)"
                 value={searchQuery}
                 onChange={e => onSearch(e.target.value)}
                 style={{
@@ -285,13 +314,22 @@ export default function Navbar({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               <span>Presiona <strong>ESC</strong> o haz clic afuera para cerrar</span>
               {searchQuery && (
-                <a
-                  href="#catalogo"
-                  onClick={() => setSearchModalOpen(false)}
-                  style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontWeight: 700 }}
+                <button
+                  onClick={() => {
+                    setSearchModalOpen(false);
+                    if (onNavigate) onNavigate('home');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--accent-cyan)',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.85rem'
+                  }}
                 >
                   Ver resultados en catálogo ➔
-                </a>
+                </button>
               )}
             </div>
           </div>
