@@ -39,9 +39,9 @@ export default function AdminDashboard({ onNavigate }) {
   const [rating, setRating] = useState(5.0);
   const [reviewsCount, setReviewsCount] = useState(30);
   
-  // Size selection mode: 'PATENTE' (Grande only) | 'ALL_SIZES' (all 6) | 'CUSTOM'
-  const [sizeMode, setSizeMode] = useState('PATENTE');
-  const [selectedSizeIds, setSelectedSizeIds] = useState(['GRANDE']);
+  // Size selection mode: 'ALL_SIZES' (all 6) | 'CUSTOM'
+  const [sizeMode, setSizeMode] = useState('ALL_SIZES');
+  const [selectedSizeIds, setSelectedSizeIds] = useState(['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE']);
 
   // Image State
   const [imageFull, setImageFull] = useState('');
@@ -129,11 +129,9 @@ export default function AdminDashboard({ onNavigate }) {
     setImageThumb(poster.thumb || poster.image || '');
     setImageMeta(null);
 
-    const sizes = poster.availableSizes || ['GRANDE'];
+    const sizes = poster.availableSizes || ['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE'];
     setSelectedSizeIds(sizes);
-    if (sizes.length === 1 && sizes[0] === 'GRANDE') {
-      setSizeMode('PATENTE');
-    } else if (sizes.length === 6) {
+    if (sizes.length === 6) {
       setSizeMode('ALL_SIZES');
     } else {
       setSizeMode('CUSTOM');
@@ -156,8 +154,8 @@ export default function AdminDashboard({ onNavigate }) {
     setImageFull('');
     setImageThumb('');
     setImageMeta(null);
-    setSizeMode('PATENTE');
-    setSelectedSizeIds(['GRANDE']);
+    setSizeMode('ALL_SIZES');
+    setSelectedSizeIds(['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE']);
   };
 
   // Submit Poster (Create / Update)
@@ -747,7 +745,38 @@ export default function AdminDashboard({ onNavigate }) {
                   </div>
                 </div>
 
-                {/* 3. Prominent Category Field with Visual Selectable Pills & Inline Creator */}
+                {/* 3. Description directly below Title & Subtitle */}
+                <div style={{ marginBottom: '22px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      3. Descripción & Detalles de la Obra:
+                    </label>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                      (Aparece debajo del póster al abrirlo)
+                    </span>
+                  </div>
+
+                  <textarea
+                    rows={4}
+                    placeholder="Escribe la descripción de la obra, detalles técnicos, materiales, historia del diseño o especificaciones..."
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      background: '#0a0e18',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      fontSize: '0.88rem',
+                      lineHeight: '1.5',
+                      outline: 'none',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                {/* 4. Prominent Category Field with Visual Selectable Pills & Inline Creator */}
                 <div style={{
                   marginBottom: '24px',
                   background: 'rgba(0, 242, 254, 0.04)',
@@ -757,7 +786,7 @@ export default function AdminDashboard({ onNavigate }) {
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <label style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      3. Categoría del Producto *:
+                      4. Categoría del Producto *:
                     </label>
                     <span style={{ fontSize: '0.78rem', color: '#5eead4', fontWeight: 700 }}>
                       Seleccionada: <strong style={{ color: '#fff', textDecoration: 'underline' }}>{category}</strong>
@@ -833,45 +862,27 @@ export default function AdminDashboard({ onNavigate }) {
                   </div>
                 </div>
 
-                {/* 4. Sizes Selection Mode */}
+                {/* 5. Sizes Selection Mode */}
                 <div style={{ marginBottom: '22px' }}>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                    Tamaños Disponibles para esta Obra:
-                  </label>
-
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleSizeModeChange('PATENTE')}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: '6px',
-                        background: sizeMode === 'PATENTE' ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                        border: sizeMode === 'PATENTE' ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                        color: sizeMode === 'PATENTE' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                        fontSize: '0.82rem',
-                        fontWeight: 800,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Solo Grande 45x60 cm (Patente Q125)
-                    </button>
-
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      5. Tamaños Disponibles para esta Obra:
+                    </label>
                     <button
                       type="button"
                       onClick={() => handleSizeModeChange('ALL_SIZES')}
                       style={{
-                        padding: '8px 14px',
+                        padding: '4px 12px',
                         borderRadius: '6px',
-                        background: sizeMode === 'ALL_SIZES' ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                        border: sizeMode === 'ALL_SIZES' ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                        color: sizeMode === 'ALL_SIZES' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                        fontSize: '0.82rem',
+                        background: selectedSizeIds.length === 6 ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                        border: selectedSizeIds.length === 6 ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                        color: selectedSizeIds.length === 6 ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                        fontSize: '0.75rem',
                         fontWeight: 800,
                         cursor: 'pointer'
                       }}
                     >
-                      Todos los 6 Tamaños (Q25 - Q210)
+                      ✓ Marcar los 6 Tamaños
                     </button>
                   </div>
 
@@ -884,115 +895,28 @@ export default function AdminDashboard({ onNavigate }) {
                           key={s.id}
                           onClick={() => toggleSizeId(s.id)}
                           style={{
-                            padding: '8px 10px',
-                            borderRadius: '6px',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
                             background: isChecked ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.02)',
                             border: isChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
                             cursor: 'pointer',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            fontSize: '0.8rem'
+                            fontSize: '0.84rem',
+                            transition: 'all 0.15s ease'
                           }}
                         >
                           <span style={{ color: isChecked ? '#fff' : 'var(--text-muted)', fontWeight: isChecked ? 700 : 400 }}>
-                            {s.name} ({s.dimensions})
+                            {isChecked ? '☑ ' : '☐ '} {s.name} ({s.dimensions})
                           </span>
-                          <span style={{ color: isChecked ? '#00f2fe' : 'var(--text-muted)' }}>
+                          <span style={{ color: isChecked ? '#00f2fe' : 'var(--text-muted)', fontWeight: 800 }}>
                             Q{s.price.toFixed(0)}
                           </span>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-
-                {/* 5. Poster Description / Detalles Técnicos */}
-                <div style={{ marginBottom: '22px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
-                    <label style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      5. Descripción & Detalles Técnicos de la Obra:
-                    </label>
-                    <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                      (Aparece debajo del póster al abrirlo)
-                    </span>
-                  </div>
-
-                  {/* Quick Auto-Fill Template Buttons */}
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-                      Plantillas rápidas:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setDescription(`Patente técnica de ingeniería y despiece detallado del modelo ${title || 'automotriz'}. Impresión fotográfica de alta definición sobre base sólida de MDF 5.5mm (45x60 cm). Incluye cinta industrial Tessa para instalación inmediata sin perforar paredes.`)}
-                      style={{
-                        background: 'rgba(0, 242, 254, 0.08)',
-                        border: '1px solid rgba(0, 242, 254, 0.25)',
-                        color: '#5eead4',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.72rem',
-                        cursor: 'pointer',
-                        fontWeight: 700
-                      }}
-                    >
-                      + Patente Autos
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setDescription(`Portada icónica y arte gráfico de alta fidelidad con colores vivos y profundos. Montado sobre soporte rígido de MDF 5.5mm con acabado mate antirreflejos. Incluye cinta Tessa de montaje limpio sin clavos.`)}
-                      style={{
-                        background: 'rgba(0, 242, 254, 0.08)',
-                        border: '1px solid rgba(0, 242, 254, 0.25)',
-                        color: '#5eead4',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.72rem',
-                        cursor: 'pointer',
-                        fontWeight: 700
-                      }}
-                    >
-                      + Superhéroes / Cómics
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setDescription(`Impresión fotográfica de alta definición con tintas ecológicas HP Látex sobre base sólida de MDF 5.5mm. Colores vibrantes y resistentes a la luz solar UV. Incluye cinta Tessa para instalación en 30 segundos.`)}
-                      style={{
-                        background: 'rgba(0, 242, 254, 0.08)',
-                        border: '1px solid rgba(0, 242, 254, 0.25)',
-                        color: '#5eead4',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.72rem',
-                        cursor: 'pointer',
-                        fontWeight: 700
-                      }}
-                    >
-                      + General Calidad
-                    </button>
-                  </div>
-
-                  <textarea
-                    rows={4}
-                    placeholder="Escribe la descripción de la obra, detalles de la patente, historia del diseño o acabados técnicos..."
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      background: '#0a0e18',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '0.88rem',
-                      lineHeight: '1.5',
-                      outline: 'none',
-                      resize: 'vertical'
-                    }}
-                  />
                 </div>
 
                 {/* 6. Tags & Featured */}
