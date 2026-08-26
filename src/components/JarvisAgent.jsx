@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import ArcReactor from './ArcReactor';
 import { askJarvis } from '../utils/jarvisBrain';
+import { getStoreKnowledge } from '../data/storeKnowledge';
 
 // High-tech sound synthesis using Web Audio API (no external mp3 needed)
 const playTechSound = (type = 'chime') => {
@@ -63,6 +64,44 @@ const playTechSound = (type = 'chime') => {
   }
 };
 
+// Formats message text into clean, natural React nodes without raw asterisks or rigid markdown markers
+function renderCleanMessageText(text) {
+  if (!text) return null;
+
+  // Strip stray technical headers or excessive asterisk blocks
+  const cleaned = text
+    .replace(/^###\s+/gm, '')
+    .replace(/^##\s+/gm, '')
+    .replace(/\*{3,}/g, '')
+    .replace(/,\s*señor\b/gi, '')
+    .replace(/\bseñor\b/gi, '')
+    .replace(/,\s*caballero\b/gi, '')
+    .replace(/\bcaballero\b/gi, '');
+
+  const lines = cleaned.split('\n');
+
+  return lines.map((line, lIdx) => {
+    // Check for bold tokens **text**
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    const renderedLine = parts.map((part, pIdx) => {
+      if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+        return (
+          <strong key={pIdx} style={{ color: '#fff', fontWeight: 700 }}>
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return part;
+    });
+
+    return (
+      <div key={lIdx} style={{ minHeight: line.trim() === '' ? '6px' : 'auto', marginBottom: '2px' }}>
+        {renderedLine}
+      </div>
+    );
+  });
+}
+
 export default function JarvisAgent({ 
   isOpen, 
   onClose, 
@@ -72,11 +111,12 @@ export default function JarvisAgent({
   onOpenProductModal,
   onNavigate
 }) {
-  const [messages, setMessages] = useState([
+  const [knowledge, setKnowledge] = useState(() => getStoreKnowledge());
+  const [messages, setMessages] = useState(() => [
     {
       id: 'init-1',
       sender: 'jarvis',
-      text: 'Sistemas en línea. Saludos, soy J.A.R.V.I.S., el asistente táctico de Deco Vintage Guate. He inicializado la base de conocimiento y el catálogo completo de obras rígidas en madera MDF 5.5mm. ¿En qué temática, medida o pedido puedo asistirle hoy, señor?'
+      text: getStoreKnowledge().initialGreeting || '¡Hola! 👋 Soy J.A.R.V.I.S., tu asesor de arte y decoración en Deco Vintage Guate. Estoy aquí para ayudarte a elegir el cuadro perfecto, cotizar medidas especiales o contarte sobre nuestros materiales y envíos a toda Guatemala. ¿Qué tienes en mente para decorar hoy?'
     }
   ]);
   const [inputText, setInputText] = useState('');
@@ -89,6 +129,23 @@ export default function JarvisAgent({
   const messagesEndRef = useRef(null);
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
+
+  // Sync knowledge live on admin edits
+  useEffect(() => {
+    const handleKnowledgeUpdate = () => {
+      const updated = getStoreKnowledge();
+      setKnowledge(updated);
+      setMessages(prev => {
+        if (prev.length === 1 && prev[0].id === 'init-1' && updated.initialGreeting) {
+          return [{ ...prev[0], text: updated.initialGreeting }];
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener('deco-jarvis-knowledge-updated', handleKnowledgeUpdate);
+    return () => window.removeEventListener('deco-jarvis-knowledge-updated', handleKnowledgeUpdate);
+  }, []);
 
   const scrollToBottom = () => {
     if (chatScrollRef.current) {
@@ -280,46 +337,27 @@ export default function JarvisAgent({
 
         {/* 1. Header Táctico Stark Industries */}
         <div style={{
-          padding: '14px 20px',
-          background: 'rgba(5, 8, 16, 0.95)',
+          padding: '16px 20px 14px',
+          background: 'rgba(5, 8, 16, 0.96)',
           borderBottom: '1px solid rgba(0, 242, 254, 0.25)',
+          position: 'relative',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
+          textAlign: 'center',
           flexShrink: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ transform: 'scale(0.85)' }}>
-              <ArcReactor size={42} active={isTyping} />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '0.05em' }}>
-                  J.A.R.V.I.S. <span style={{ color: 'var(--accent-cyan)', fontSize: '0.75rem', fontWeight: 800 }}>STARK OS 4.8</span>
-                </h3>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: 'rgba(0, 245, 160, 0.12)',
-                  border: '1px solid rgba(0, 245, 160, 0.35)',
-                  color: '#00f5a0',
-                  padding: '1px 7px',
-                  borderRadius: '12px',
-                  fontSize: '0.66rem',
-                  fontWeight: 800
-                }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00f5a0', boxShadow: '0 0 6px #00f5a0' }} />
-                  ONLINE
-                </span>
-              </div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {poweredModel ? `Inteligencia: ${poweredModel}` : 'Asistente Táctico Deco Vintage'}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Controls Top Right */}
+          <div style={{
+            position: 'absolute',
+            top: '12px',
+            right: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            zIndex: 15
+          }}>
             {/* Audio Toggle */}
             <button
               type="button"
@@ -361,6 +399,57 @@ export default function JarvisAgent({
               <X size={17} />
             </button>
           </div>
+
+          {/* Status Badge Top Left */}
+          <div style={{
+            position: 'absolute',
+            top: '14px',
+            left: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'rgba(0, 245, 160, 0.12)',
+              border: '1px solid rgba(0, 245, 160, 0.35)',
+              color: '#00f5a0',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '0.66rem',
+              fontWeight: 800
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00f5a0', boxShadow: '0 0 6px #00f5a0' }} />
+              ONLINE
+            </span>
+          </div>
+
+          {/* Centered Arc Reactor */}
+          <div style={{ marginBottom: '8px', transform: 'scale(1.05)' }}>
+            <ArcReactor size={56} active={isTyping} />
+          </div>
+
+          {/* Centered Titles */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '0.08em' }}>
+              J.A.R.V.I.S. <span style={{ color: 'var(--accent-cyan)', fontSize: '0.78rem', fontWeight: 800 }}>STARK OS 4.8</span>
+            </h3>
+            <span style={{ fontSize: '0.75rem', color: '#cbd5e1', letterSpacing: '0.05em', fontWeight: 500 }}>
+              Just A Rather Very Intelligent System
+            </span>
+            <span style={{
+              fontSize: '0.72rem',
+              color: '#00f2fe',
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              textShadow: '0 0 10px rgba(0, 242, 254, 0.6)'
+            }}>
+              Red Neuronal Gemini
+            </span>
+          </div>
         </div>
 
         {/* 2. Barra de Telemetría en Tiempo Real */}
@@ -388,7 +477,7 @@ export default function JarvisAgent({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-cyan)' }}>
-              <ShoppingBag size={12} /> {cart.length} {cart.length === 1 ? 'OBRA' : 'OBRAS'} EN CARRITO
+              <ShoppingBag size={12} /> {cart.length} {cart.length === 1 ? 'ARTÍCULO' : 'ARTÍCULOS'} EN CARRITO
             </span>
           </div>
         </div>
@@ -433,15 +522,13 @@ export default function JarvisAgent({
                       width: '28px',
                       height: '28px',
                       borderRadius: '50%',
-                      background: 'rgba(0, 242, 254, 0.15)',
-                      border: '1px solid rgba(0, 242, 254, 0.4)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
                       marginTop: '4px'
                     }}>
-                      <Bot size={15} color="var(--accent-cyan)" />
+                      <ArcReactor size={26} pulsing={false} />
                     </div>
                   )}
 
@@ -456,11 +543,11 @@ export default function JarvisAgent({
                     lineHeight: '1.45',
                     boxShadow: isJarvis ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0, 242, 254, 0.3)'
                   }}>
-                    <div style={{ whiteSpace: 'pre-line' }}>
-                      {msg.text}
+                    <div style={{ wordBreak: 'break-word' }}>
+                      {renderCleanMessageText(msg.text)}
                     </div>
 
-                    {/* Interactive Catalog Cards (When J.A.R.V.I.S. recommends posters) */}
+                    {/* Interactive Action Cards */}
                     {msg.actions && msg.actions.map((act, actIdx) => {
                       if (act.type === 'catalog_matches' && act.posters && act.posters.length > 0) {
                         return (
@@ -475,27 +562,50 @@ export default function JarvisAgent({
                               <div
                                 key={p.id}
                                 style={{
-                                  background: 'rgba(6, 10, 18, 0.9)',
-                                  border: '1px solid rgba(0, 242, 254, 0.3)',
+                                  background: 'rgba(6, 10, 18, 0.95)',
+                                  border: '1px solid rgba(0, 242, 254, 0.35)',
                                   borderRadius: '10px',
                                   overflow: 'hidden',
                                   display: 'flex',
-                                  flexDirection: 'column'
+                                  flexDirection: 'column',
+                                  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.5)'
                                 }}
                               >
-                                <img
-                                  src={p.thumb || p.image}
-                                  alt={p.title}
-                                  style={{ width: '100%', height: '110px', objectFit: 'cover' }}
-                                />
+                                <div style={{ position: 'relative', width: '100%', height: '115px', background: '#090d16' }}>
+                                  <img
+                                    src={p.thumb || p.image}
+                                    alt={p.title}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    onError={(e) => {
+                                      e.target.src = p.image || '/posters/wallpaper.jpg';
+                                    }}
+                                  />
+                                  <span style={{
+                                    position: 'absolute',
+                                    bottom: '6px',
+                                    left: '6px',
+                                    background: 'rgba(0, 0, 0, 0.75)',
+                                    color: 'var(--accent-cyan)',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.66rem',
+                                    fontWeight: 800,
+                                    border: '1px solid rgba(0, 242, 254, 0.3)'
+                                  }}>
+                                    {p.category}
+                                  </span>
+                                </div>
                                 <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
+                                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
                                     {p.title}
                                   </div>
-                                  <div style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                    {p.subtitle || 'Póster Rígido MDF 5.5mm'}
+                                  </div>
+                                  <div style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', fontWeight: 800, marginTop: '2px' }}>
                                     {p.priceDisplay || 'Desde Q 25.00'}
                                   </div>
-                                  <div style={{ display: 'flex', gap: '6px', marginTop: 'auto', paddingTop: '6px' }}>
+                                  <div style={{ display: 'flex', gap: '6px', marginTop: 'auto', paddingTop: '8px' }}>
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -504,17 +614,22 @@ export default function JarvisAgent({
                                       }}
                                       style={{
                                         flex: 1,
-                                        padding: '5px',
-                                        background: 'rgba(255, 255, 255, 0.08)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        color: '#fff',
+                                        padding: '6px 4px',
+                                        background: 'rgba(0, 242, 254, 0.15)',
+                                        border: '1px solid rgba(0, 242, 254, 0.4)',
+                                        color: '#00f2fe',
                                         borderRadius: '6px',
                                         fontSize: '0.72rem',
-                                        fontWeight: 700,
-                                        cursor: 'pointer'
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px'
                                       }}
                                     >
-                                      Ver Cuadro
+                                      <Eye size={12} />
+                                      <span>Ver Obra</span>
                                     </button>
                                   </div>
                                 </div>
@@ -524,25 +639,90 @@ export default function JarvisAgent({
                         );
                       }
 
-                      if (act.type === 'whatsapp_order_ready' && act.url) {
+                      if (act.type === 'custom_quote') {
+                        const q = act.quote || {
+                          width: act.ancho || act.width || 30,
+                          height: act.alto || act.height || 45,
+                          area: (act.ancho || act.width || 30) * (act.alto || act.height || 45),
+                          material: act.material || 'Madera MDF 5.5mm',
+                          price: act.precio || act.price || 65,
+                          advance: act.anticipo || act.advance || Math.round((act.precio || act.price || 65) / 2)
+                        };
+                        const waQuoteText = encodeURIComponent(`Hola Deco Vintage Guate, J.A.R.V.I.S. me ha cotizado un cuadro personalizado:\n• Medida: ${q.width}x${q.height} cm (${q.area} cm²)\n• Material: ${q.material}\n• Precio Total: Q ${q.price}.00\n• 50% de Anticipo: Q ${q.advance}.00\n\n*Deseo enviar mi imagen para iniciar fabricación.*`);
+                        return (
+                          <div key={actIdx} style={{
+                            marginTop: '12px',
+                            background: 'rgba(5, 12, 24, 0.95)',
+                            border: '1px solid rgba(0, 245, 160, 0.4)',
+                            borderRadius: '12px',
+                            padding: '14px 16px',
+                            boxShadow: '0 0 25px rgba(0, 245, 160, 0.15)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#00f5a0', letterSpacing: '0.05em' }}>
+                                📐 COTIZACIÓN A MEDIDA
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                {q.area} cm²
+                              </span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem', color: '#e6edf3', marginBottom: '10px' }}>
+                              <div><strong>Dimensiones:</strong> {q.width} x {q.height} cm</div>
+                              <div><strong>Material:</strong> {q.material}</div>
+                              <div><strong>Precio Total:</strong> <span style={{ color: '#00f5a0', fontWeight: 800 }}>Q {q.price}.00</span></div>
+                              <div><strong>50% Anticipo:</strong> <span style={{ color: '#00f2fe', fontWeight: 800 }}>Q {q.advance}.00</span></div>
+                            </div>
+                            <a
+                              href={`https://wa.me/50259980504?text=${waQuoteText}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                background: 'linear-gradient(90deg, #00f5a0 0%, #00d2ff 100%)',
+                                color: '#040812',
+                                padding: '9px 14px',
+                                borderRadius: '8px',
+                                fontWeight: 800,
+                                fontSize: '0.78rem',
+                                textDecoration: 'none',
+                                boxShadow: '0 4px 12px rgba(0, 245, 160, 0.3)'
+                              }}
+                            >
+                              <MessageSquare size={14} />
+                              <span>Enviar Diseño y Pagar 50% por WhatsApp</span>
+                              <ExternalLink size={12} />
+                            </a>
+                          </div>
+                        );
+                      }
+
+                      if (act.type === 'whatsapp_order' && (act.waUrl || act.link)) {
+                        const targetUrl = act.waUrl || act.link;
                         return (
                           <div key={actIdx} style={{ marginTop: '12px' }}>
                             <a
-                              href={act.url}
+                              href={targetUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="btn-cyan"
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '8px',
+                                background: 'linear-gradient(90deg, #00f5a0 0%, #00d2ff 100%)',
+                                color: '#040812',
                                 padding: '10px 18px',
-                                fontSize: '0.85rem',
-                                textDecoration: 'none'
+                                borderRadius: '8px',
+                                fontWeight: 800,
+                                fontSize: '0.84rem',
+                                textDecoration: 'none',
+                                boxShadow: '0 4px 16px rgba(0, 245, 160, 0.4)'
                               }}
                             >
                               <MessageSquare size={16} />
-                              <span>Enviar Pedido al Vendedor por WhatsApp</span>
+                              <span>Confirmar Pedido (50% Anticipo) por WhatsApp</span>
                               <ExternalLink size={14} />
                             </a>
                           </div>
@@ -564,13 +744,11 @@ export default function JarvisAgent({
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
-                background: 'rgba(0, 242, 254, 0.15)',
-                border: '1px solid rgba(0, 242, 254, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <Bot size={15} color="var(--accent-cyan)" />
+                <ArcReactor size={26} pulsing={true} />
               </div>
               <div style={{
                 padding: '10px 14px',
@@ -594,7 +772,7 @@ export default function JarvisAgent({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 4. Barra de Atajos Rápidos */}
+        {/* 4. Barra de Atajos Rápidos Tácticos Stark HUD */}
         <div style={{
           padding: '8px 20px',
           background: 'rgba(5, 8, 16, 0.95)',
@@ -606,77 +784,55 @@ export default function JarvisAgent({
           WebkitOverflowScrolling: 'touch',
           flexShrink: 0
         }}>
-          <button
-            type="button"
-            onClick={() => handleQuickPrompt('¿Cuáles son los precios y medidas de los cuadros?')}
-            style={{
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(0, 242, 254, 0.2)',
-              color: '#fff',
-              padding: '5px 12px',
-              borderRadius: '20px',
-              fontSize: '0.74rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            📐 Precios y Medidas
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickPrompt('¿Cómo es la calidad de la madera MDF 5.5mm y la cinta Tessa?')}
-            style={{
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(0, 242, 254, 0.2)',
-              color: '#fff',
-              padding: '5px 12px',
-              borderRadius: '20px',
-              fontSize: '0.74rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            🛡️ Materiales y Cinta Tessa
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickPrompt('Recomiéndame los mejores cuadros de autos deportivos')}
-            style={{
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(0, 242, 254, 0.2)',
-              color: '#fff',
-              padding: '5px 12px',
-              borderRadius: '20px',
-              fontSize: '0.74rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            🏎️ Colección Autos
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickPrompt('¿Cómo fabrico un cuadro personalizado con mi propia foto?')}
-            style={{
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(0, 242, 254, 0.2)',
-              color: '#fff',
-              padding: '5px 12px',
-              borderRadius: '20px',
-              fontSize: '0.74rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            🎨 Cuadro Personalizado
-          </button>
+          {(knowledge.quickPrompts || []).map((qp, idx) => (
+            <button
+              key={qp.id || idx}
+              type="button"
+              onClick={() => handleQuickPrompt(qp.prompt || qp.label)}
+              style={{
+                background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(5, 12, 24, 0.85) 100%)',
+                border: '1px solid rgba(0, 242, 254, 0.35)',
+                boxShadow: 'inset 0 0 8px rgba(0, 242, 254, 0.08), 0 2px 8px rgba(0,0,0,0.3)',
+                color: '#e6edf3',
+                padding: '6px 13px',
+                borderRadius: '6px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                letterSpacing: '0.03em',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                position: 'relative'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 242, 254, 0.22) 0%, rgba(10, 25, 48, 0.95) 100%)';
+                e.currentTarget.style.borderColor = '#00f2fe';
+                e.currentTarget.style.color = '#ffffff';
+                e.currentTarget.style.boxShadow = '0 0 16px rgba(0, 242, 254, 0.4), inset 0 0 10px rgba(0, 242, 254, 0.2)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(5, 12, 24, 0.85) 100%)';
+                e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.35)';
+                e.currentTarget.style.color = '#e6edf3';
+                e.currentTarget.style.boxShadow = 'inset 0 0 8px rgba(0, 242, 254, 0.08), 0 2px 8px rgba(0,0,0,0.3)';
+                e.currentTarget.style.transform = 'none';
+              }}
+            >
+              <span style={{
+                width: '5px',
+                height: '5px',
+                borderRadius: '1px',
+                background: '#00f2fe',
+                boxShadow: '0 0 6px #00f2fe',
+                flexShrink: 0
+              }} />
+              <span>{qp.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* 5. Input de Entrada con Micrófono y Envío */}

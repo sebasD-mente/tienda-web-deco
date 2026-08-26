@@ -70,7 +70,7 @@ export default function CartDrawer({
       `💰 *TOTAL A PAGAR: Q${total.toFixed(2)}*\n` +
       `💳 *Anticipo del 50% para producción: Q${deposit50.toFixed(2)}*\n` +
       `🚚 *Saldo del 50% contra entrega: Q${deposit50.toFixed(2)}*\n` +
-      `✨ _Incluye cinta Tessa industrial de montaje rápido._\n\n` +
+      `✨ _Incluye cinta Tesa industrial de montaje rápido._\n\n` +
       `Hola, me gustaría confirmar mi pedido y coordinar el método de pago del anticipo del 50%. ¿Cuáles son los datos de transferencia?`;
 
     // Confetti celebration
@@ -558,7 +558,7 @@ export default function CartDrawer({
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.35' }}>
                   <ShieldCheck size={13} color="var(--accent-cyan)" style={{ flexShrink: 0, marginTop: '1px' }} />
                   <span>
-                    <strong style={{ color: '#fff' }}>Garantía:</strong> Tintas HP Látex de alta definición. Incluye cinta Tessa de montaje rápido.
+                    <strong style={{ color: '#fff' }}>Garantía:</strong> Tintas HP Látex de alta definición. Incluye cinta Tesa de montaje rápido.
                   </span>
                 </div>
               </div>

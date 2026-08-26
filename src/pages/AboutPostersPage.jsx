@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Cpu, Layers, Hammer, CheckCircle2, ArrowRight, Ruler, Award } from 'lucide-react';
+import { ShieldCheck, Cpu, Layers, Hammer, CheckCircle2, ArrowRight, Ruler, Award, ExternalLink } from 'lucide-react';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 
 export default function AboutPostersPage({ onNavigate }) {
@@ -108,9 +108,41 @@ export default function AboutPostersPage({ onNavigate }) {
                   1. Impresión HP Línea Látex
                 </h3>
 
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: '1.65', marginBottom: '20px' }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: '1.65', marginBottom: '16px' }}>
                   Utilizamos impresoras de gran formato HP con tecnología látex ecológica base agua. No desprende solventes tóxicos ni olores y entrega una nitidez fotográfica microscópica con colores vibrantes y negros puros.
                 </p>
+
+                <a
+                  href="https://www.hp.com/lamerica_nsc_cnt_amer-es/printers/large-format/latex-printers.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    color: '#00f2fe',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    background: 'rgba(0, 242, 254, 0.08)',
+                    border: '1px solid rgba(0, 242, 254, 0.25)',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    marginBottom: '16px',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 242, 254, 0.18)';
+                    e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 242, 254, 0.08)';
+                    e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.25)';
+                  }}
+                >
+                  <span>Ver tecnología oficial HP Látex</span>
+                  <ExternalLink size={13} />
+                </a>
               </div>
 
               <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '16px' }}>
@@ -169,7 +201,7 @@ export default function AboutPostersPage({ onNavigate }) {
               </div>
             </div>
 
-            {/* Pillar 3: Fijación con Cinta Tessa */}
+            {/* Pillar 3: Fijación con Cinta Tesa */}
             <div className="glass-card" style={{
               padding: '36px',
               border: '1px solid rgba(0, 242, 254, 0.25)',
@@ -193,12 +225,44 @@ export default function AboutPostersPage({ onNavigate }) {
                 </div>
 
                 <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '12px' }}>
-                  3. Fijación Limpia Cinta Tessa
+                  3. Fijación Limpia Cinta Tesa®
                 </h3>
 
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: '1.65', marginBottom: '20px' }}>
-                  Cada cuadro incluye tiras de cinta adhesiva industrial de doble cara marca <strong>Tessa</strong>. Se adhiere fuertemente a paredes lisas, concreto sellado, madera, melamina o azulejo. Lo instalas en 30 segundos sin taladrar ni hacer agujeros.
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: '1.65', marginBottom: '16px' }}>
+                  Cada cuadro incluye tiras de cinta adhesiva industrial de doble cara marca <strong>Tesa®</strong> (modelo <em>tesa® 65610 Invisibond One-Lift</em>). Se adhiere fuertemente a paredes lisas, concreto sellado, madera, melamina o tablayeso. Lo instalas en 30 segundos sin taladrar ni hacer agujeros.
                 </p>
+
+                <a
+                  href="https://www.tesa.com/es-gt/industria/tesa-65610-invisibond-one-lift.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    color: '#00f2fe',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(0, 242, 254, 0.08)',
+                    border: '1px solid rgba(0, 242, 254, 0.25)',
+                    transition: 'all 0.2s ease',
+                    marginBottom: '16px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 242, 254, 0.18)';
+                    e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 242, 254, 0.08)';
+                    e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.25)';
+                  }}
+                >
+                  <span>Ver Ficha Técnica Oficial tesa® 65610</span>
+                  <ExternalLink size={13} />
+                </a>
               </div>
 
               <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '16px' }}>

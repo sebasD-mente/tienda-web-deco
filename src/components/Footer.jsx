@@ -148,7 +148,7 @@ export default function Footer({ onNavigate }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
             <span style={{ color: 'var(--text-muted)' }}>
-              Tecnología HP Látex • Madera Rígida MDF 5.5mm • Cinta Tessa Industrial
+              Tecnología HP Látex • Madera Rígida MDF 5.5mm • Cinta Tesa Industrial
             </span>
             <button
               onClick={() => onNavigate && onNavigate('admin')}

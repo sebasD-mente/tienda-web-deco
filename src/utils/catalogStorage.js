@@ -2,89 +2,105 @@ import {
   CATALOG_POSTERS as BASE_POSTERS,
   CATEGORIES as BASE_CATEGORIES,
   INITIAL_FRANCHISES as BASE_FRANCHISES
-} from '../data/catalogData';
+} from '../data/catalogData.js';
 
-const POSTERS_STORAGE_KEY = 'deco_vintage_catalog_posters_v1';
-const CATEGORIES_STORAGE_KEY = 'deco_vintage_catalog_categories_v1';
-const FRANCHISES_STORAGE_KEY = 'deco_vintage_catalog_franchises_v1';
+const DEFAULT_POSTERS = BASE_POSTERS;
+const DEFAULT_CATEGORIES = BASE_CATEGORIES;
+const DEFAULT_FRANCHISES = BASE_FRANCHISES;
 
-// Synchronize with Physical SSD Disk on startup
+const POSTERS_STORAGE_KEY = 'deco_vintage_catalog_posters_v2';
+const CATEGORIES_STORAGE_KEY = 'deco_vintage_catalog_categories_v2';
+const FRANCHISES_STORAGE_KEY = 'deco_vintage_catalog_franchises_v2';
+
+// Synchronize with Physical SSD Disk on startup (Dev mode)
 export async function syncCatalogWithDisk() {
+  if (typeof window === 'undefined' || typeof fetch === 'undefined') return null;
   try {
     const res = await fetch('/api/catalog');
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.posters) && data.posters.length > 0) {
-        localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(data.posters));
-        if (Array.isArray(data.categories) && data.categories.length > 0) {
-          localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
-        }
-        if (Array.isArray(data.franchises) && data.franchises.length > 0) {
-          localStorage.setItem(FRANCHISES_STORAGE_KEY, JSON.stringify(data.franchises));
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(data.posters));
+          if (Array.isArray(data.categories) && data.categories.length > 0) {
+            localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
+          }
+          if (Array.isArray(data.franchises) && data.franchises.length > 0) {
+            localStorage.setItem(FRANCHISES_STORAGE_KEY, JSON.stringify(data.franchises));
+          }
         }
         window.dispatchEvent(new Event('deco-catalog-updated'));
         console.log(`[Deco Storage] Synchronized ${data.posters.length} posters from physical disk.`);
         return {
           posters: data.posters,
           categories: data.categories,
-          franchises: data.franchises || BASE_FRANCHISES
+          franchises: data.franchises || DEFAULT_FRANCHISES
         };
       }
     }
   } catch (err) {
-    console.warn('[Deco Storage] Running in client-only/offline mode:', err.message);
+    console.debug('[Deco Storage] Running in bundled static mode:', err.message);
   }
   return null;
 }
 
-// Auto-run disk synchronization on load
+// Auto-run disk synchronization or initial cache migration on load
 if (typeof window !== 'undefined') {
   syncCatalogWithDisk();
 }
 
 export function getStoredPosters() {
   try {
-    const saved = localStorage.getItem(POSTERS_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(POSTERS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= DEFAULT_POSTERS.length) {
+          return parsed;
+        }
       }
+      localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(DEFAULT_POSTERS));
     }
   } catch (e) {
     console.error('Error reading stored posters from localStorage:', e);
   }
-  return BASE_POSTERS;
+  return DEFAULT_POSTERS;
 }
 
 export function getStoredCategories() {
   try {
-    const saved = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= DEFAULT_CATEGORIES.length) {
+          return parsed;
+        }
       }
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(DEFAULT_CATEGORIES));
     }
   } catch (e) {
     console.error('Error reading stored categories from localStorage:', e);
   }
-  return BASE_CATEGORIES;
+  return DEFAULT_CATEGORIES;
 }
 
 export function getStoredFranchises() {
   try {
-    const saved = localStorage.getItem(FRANCHISES_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(FRANCHISES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= DEFAULT_FRANCHISES.length) {
+          return parsed;
+        }
       }
+      localStorage.setItem(FRANCHISES_STORAGE_KEY, JSON.stringify(DEFAULT_FRANCHISES));
     }
   } catch (e) {
     console.error('Error reading stored franchises from localStorage:', e);
   }
-  return BASE_FRANCHISES;
+  return DEFAULT_FRANCHISES;
 }
 
 /**
@@ -92,19 +108,23 @@ export function getStoredFranchises() {
  */
 export async function saveAllPosters(posters) {
   try {
-    // 1. Instant local sync
-    localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(posters));
-    window.dispatchEvent(new Event('deco-catalog-updated'));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(posters));
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('deco-catalog-updated'));
+    }
 
-    // 2. Physical SSD disk persistence
     try {
       const categories = getStoredCategories();
       const franchises = getStoredFranchises();
-      await fetch('/api/catalog/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posters, categories, franchises })
-      });
+      if (typeof fetch !== 'undefined') {
+        await fetch('/api/catalog/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ posters, categories, franchises })
+        });
+      }
     } catch (apiErr) {
       console.warn('[Deco Storage] Physical disk save failed or running static:', apiErr);
     }
@@ -121,17 +141,23 @@ export async function saveAllPosters(posters) {
  */
 export async function saveAllCategories(categories) {
   try {
-    localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
-    window.dispatchEvent(new Event('deco-catalog-updated'));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('deco-catalog-updated'));
+    }
 
     try {
       const posters = getStoredPosters();
       const franchises = getStoredFranchises();
-      await fetch('/api/catalog/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posters, categories, franchises })
-      });
+      if (typeof fetch !== 'undefined') {
+        await fetch('/api/catalog/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ posters, categories, franchises })
+        });
+      }
     } catch (apiErr) {
       console.warn('[Deco Storage] Physical disk save failed or running static:', apiErr);
     }
@@ -148,17 +174,23 @@ export async function saveAllCategories(categories) {
  */
 export async function saveAllFranchises(franchises) {
   try {
-    localStorage.setItem(FRANCHISES_STORAGE_KEY, JSON.stringify(franchises));
-    window.dispatchEvent(new Event('deco-catalog-updated'));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(FRANCHISES_STORAGE_KEY, JSON.stringify(franchises));
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('deco-catalog-updated'));
+    }
 
     try {
       const posters = getStoredPosters();
       const categories = getStoredCategories();
-      await fetch('/api/catalog/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posters, categories, franchises })
-      });
+      if (typeof fetch !== 'undefined') {
+        await fetch('/api/catalog/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ posters, categories, franchises })
+        });
+      }
     } catch (apiErr) {
       console.warn('[Deco Storage] Physical disk save failed or running static:', apiErr);
     }
@@ -172,7 +204,6 @@ export async function saveAllFranchises(franchises) {
 
 /**
  * Uploads an image base64 dataUrl to the physical disk server
- * Returns lightweight, permanent static URLs
  */
 export async function uploadImageFileToDisk(dataUrl, fileName = 'poster', posterId = '') {
   if (!dataUrl || !dataUrl.startsWith('data:image/')) {
@@ -180,16 +211,18 @@ export async function uploadImageFileToDisk(dataUrl, fileName = 'poster', poster
   }
 
   try {
-    const res = await fetch('/api/catalog/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dataUrl, fileName, posterId })
-    });
+    if (typeof fetch !== 'undefined') {
+      const res = await fetch('/api/catalog/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataUrl, fileName, posterId })
+      });
 
-    if (res.ok) {
-      const result = await res.json();
-      if (result.success && result.image) {
-        return { image: result.image, thumb: result.thumb || result.image };
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.image) {
+          return { image: result.image, thumb: result.thumb || result.image };
+        }
       }
     }
   } catch (err) {
@@ -205,7 +238,6 @@ export async function uploadImageFileToDisk(dataUrl, fileName = 'poster', poster
 export async function saveOrUpdatePoster(posterData) {
   let finalPoster = { ...posterData };
 
-  // If image is a Base64 data string, upload it to permanent SSD storage first
   if (finalPoster.image && finalPoster.image.startsWith('data:image/')) {
     const uploaded = await uploadImageFileToDisk(finalPoster.image, finalPoster.title, finalPoster.id);
     finalPoster.image = uploaded.image;
@@ -259,26 +291,36 @@ export async function deleteCategoryById(categoryId) {
 }
 
 export async function resetCatalogToDefault() {
-  localStorage.removeItem(POSTERS_STORAGE_KEY);
-  localStorage.removeItem(CATEGORIES_STORAGE_KEY);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem(POSTERS_STORAGE_KEY);
+    localStorage.removeItem(CATEGORIES_STORAGE_KEY);
+    localStorage.removeItem(FRANCHISES_STORAGE_KEY);
+  }
 
-  await saveAllPosters(BASE_POSTERS);
-  await saveAllCategories(BASE_CATEGORIES);
+  await saveAllPosters(DEFAULT_POSTERS);
+  await saveAllCategories(DEFAULT_CATEGORIES);
+  await saveAllFranchises(DEFAULT_FRANCHISES);
 
-  window.dispatchEvent(new Event('deco-catalog-updated'));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('deco-catalog-updated'));
+  }
   return {
-    posters: BASE_POSTERS,
-    categories: BASE_CATEGORIES
+    posters: DEFAULT_POSTERS,
+    categories: DEFAULT_CATEGORIES,
+    franchises: DEFAULT_FRANCHISES
   };
 }
 
 export function exportCatalogAsJSON() {
   const data = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.0',
+    version: '2.0.0',
     categories: getStoredCategories(),
+    franchises: getStoredFranchises(),
     posters: getStoredPosters()
   };
+
+  if (typeof document === 'undefined') return;
 
   const jsonStr = JSON.stringify(data, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -292,12 +334,15 @@ export function exportCatalogAsJSON() {
 
 export async function importCatalogFromJSON(jsonString) {
   try {
-    const data = JSON.parse(jsonString);
+    const data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
     if (data.posters && Array.isArray(data.posters)) {
       await saveAllPosters(data.posters);
     }
     if (data.categories && Array.isArray(data.categories)) {
       await saveAllCategories(data.categories);
+    }
+    if (data.franchises && Array.isArray(data.franchises)) {
+      await saveAllFranchises(data.franchises);
     }
     return { success: true, count: data.posters?.length || 0 };
   } catch (err) {

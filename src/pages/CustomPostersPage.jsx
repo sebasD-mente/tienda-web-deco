@@ -1117,7 +1117,7 @@ export default function CustomPostersPage({ onNavigate }) {
                   </span>
                   {isConfigured && baseMaterial !== 'vinyl_only' && (
                     <span style={{ fontSize: '0.75rem', color: '#00f5a0', fontWeight: 700 }}>
-                      ✓ Cinta Tessa de montaje incluida
+                      ✓ Cinta Tesa de montaje incluida
                     </span>
                   )}
                 </div>
@@ -1187,7 +1187,7 @@ export default function CustomPostersPage({ onNavigate }) {
             <div className="glass-card" style={{ padding: '24px', textAlign: 'center' }}>
               <CheckCircle2 size={32} color="var(--accent-cyan)" style={{ margin: '0 auto 12px auto' }} />
               <h4 style={{ color: '#fff', fontSize: '1rem', fontWeight: 800, marginBottom: '6px' }}>
-                Cinta Tessa Incluida
+                Cinta Tesa Incluida
               </h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: 0 }}>
                 En cuadros completos (MDF o PVC) recibes tu cuadro listo para colocar sin clavos.

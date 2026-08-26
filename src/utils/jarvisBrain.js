@@ -1,19 +1,34 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getStoreKnowledge } from '../data/storeKnowledge';
-import { CATALOG_POSTERS } from '../data/catalogData';
-import { getStoredPosters, getStoredCategories, getStoredFranchises } from './catalogStorage';
+import { getStoreKnowledge } from '../data/storeKnowledge.js';
+import { getStoredPosters, getStoredCategories, getStoredFranchises } from './catalogStorage.js';
 
 const API_KEY_STORAGE_KEY = 'deco_gemini_api_key_v1';
 
+// Prioritize active, ultra-fast, high-quota Gemini Flash Lite & Flash models
+const ACTIVE_GEMINI_MODELS = [
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3.7-flash',
+  'gemini-flash-lite-latest'
+];
+
 export function getGeminiApiKey() {
-  const envKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (envKey && envKey.trim().length > 0) return envKey.trim();
   try {
-    const saved = localStorage.getItem(API_KEY_STORAGE_KEY);
-    if (saved && saved.trim().length > 0) return saved.trim();
-  } catch (e) {
-    // Ignore storage error
-  }
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+      return import.meta.env.VITE_GEMINI_API_KEY.trim();
+    }
+  } catch (e) {}
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env.VITE_GEMINI_API_KEY) {
+      return process.env.VITE_GEMINI_API_KEY.trim();
+    }
+  } catch (e) {}
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(API_KEY_STORAGE_KEY);
+      if (saved && saved.trim().length > 0) return saved.trim();
+    }
+  } catch (e) {}
   return '';
 }
 
@@ -31,545 +46,454 @@ export function saveGeminiApiKey(apiKey) {
   }
 }
 
-// Tool / Function declarations for Gemini Function Calling
+// Official Tool Declarations for Gemini Cognitive Function Calling
 const JARVIS_TOOL_DECLARATIONS = [
   {
-    name: 'search_catalog',
-    description: 'Busca obras, pósters y cuadros en el catálogo en vivo de Deco Vintage según términos, categorías, personajes, vehículos o temas.',
+    name: 'recomendar_obras',
+    description: 'Despliega en el chat de 1 a 3 tarjetas visuales de las obras EXACTAS del catálogo cuando la persona pida recomendaciones de arte, busque cuadros específicos o cuando se hable de un personaje/película del cual tengamos una obra en catálogo y sea pertinente mostrarla como referencia visual.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        query: {
-          type: 'STRING',
-          description: 'Término de búsqueda, personaje, franquicia o descripción (ej: Porsche, Batman, Dragon Ball, Anime, Cine, Autos)'
+        posterIds: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: 'Lista de IDs exactos de las obras seleccionadas del catálogo oficial (ej: ["iron-man-2438"])'
         },
-        category: {
+        motivo: {
           type: 'STRING',
-          description: 'Categoría opcional (ej: autos, anime, geek, cine, musica)'
-        },
-        maxResults: {
-          type: 'NUMBER',
-          description: 'Número máximo de obras a devolver (por defecto 4)'
+          description: 'Breve explicación conversacional de por qué se adjunta esta obra'
         }
       },
-      required: ['query']
+      required: ['posterIds']
     }
   },
   {
-    name: 'add_to_cart',
-    description: 'Añade una obra del catálogo al carrito de compras del cliente con el tamaño y cantidad seleccionada.',
+    name: 'cotizar_personalizado',
+    description: 'Calcula la cotización exacta en Quetzales y prepara la tarjeta interactiva para un cuadro con medidas especiales personalizadas. Invoca SIEMPRE esta función cuando el cliente mencione medidas (ej: "50x30", "40 por 60", "30 de diametro redondo", "1 metro por 80cm"). Si es circular/redondo de diámetro X, pasa anchoCm=X y altoCm=X.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        anchoCm: {
+          type: 'NUMBER',
+          description: 'Ancho en centímetros (ej: 50)'
+        },
+        altoCm: {
+          type: 'NUMBER',
+          description: 'Alto en centímetros (ej: 30)'
+        },
+        material: {
+          type: 'STRING',
+          description: 'Material elegido: mdf (madera 5.5mm estándar) o pvc (impermeable 5mm). Por defecto mdf.',
+          enum: ['mdf', 'pvc', 'vinil']
+        }
+      },
+      required: ['anchoCm', 'altoCm']
+    }
+  },
+  {
+    name: 'agregar_al_carrito',
+    description: 'Añade una obra del catálogo al carrito de compras con el tamaño elegido.',
     parameters: {
       type: 'OBJECT',
       properties: {
         posterId: {
           type: 'STRING',
-          description: 'ID de la obra a agregar (ej: auto-1, anime-1) o título aproximado'
+          description: 'ID exacto de la obra a agregar'
         },
-        sizeId: {
+        tamano: {
           type: 'STRING',
-          description: 'ID o nombre del tamaño elegido: mini, small, album, medium, large, giant',
-          enum: ['mini', 'small', 'album', 'medium', 'large', 'giant']
+          description: 'ID del tamaño: MINI, PEQUENO, PORTADA_ALBUM, MEDIANO, GRANDE, GIGANTE',
+          enum: ['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE']
         },
-        quantity: {
+        cantidad: {
           type: 'NUMBER',
           description: 'Cantidad de unidades (por defecto 1)'
         }
       },
-      required: ['posterId', 'sizeId']
+      required: ['posterId', 'tamano']
     }
   },
   {
-    name: 'quote_custom_poster',
-    description: 'Calcula la cotización exacta en Quetzales para un cuadro de medida personalizada en madera MDF 5.5mm, PVC 5mm o Vinil.',
+    name: 'generar_pedido_whatsapp',
+    description: 'Estructura el pedido final con el desglose del 50% de anticipo y prepara el enlace directo de WhatsApp con el asesor comercial.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        widthCm: {
-          type: 'NUMBER',
-          description: 'Ancho en centímetros'
-        },
-        heightCm: {
-          type: 'NUMBER',
-          description: 'Alto en centímetros'
-        },
-        material: {
+        detallePedido: {
           type: 'STRING',
-          description: 'Material deseado: mdf, pvc, vinil',
-          enum: ['mdf', 'pvc', 'vinil']
+          description: 'Resumen claro de las obras, medidas, materiales y total en Quetzales'
+        },
+        nombreCliente: {
+          type: 'STRING',
+          description: 'Nombre del cliente (opcional)'
         }
       },
-      required: ['widthCm', 'heightCm']
+      required: ['detallePedido']
     }
   },
   {
-    name: 'generate_whatsapp_order',
-    description: 'Prepara el pedido con el cálculo del 50% de anticipo y genera el mensaje de WhatsApp estructurado para el vendedor.',
+    name: 'navegar_tienda',
+    description: 'Navega de forma asistida a una sección de la tienda web Deco Vintage.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        customerName: {
+        seccion: {
           type: 'STRING',
-          description: 'Nombre del cliente'
-        },
-        customerPhone: {
-          type: 'STRING',
-          description: 'Teléfono o WhatsApp del cliente (opcional)'
-        },
-        customNotes: {
-          type: 'STRING',
-          description: 'Resumen detallado de las obras, medidas y acabados pedidos'
+          description: 'Sección a la que navegar: catalogo, personalizados, sobre_posters, carrito',
+          enum: ['catalogo', 'personalizados', 'sobre_posters', 'carrito']
         }
       },
-      required: ['customNotes']
-    }
-  },
-  {
-    name: 'navigate_store',
-    description: 'Navega a una sección específica de la tienda web Deco Vintage.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        section: {
-          type: 'STRING',
-          description: 'Sección de destino: catalogo, colecciones, personalizados, sobre_posters, carrito',
-          enum: ['catalogo', 'colecciones', 'personalizados', 'sobre_posters', 'carrito']
-        },
-        filter: {
-          type: 'STRING',
-          description: 'Filtro de categoría o franquicia (opcional)'
-        }
-      },
-      required: ['section']
+      required: ['seccion']
     }
   }
 ];
 
-export async function askJarvis({
-  userMessage,
-  conversationHistory = [],
-  cart = [],
-  onExecuteTool = null
-}) {
-  const cleanInput = (userMessage || '').trim();
-  const apiKey = getGeminiApiKey();
-  const knowledge = getStoreKnowledge();
-  const storedPosters = getStoredPosters();
-  const posters = Array.isArray(storedPosters) && storedPosters.length > 0 ? storedPosters : (CATALOG_POSTERS || []);
-  const categories = getStoredCategories();
-  const franchises = getStoredFranchises();
-  const catalog = { posters, categories, franchises };
+function buildSystemInstruction(knowledge, posters, categories) {
+  const postersIndex = (posters || []).map((p) => {
+    return `[ID: "${p.id}"] "${p.title}" - ${p.subtitle || ''} | Categoría: ${p.category} | Precio: ${p.priceDisplay || 'Desde Q 25.00'}\nDescripción detallada: ${p.description || ''}`;
+  }).join('\n\n');
 
-  // If message is very short or simple greeting/keyword, handle with hyper-fast local intelligence
-  if (cleanInput.length <= 2 || isSimpleGreetingOrKeyword(cleanInput)) {
-    return handleLocalIntelligentFallback(cleanInput, knowledge, catalog, cart);
-  }
+  const customDocs = (knowledge.customDocuments || []).map(doc => {
+    return `DOCUMENTO: "${doc.title}" [Categoría: ${doc.category || 'General'}]\n${doc.content}`;
+  }).join('\n\n');
 
-  // Summary of available posters for LLM indexing
-  const catalogSummary = (catalog.posters || []).slice(0, 50).map(p => ({
-    id: p.id,
-    title: p.title,
-    category: p.category,
-    franchise: p.franchise || 'General',
-    bestSeller: !!p.isBestSeller,
-    price: p.priceDisplay || 'Desde Q 25.00'
-  }));
+  const directives = (knowledge.ownerDirectives || []).map((d) => `• ${d}`).join('\n');
 
-  // Build high-context tactical system instructions
-  const systemInstruction = `
-Eres J.A.R.V.I.S., el Asistente Táctico y de Inteligencia Artificial Comercial de "Deco Vintage Guate" (Guatemala).
-Tu personalidad es educada, sumamente eficiente, proactiva, elegante y enfocada en ayudar a los clientes a elegir los mejores cuadros decorativos rígidos para sus espacios (habitaciones, oficinas, salas de juegos, negocios).
+  return `
+Eres J.A.R.V.I.S., el asesor de inteligencia artificial y curador de arte de "Deco Vintage Guate" (Guatemala).
+Tu personalidad es como la de J.A.R.V.I.S. en las películas de Iron Man: sumamente inteligente, analítico, amigable, cálido, empático y servicial. Hablas como un humano experto en arte y diseño que atiende a alguien con entusiasmo y cercanía en una tienda exclusiva.
 
-DIRECTIVAS ACTIVAS DEL DUEÑO:
-${(knowledge.ownerDirectives || []).map((d, i) => `${i + 1}. ${d}`).join('\n')}
+══════════════════════════════════════════════════════════
+REGLAS CRÍTICAS DE COMUNICACIÓN Y RAZONAMIENTO:
+══════════════════════════════════════════════════════════
+1. **RAZONA Y CONVERSA DE FORMA 100% DINÁMICA (CERO RESPUESTAS PREGRABADAS)**:
+   - No utilices discursos enlatados ni respuestas prefabricadas. Escucha y analiza lo que la persona dice y responde de forma fresca y contextual.
+   - Si te preguntan por algo que NO sabes o que no está en la base de datos de Deco Vintage, responde con honestidad y naturalidad: "No tengo esa información en mis registros de Deco Vintage, pero con gusto puedo ayudarte a..." sin inventar.
 
-INFORMACIÓN CLAVE DEL NEGOCIO:
-- Empresa: Deco Vintage Guate (Guatemala).
-- Teléfono / WhatsApp de atención: 5998-0504.
-- Especialidad: Fabricación de cuadros decorativos rígidos sobre madera MDF de 5.5 mm de espesor y PVC espumado impermeable.
-- Impresión: Tintas ecológicas HP Látex de alta definición fotográfica, resistente a decoloración y sin olores.
-- Instalación: Todos los cuadros incluyen cinta industrial de doble cara marca Tessa en el dorso para montaje rápido sin clavos ni agujeros.
-- Cobertura: Envíos a todo el territorio nacional de Guatemala (los 22 departamentos).
-- Tiempos de entrega: 2 a 4 días hábiles.
-- POLÍTICA DE PAGO OBLIGATORIA: 50% de anticipo para iniciar producción y el 50% restante contra entrega o previo a despacho.
+2. **NEUTRALIDAD DE GÉNERO (NUNCA USES "SEÑOR" NI ASUMAS GÉNERO)**:
+   - Trata a la persona de "tú" con respeto, cercanía y calidez. NUNCA asumas género ni uses repetitivamente "señor", "caballero" o "dama".
+   - Usa frases naturales: "¡Hola! Qué gusto saludarte", "Te cuento que...", "Si te gusta el cine clásico...", "Con mucho gusto te ayudo a elegir", "¿Qué espacio te gustaría decorar?".
 
-COLECCIONES DISPONIBLES ACTUALMENTE EN CATÁLOGO:
-1. 🏎️ **AUTOS DEPORTIVOS (11 obras):** Porsche 911 GT3 RS, Nissan Skyline GT-R R34, Toyota Supra MK4, DeLorean DMC-12, BMW M5, Honda Civic Type R, Mazda Miata MX-5, Mercedes-AMG GT, Subaru Impreza WRC, Toyota Land Cruiser Prado, Toyota Hilux SR5.
-2. 🦸 **SUPERHÉROES (11 obras):** Spider-Man (7 diseños: Amazing Fantasy #15, Venom #316, No Way Home, Miles Morales, PS5 Advanced Suit, Spider-Verse Assemble, Green Goblin Battle) e Iron Man (4 diseños: Héroe en Batalla, Obra de Arte Stark, Geometría de Poder, Resplandor Arc).
-3. 🎬 **SERIES Y PELÍCULAS (10 obras):** Jurassic Park, Indiana Jones (Última Cruzada y Arca Perdida), El Señor de los Anillos, Breaking Bad (Química Perfecta y Traje Hazmat), El Padrino (Don Vito y Linaje Corleone), Pablo Escobar (Sneakerhead y Sonrisa Histórica).
-4. 🎨 **CUADROS PERSONALIZADOS:** Si el cliente pregunta por Anime (Dragon Ball, Naruto, etc.), videojuegos o sus propias fotos familiares, indícale amablemente que podemos fabricarle CUALQUIER imagen que desee en MDF 5.5mm o PVC 5mm.
+3. **FORMATO LIMPIO Y CONVERSACIONAL (¡CERO ASTERISCOS EN EXCESO!)**:
+   - NO escribas como un informe técnico aburrido ni llenes el texto de asteriscos (evita '***', listas plagadas de '**' o encabezados rígidos tipo '### 1.').
+   - Escribe en párrafos naturales, fluidos y limpios, como se habla en un chat real.
 
-MATRIZ OFICIAL DE 6 TAMAÑOS Y PRECIOS:
-1. Mini (14 x 21 cm) ➔ Q 25.00 (Espacios reducidos, escritorios)
-2. Pequeño (21 x 27 cm) ➔ Q 35.00 (Entradas, repisas)
-3. Portada Álbum (30 x 30 cm) ➔ Q 55.00 (Formato vinilo cuadrado para música)
-4. Mediano (30 x 45 cm) ➔ Q 65.00 (EL MÁS VENDIDO / Tamaño estrella de cabecera o pared)
-5. Grande (45 x 60 cm) ➔ Q 125.00 (Salas, piezas centrales)
-6. Gigante (60 x 100 cm) ➔ Q 210.00 (Murales y piezas imponentes)
+4. **CONVERSACIÓN HUMANA Y CULTURAL PRIMERO**:
+   - Cuando te pregunten sobre cine, actores, personajes o historias (ej: "¿Quién es Marlon Brando?", "¿Quién es Tony Stark?", "¿De qué trata El Padrino?"):
+     -> Responde como un amigo cinéfilo y culto, explicando con entusiasmo quién es y su impacto histórico.
+     -> Y si en nuestro catálogo tenemos una obra alusiva (ej: Marlon Brando -> "el-padrino-0012"), al final de tu charla menciona que tenemos esa pieza en catálogo e invoca 'recomendar_obras' para mostrar la tarjeta como referencia visual.
 
-INSTRUCCIONES DE ACCIÓN:
-1. Sé conciso, elegante y persuasivo.
-2. Si el cliente pide buscar obras o menciona una temática (autos, porsche, spiderman, breaking bad, etc.), UTILIZA la herramienta 'search_catalog' para que el sistema le muestre las tarjetas interactivas de compra.
-3. Si el cliente pide una temática no disponible en el stock prefabricado (ej: anime o fútbol), recomiéndale el servicio de Cuadros Personalizados con su propia foto.
-4. Si el cliente quiere añadir un producto, usa 'add_to_cart'.
-5. Si el cliente pide cotizar medidas personalizadas, usa 'quote_custom_poster'.
-6. Cuando el cliente confirme que desea comprar o pregunte cómo pagar, usa 'generate_whatsapp_order' para pasar el pedido listo al vendedor con el cálculo del 50% de anticipo.
-`.trim();
+5. **CONSULTAS TÉCNICAS, DE MATERIALES Y LOGÍSTICA**:
+   - Cuando pregunten sobre cómo se hacen los cuadros, la madera MDF 5.5mm, el PVC impermeable 5mm, tintas HP Látex, la cinta Tesa®, medidas o envíos:
+     -> **NO MUESTRES TARJETAS DE PÓSTERS**.
+     -> Responde de forma directa, conversacional y amena resolviendo la duda.
 
-  // If no API Key configured, use local engine
-  if (!apiKey) {
-    return handleLocalIntelligentFallback(cleanInput, knowledge, catalog, cart);
-  }
+6. **BÚSQUEDAS ESPECÍFICAS DE OBRAS**:
+   - Si la persona busca cuadros concretos (ej: "¿hay cuadros de iron man?", "cuadros de autos", "algo de Spider-Man"):
+     -> Analiza el inventario de 36 obras, elige con precisión de 1 a 3 obras y llama a 'recomendar_obras', explicando con entusiasmo por qué esa pieza le va a encantar.
 
-  // Use Gemini with a 5-second timeout and candidate fallback
-  try {
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('TIMEOUT_GEMINI')), 5000)
-    );
+7. **CUADROS PERSONALIZADOS**:
+   - Si piden algo que no está en el catálogo (artistas no listados, fotos familiares o de mascotas), ofréceles fabricarlo en madera MDF 5.5mm o PVC 5mm impermeable con calidad HP Látex en nuestro servicio de cuadros personalizados.
 
-    const geminiExecution = async () => {
-      const genAI = new GoogleGenerativeAI(apiKey);
+══════════════════════════════════════════════════════════
+DATOS DE LA TIENDA DECO VINTAGE GUATE:
+══════════════════════════════════════════════════════════
+• Empresa: Deco Vintage Guate (Guatemala). WhatsApp: +502 5998-0504.
+• Material Estándar: Madera MDF sólida de 5.5mm de espesor, rígida y con bordes pulidos (no se dobla ni necesita marcos costosos).
+• Material Impermeable: PVC Espumado de 5mm (100% resistente al agua y humedad).
+• Impresión: Tintas profesionales HP Látex micro-gota ecológicas base agua (+10 años de garantía en interiores, protección UV, sin olores). Enlace oficial: https://www.hp.com/lamerica_nsc_cnt_amer-es/printers/large-format/latex-printers.html
+• Montaje: Tiras de cinta industrial doble cara Tesa® (tesa® 65610 Invisibond) ya colocadas en el reverso para pegar en 15 segundos sin taladros ni clavos. Enlace oficial: https://www.tesa.com/es-gt/industria/tesa-65610-invisibond-one-lift.html
+• Envíos: A los 22 departamentos de Guatemala vía Guatex / Forza en 2 a 4 días hábiles.
+• Política de Pago: 50% de anticipo para ingresar a fabricación y 50% contra entrega o previo al despacho departamental.
 
-      const contents = [];
-      conversationHistory.slice(-6).forEach(msg => {
-        contents.push({
-          role: msg.sender === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.text }]
-        });
-      });
+══════════════════════════════════════════════════════════
+MEDIDAS Y PRECIOS:
+══════════════════════════════════════════════════════════
+• Mini (14 x 21 cm): Q 25.00
+• Pequeño (21 x 27 cm): Q 35.00
+• Portada de Álbum (30 x 30 cm): Q 55.00
+• Mediano (30 x 45 cm): Q 65.00 (⭐ El más recomendado y favorito para salas y cuartos)
+• Grande (45 x 60 cm): Q 125.00
+• Gigante (60 x 100 cm): Q 210.00
+• Medidas especiales: Q 0.048 por cm² en MDF 5.5mm (mínimo Q 30.00).
 
-      contents.push({
-        role: 'user',
-        parts: [{ text: cleanInput }]
-      });
+══════════════════════════════════════════════════════════
+DIRECTIVAS ACTIVAS:
+══════════════════════════════════════════════════════════
+${directives}
 
-      const candidateModels = [
-        'gemini-3.6-flash',
-        'gemini-3.5-flash',
-        'gemini-3.5-flash-lite',
-        'gemini-2.5-flash',
-        'gemini-1.5-flash'
-      ];
+══════════════════════════════════════════════════════════
+DOCUMENTOS DE CONOCIMIENTO:
+══════════════════════════════════════════════════════════
+${customDocs || 'No hay documentos adicionales.'}
 
-      let result = null;
-      let successfulModel = 'Google Gemini 3.6 Flash';
-
-      for (const modelName of candidateModels) {
-        try {
-          const model = genAI.getGenerativeModel({
-            model: modelName,
-            systemInstruction: systemInstruction,
-            tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-          });
-
-          result = await model.generateContent({
-            contents: contents,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 600
-            }
-          });
-          successfulModel = modelName;
-          break;
-        } catch (err) {
-          console.warn(`Model ${modelName} attempt:`, err.message);
-        }
-      }
-
-      if (!result) {
-        throw new Error('All Gemini candidate models failed');
-      }
-
-      return { result, successfulModel };
-    };
-
-    const { result, successfulModel } = await Promise.race([geminiExecution(), timeoutPromise]);
-
-    const response = result.response;
-    const functionCalls = response.functionCalls();
-
-    let executedActions = [];
-    let toolResults = [];
-
-    if (functionCalls && functionCalls.length > 0) {
-      for (const call of functionCalls) {
-        const actionResult = executeLocalTool(call.name, call.args, catalog, cart, onExecuteTool, cleanInput);
-        executedActions.push(actionResult);
-        toolResults.push({
-          toolName: call.name,
-          args: call.args,
-          result: actionResult
-        });
-      }
-    }
-
-    let replyText = '';
-    try {
-      replyText = response.text();
-    } catch (e) {
-      replyText = '';
-    }
-
-    if (!replyText || replyText.trim().length === 0) {
-      if (executedActions.some(a => a.type === 'catalog_matches')) {
-        replyText = '🎯 He localizado estas opciones en nuestro catálogo oficial según su solicitud. Puede verlas o agregarlas directamente a su pedido:';
-      } else if (executedActions.some(a => a.type === 'custom_quote')) {
-        replyText = '📐 He calculado los parámetros de fabricación a la medida para su cuadro:';
-      } else if (executedActions.some(a => a.type === 'whatsapp_order')) {
-        replyText = '📦 Su pedido ha sido estructurado con el 50% de anticipo. Presione el botón a continuación para despacharlo directamente con nuestro asesor por WhatsApp:';
-      } else {
-        replyText = 'Protocolos ejecutados a la perfección. ¿En qué más puedo asistirle con su pedido, señor?';
-      }
-    }
-
-    // If no catalog tool was called, but user query or Gemini response references catalog items, auto-attach scored matches
-    if (!executedActions.some(a => a.type === 'catalog_matches')) {
-      const autoMatches = searchCatalogScored(`${cleanInput} ${replyText}`, catalog.posters, 4);
-      if (autoMatches.length > 0) {
-        executedActions.push({
-          type: 'catalog_matches',
-          count: autoMatches.length,
-          posters: autoMatches
-        });
-      }
-    }
-
-    return {
-      text: replyText,
-      actions: executedActions,
-      toolResults: toolResults,
-      poweredBy: `Google Gemini (${successfulModel})`
-    };
-
-  } catch (error) {
-    console.warn('Gemini call failed or timed out, seamlessly falling back to local brain:', error.message);
-    return handleLocalIntelligentFallback(cleanInput, knowledge, catalog, cart);
-  }
+══════════════════════════════════════════════════════════
+INVENTARIO COMPLETO (36 OBRAS):
+══════════════════════════════════════════════════════════
+${postersIndex}
+`;
 }
 
-function isSimpleGreetingOrKeyword(text) {
-  const t = text.toLowerCase().trim();
-  const simpleList = [
-    'hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'que tal',
-    'saludos', 'hey', 'jarvis', 'ayuda', 'info', 'menu', 'inicio', 'gracias', 'ok'
-  ];
-  return simpleList.includes(t) || t.length <= 3;
-}
+// Execute Agent Tools
+function executeAgentTool(toolName, args, catalog) {
+  const posters = catalog.posters || [];
 
-function normalizeSearch(str) {
-  return (str || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '');
-}
-
-const SEARCH_STOP_WORDS = new Set([
-  'los', 'las', 'les', 'para', 'como', 'con', 'por', 'que', 'del', 'una', 'uno', 'unos', 'unas',
-  'este', 'esta', 'estos', 'estas', 'mis', 'sus', 'tus', 'recomiendame', 'recomienda', 'muestrame',
-  'muestra', 'tienen', 'quiero', 'cuadros', 'posters', 'poster', 'cuadro', 'obras', 'obra', 'foto',
-  'fotos', 'mejores', 'favoritos', 'ver', 'algo', 'opciones', 'algun', 'alguna', 'cuales', 'son'
-]);
-
-function searchCatalogScored(rawQuery, posters = [], maxResults = 4) {
-  const cleanQ = normalizeSearch(rawQuery);
-  const queryWords = (rawQuery || '')
-    .toLowerCase()
-    .split(/[\s,.-]+/)
-    .filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(normalizeSearch(w)));
-
-  const scored = (posters || []).map(p => {
-    let score = 0;
-    const titleNorm = normalizeSearch(p.title);
-    const subNorm = normalizeSearch(p.subtitle);
-    const catNorm = normalizeSearch(p.category);
-    const descNorm = normalizeSearch(p.description);
-    const idNorm = normalizeSearch(p.id);
-    const tagsNorm = Array.isArray(p.tags) ? normalizeSearch(p.tags.join(' ')) : '';
-    const fullNorm = `${titleNorm}${subNorm}${descNorm}${catNorm}${idNorm}${tagsNorm}`;
-
-    if (cleanQ.length > 2 && fullNorm.includes(cleanQ)) {
-      score += 100;
+  if (toolName === 'recomendar_obras') {
+    const posterIds = Array.isArray(args.posterIds) ? args.posterIds : [];
+    let matches = posters.filter(p => posterIds.includes(p.id));
+    if (matches.length === 0 && posterIds.length > 0) {
+      matches = posters.filter(p => posterIds.some(id => p.title.toLowerCase().includes(id.toLowerCase())));
     }
-
-    queryWords.forEach(w => {
-      const wNorm = normalizeSearch(w);
-      if (titleNorm.includes(wNorm)) score += 45;
-      if (subNorm.includes(wNorm)) score += 30;
-      if (catNorm.includes(wNorm)) score += 40;
-      if (idNorm.includes(wNorm)) score += 35;
-      if (tagsNorm.includes(wNorm)) score += 25;
-      if (descNorm.includes(wNorm)) score += 10;
-    });
-
-    return { poster: p, score };
-  }).filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, maxResults)
-    .map(item => item.poster);
-
-  return scored;
-}
-
-// Local Tool Executor for Gemini Function Calls
-function executeLocalTool(toolName, args, catalog, cart, onExecuteTool, cleanInput = '') {
-  if (toolName === 'search_catalog') {
-    const rawQuery = (args.query || '').trim();
-    const rawCat = (args.category || '').trim();
-    const fullSearchText = `${rawQuery} ${rawCat}`.trim();
-    const posters = (catalog && Array.isArray(catalog.posters) && catalog.posters.length > 0) ? catalog.posters : (CATALOG_POSTERS || []);
-
-    let matches = searchCatalogScored(fullSearchText, posters, args.maxResults || 4);
-
-    if (matches.length === 0 && cleanInput) {
-      matches = searchCatalogScored(cleanInput, posters, args.maxResults || 4);
-    }
-
-    if (matches.length === 0) {
-      matches = posters.filter(p => p.isFeatured || p.isBestSeller || p.category === 'AUTOS').slice(0, 4);
-    }
-
-    if (onExecuteTool) onExecuteTool('search_results', matches);
-
     return {
       type: 'catalog_matches',
-      count: matches.length,
-      posters: matches
+      posters: matches,
+      motivo: args.motivo || '',
+      summary: `🎯 Obras seleccionadas por J.A.R.V.I.S.`
     };
   }
 
-  if (toolName === 'add_to_cart') {
-    const poster = (catalog.posters || []).find(p => 
-      p.id === args.posterId || p.title.toLowerCase().includes((args.posterId || '').toLowerCase())
-    );
-    if (poster && onExecuteTool) {
-      onExecuteTool('add_to_cart', {
-        poster,
-        sizeId: args.sizeId || 'medium',
-        quantity: args.quantity || 1
-      });
-    }
-    return {
-      type: 'item_added',
-      success: !!poster,
-      posterTitle: poster ? poster.title : args.posterId
-    };
-  }
+  if (toolName === 'cotizar_personalizado') {
+    const ancho = parseFloat(args.anchoCm) || 30;
+    const alto = parseFloat(args.altoCm) || 45;
+    const rawMat = (args.material || 'mdf').toLowerCase();
+    const isPvc = rawMat.includes('pvc');
+    const isVinil = rawMat.includes('vinil');
+    const mat = isPvc ? 'pvc' : (isVinil ? 'vinil' : 'mdf');
+    const area = Math.round(ancho * alto);
+    
+    let basePrice = area * 0.048;
+    if (mat === 'pvc') basePrice = area * 0.065;
+    if (mat === 'vinil') basePrice = (area * 0.048) * 0.5;
 
-  if (toolName === 'quote_custom_poster') {
-    const width = Number(args.widthCm) || 30;
-    const height = Number(args.heightCm) || 45;
-    const area = width * height;
-    const rate = args.material === 'pvc' ? 0.058 : args.material === 'vinil' ? 0.024 : 0.048;
-    const basePrice = Math.max(30.00, area * rate);
-    const roundedPrice = Math.round(basePrice / 5) * 5;
-    const advance = roundedPrice * 0.5;
+    const finalPrice = Math.max(30.00, Math.round(basePrice));
+    const advance = Math.round(finalPrice / 2);
+
+    const quoteObj = {
+      width: ancho,
+      height: alto,
+      area: area,
+      material: isPvc ? 'PVC Espumado 5mm (Impermeable)' : (isVinil ? 'Vinil Adhesivo' : 'Madera MDF 5.5mm (Rígida)'),
+      price: finalPrice,
+      advance: advance
+    };
 
     return {
       type: 'custom_quote',
-      dimensions: `${width} x ${height} cm`,
-      areaCm2: area,
-      material: args.material || 'mdf',
-      totalPrice: roundedPrice,
-      advance50: advance
+      quote: quoteObj,
+      ancho,
+      alto,
+      material: isPvc ? 'PVC 5mm' : (isVinil ? 'Vinil' : 'MDF 5.5mm'),
+      precio: finalPrice,
+      anticipo: advance,
+      summary: `📐 Cotización personalizada: ${ancho}x${alto}cm en ${isPvc ? 'PVC' : (isVinil ? 'Vinil' : 'MDF')} ➔ Q${finalPrice}.00 (50% anticipo: Q${advance}.00)`
     };
   }
 
-  if (toolName === 'generate_whatsapp_order') {
-    const total = cart.reduce((s, i) => s + (i.price * (Number(i.quantity) || 1)), 0);
-    const deposit = total * 0.5;
-    const message = `🛍️ *PEDIDO COORDINADO CON ASISTENTE J.A.R.V.I.S.*\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `👤 *Cliente:* ${args.customerName || 'Cliente Web'}\n` +
-      `📞 *Contacto:* ${args.customerPhone || 'Por coordinar'}\n` +
-      `📝 *Notas / Cuadros:* ${args.customNotes}\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `💰 *Total:* Q${total > 0 ? total.toFixed(2) : 'A cotizar'}\n` +
-      `💳 *50% Anticipo para inicio:* Q${deposit > 0 ? deposit.toFixed(2) : 'A cotizar'}\n\n` +
-      `Hola, el asistente J.A.R.V.I.S. me ha preparado este pedido. Deseo confirmar y realizar el anticipo del 50%.`;
-
-    const encoded = encodeURIComponent(message);
-    const waUrl = `https://wa.me/50259980504?text=${encoded}`;
-
-    if (onExecuteTool) onExecuteTool('open_whatsapp', { url: waUrl, message });
-
+  if (toolName === 'agregar_al_carrito') {
+    const poster = posters.find(p => p.id === args.posterId);
     return {
-      type: 'whatsapp_order_ready',
-      url: waUrl,
-      message
+      type: 'add_to_cart',
+      poster: poster || { id: args.posterId },
+      tamano: args.tamano,
+      cantidad: args.cantidad || 1,
+      summary: `🛒 Agregado al carrito: ${poster ? poster.title : args.posterId} (${args.tamano})`
     };
   }
 
-  if (toolName === 'navigate_store') {
-    if (onExecuteTool) onExecuteTool('navigate', args);
-    return { type: 'navigated', section: args.section };
+  if (toolName === 'generar_pedido_whatsapp') {
+    const cleanPhone = '50259980504';
+    const text = encodeURIComponent(
+      `Hola Deco Vintage Guate, J.A.R.V.I.S. me ayudó a armar mi pedido:\n\n${args.detallePedido}\n\n*Deseo confirmar la disponibilidad y coordinar el 50% de anticipo.*`
+    );
+    const link = `https://wa.me/${cleanPhone}?text=${text}`;
+    return {
+      type: 'whatsapp_order',
+      link: link,
+      detalle: args.detallePedido,
+      summary: `📲 Enlace de WhatsApp generado con el 50% de anticipo calculado.`
+    };
   }
 
-  return { type: 'unknown' };
+  if (toolName === 'navegar_tienda') {
+    return {
+      type: 'navigation',
+      section: args.seccion,
+      summary: `🧭 Navegando a la sección ${args.seccion}`
+    };
+  }
+
+  return { type: 'unknown', summary: `Acción ${toolName} ejecutada.` };
 }
 
-// Ultra-fast and rich local intelligence fallback engine
-function handleLocalIntelligentFallback(userMessage, knowledge, catalog, cart) {
-  const q = (userMessage || '').toLowerCase().trim();
-  const cleanQ = normalizeSearch(q);
-  const posters = catalog.posters || [];
+// Sanitizes and formats history ensuring clean alternance of user/model messages
+function sanitizeChatHistory(history) {
+  if (!Array.isArray(history) || history.length === 0) return [];
+  
+  const formatted = [];
+  const recent = history.slice(-10);
 
-  // 1. Single letter or very short greeting
-  if (!q || q.length <= 2 || q === 'hola' || q === 'buenas' || q === 'hey' || q === 'jarvis') {
+  for (const msg of recent) {
+    const text = (msg.text || '').trim();
+    if (!text) continue;
+
+    const role = (msg.sender === 'user' || msg.role === 'user') ? 'user' : 'model';
+
+    // Must start with user
+    if (formatted.length === 0) {
+      if (role === 'user') {
+        formatted.push({ role: 'user', parts: [{ text }] });
+      }
+      continue;
+    }
+
+    const lastRole = formatted[formatted.length - 1].role;
+    if (role !== lastRole) {
+      formatted.push({ role, parts: [{ text }] });
+    } else {
+      // Append text to previous message if same role to maintain strict alternation
+      formatted[formatted.length - 1].parts[0].text += `\n${text}`;
+    }
+  }
+
+  // Gemini requires history before sendMessage to end on a 'model' turn so the new message is 'user'
+  if (formatted.length > 0 && formatted[formatted.length - 1].role === 'user') {
+    formatted.pop();
+  }
+
+  return formatted;
+}
+
+// Main J.A.R.V.I.S. Query Function (Pure dynamic cognitive reasoning, 0 pre-canned templates)
+export async function askJarvis(queryOrOptions, history = []) {
+  let userQuery = '';
+  let conversationHistory = history;
+  let onExecuteTool = null;
+
+  if (typeof queryOrOptions === 'string') {
+    userQuery = queryOrOptions;
+    conversationHistory = history;
+  } else if (queryOrOptions && typeof queryOrOptions === 'object') {
+    userQuery = queryOrOptions.userMessage || queryOrOptions.prompt || queryOrOptions.query || '';
+    conversationHistory = queryOrOptions.conversationHistory || history;
+    onExecuteTool = queryOrOptions.onExecuteTool || null;
+  }
+
+  userQuery = (userQuery || '').trim();
+
+  const apiKey = getGeminiApiKey();
+  const knowledge = getStoreKnowledge();
+  const posters = getStoredPosters();
+  const categories = getStoredCategories();
+  const catalog = { posters, categories };
+
+  if (!apiKey) {
     return {
-      text: `👋 Saludos, soy **J.A.R.V.I.S.**, el asistente táctico de Deco Vintage Guate.\n\nPuedo ayudarle a:\n• 🔍 **Buscar cuadros:** Escriba temas como *Autos, Spider-Man, Iron Man, Breaking Bad, El Padrino, Jurassic Park*.\n• 📐 **Medidas y Precios:** Conozca los 6 tamaños en MDF 5.5mm (desde Q25.00).\n• 🎨 **Cuadros Personalizados:** Cotice cualquier medida especial con sus propias fotos.\n• 📦 **Gestionar su Pedido:** Dejarlo listo para coordinar el 50% de anticipo por WhatsApp.`,
-      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
+      text: 'No tengo configurada mi clave de acceso a la inteligencia artificial. Por favor ingresa a Administración para conectar la API Key de Google Gemini.',
+      actions: []
     };
   }
 
-  // 2. Pricing & Sizes
-  if (q.includes('precio') || q.includes('cuanto') || q.includes('costo') || q.includes('medida') || q.includes('tamaño') || q.includes('vale')) {
-    const sizesText = (knowledge.standardSizes || []).map(s => `• **${s.name} (${s.dimensions})**: Q ${s.price.toFixed(2)} — _${s.bestFor}_`).join('\n');
-    return {
-      text: `📊 **TABLA OFICIAL DE TAMAÑOS Y PRECIOS (MDF 5.5mm RÍGIDO):**\n\n${sizesText}\n\n✨ *Incluye cinta industrial Tessa en el dorso para colgar al instante sin clavos.* ¿Desea que le recomiende una obra para su espacio?`,
-      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
-    };
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const systemInstruction = buildSystemInstruction(knowledge, posters, categories);
+  const formattedHistory = sanitizeChatHistory(conversationHistory);
+
+  let lastError = null;
+
+  // Try fast active Gemini models with low latency (max 8s per attempt)
+  for (const modelName of ACTIVE_GEMINI_MODELS) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemInstruction,
+        tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+      });
+
+      const chat = model.startChat({
+        history: formattedHistory
+      });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT_8S')), 8000)
+      );
+
+      const result = await Promise.race([chat.sendMessage(userQuery), timeoutPromise]);
+      const response = result.response;
+      const functionCalls = response.functionCalls();
+      let replyText = response.text ? response.text() : '';
+      const executedActions = [];
+
+      if (functionCalls && functionCalls.length > 0) {
+        for (const call of functionCalls) {
+          console.log(`[J.A.R.V.I.S. Tool Executed (${modelName})] ${call.name}:`, call.args);
+          const actionResult = executeAgentTool(call.name, call.args, catalog);
+          executedActions.push(actionResult);
+
+          if (onExecuteTool && typeof onExecuteTool === 'function') {
+            try {
+              onExecuteTool(actionResult.type, actionResult);
+            } catch (cbErr) {
+              console.warn('[J.A.R.V.I.S.] Callback error:', cbErr);
+            }
+          }
+
+          if (call.name === 'recomendar_obras' && call.args.motivo) {
+            if (!replyText || replyText.trim().length === 0) {
+              replyText = `¡Con gusto! ${call.args.motivo}\n\nAquí tienes la ficha para que puedas ver todos los detalles o agregarla a tu pedido:`;
+            }
+          }
+
+          if (call.name === 'cotizar_personalizado') {
+            const q = actionResult.quote;
+            if (!replyText || replyText.trim().length === 0) {
+              replyText = `¡Listo! He calculado la cotización exacta para tu cuadro personalizado de ${q.width} x ${q.height} cm en ${q.material}.\n\nAquí abajo tienes la tarjeta con el desglose del 50% de anticipo y el botón directo para enviar tu diseño por WhatsApp:`;
+            }
+          }
+        }
+      }
+
+      // Default contextual text if model only returned tool calls without direct text
+      if (!replyText || replyText.trim().length === 0) {
+        if (executedActions.some(a => a.type === 'catalog_matches')) {
+          replyText = 'Aquí tienes las opciones seleccionadas de nuestro catálogo según lo que me comentas:';
+        } else if (executedActions.some(a => a.type === 'custom_quote')) {
+          const q = executedActions.find(a => a.type === 'custom_quote')?.quote;
+          replyText = q
+            ? `Aquí tienes los datos de la cotización para tu cuadro de ${q.width}x${q.height} cm en ${q.material}:`
+            : 'Aquí tienes los datos de la cotización para tu cuadro personalizado:';
+        } else {
+          replyText = '¿Hay algo más en lo que te pueda asesorar para decorar tu espacio?';
+        }
+      }
+
+      // Clean any accidental "señor" or excessive formatting artifacts from replyText
+      replyText = replyText
+        .replace(/,\s*señor\b/gi, '')
+        .replace(/\bseñor\b/gi, '')
+        .replace(/,\s*caballero\b/gi, '')
+        .replace(/\bcaballero\b/gi, '')
+        .replace(/\*{3,}/g, '')
+        .trim();
+
+      return {
+        text: replyText,
+        actions: executedActions,
+        poweredBy: modelName
+      };
+
+    } catch (modelErr) {
+      console.warn(`[J.A.R.V.I.S.] Reintentando tras fallo en ${modelName}:`, modelErr.message);
+      lastError = modelErr;
+      // Immediately try next active model without delay
+    }
   }
 
-  // 3. Materials & Quality
-  if (q.includes('material') || q.includes('mdf') || q.includes('calidad') || q.includes('tessa') || q.includes('pegamento') || q.includes('impresion') || q.includes('pvc')) {
-    return {
-      text: `🛡️ **ESPECIFICACIONES TÉCNICAS DE FABRICACIÓN:**\n\n1. **Base de Madera MDF 5.5mm:** Rígida, sólida y con acabado pulido.\n2. **Tintas HP Látex HD:** Definición fotográfica ecológica sin olores, resistente al agua y con protección UV anti-decoloración.\n3. **Cinta Tessa Industrial:** Doble contacto de alta adherencia colocada en el dorso.\n4. **Opciones Especiales:** También fabricamos en PVC espumado 5mm (100% impermeable) o solo vinil adhesivo (50% del valor).`,
-      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
-    };
-  }
-
-  // 4. Shipping & Delivery
-  if (q.includes('envio') || q.includes('entrega') || q.includes('departamento') || q.includes('guatemala') || q.includes('tiempo')) {
-    return {
-      text: `🚚 **COBERTURA & POLÍTICAS DE ENTREGA:**\n\n• **Cobertura:** Llegamos a todos los 22 departamentos de Guatemala.\n• **Tiempo de Entrega:** 2 a 4 días hábiles desde la confirmación.\n• **Política de Pago:** 50% de anticipo para iniciar manufactura y 50% saldo contra entrega o previo a envío.\n• **Contacto directo:** WhatsApp 5998-0504.`,
-      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
-    };
-  }
-
-  // 5. Semantic Catalog Search with scored ranking
-  const found = searchCatalogScored(q, posters, 4);
-
-  if (found.length > 0) {
-    return {
-      text: `🎯 He localizado estas obras destacadas que coinciden con su consulta en nuestro catálogo oficial:`,
-      actions: [{ type: 'catalog_matches', count: found.length, posters: found }],
-      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
-    };
-  }
-
-  // 6. Customization advisory if category not in current stock (e.g. anime, futbol, etc.)
-  if (q.includes('anime') || q.includes('dragon ball') || q.includes('naruto') || q.includes('one piece') || q.includes('futbol') || q.includes('messi') || q.includes('cr7')) {
-    return {
-      text: `🎨 **CUADROS PERSONALIZADOS A MEDIDA:**\n\nActualmente nuestras colecciones listas en catálogo son **Autos Deportivos**, **Superhéroes (Spider-Man e Iron Man)** y **Series y Películas**.\n\n✨ **¡Pero podemos fabricar cualquier cuadro de Anime, Deportes o tu foto favorita!**\nSolo envíanos la imagen que deseas por WhatsApp y te lo fabricamos en madera MDF 5.5mm o PVC impermeable en cualquiera de nuestros 6 tamaños oficiales (desde Q25.00).`,
-      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
-    };
-  }
-
-  // 7. General fallback with best sellers
-  const sampleBestSellers = posters.filter(p => p.isBestSeller || p.category === 'AUTOS').slice(0, 3);
+  // If ALL models failed (e.g. total lack of internet or invalid API key), respond dynamically with natural honesty (NO pre-canned templates)
+  console.error('[J.A.R.V.I.S.] Todos los modelos de IA reportaron error:', lastError?.message);
+  
   return {
-    text: `Sistemas en línea. No encontré una coincidencia exacta para "${userMessage}", pero puedo mostrarle nuestras obras más destacadas o cotizarle cualquier medida personalizada:`,
-    actions: sampleBestSellers.length > 0 ? [{ type: 'catalog_matches', count: sampleBestSellers.length, posters: sampleBestSellers }] : [],
-    poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
+    text: `Tuve una pequeña intermitencia momentánea al conectar con mi servidor de inteligencia artificial de Google. Por favor intenta enviarme tu mensaje nuevamente en unos segundos para que pueda responderte con normalidad.`,
+    actions: [],
+    isError: true,
+    errorDetail: lastError?.message
   };
 }

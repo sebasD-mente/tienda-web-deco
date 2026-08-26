@@ -3,7 +3,8 @@ import {
   Plus, Edit3, Trash2, Upload, Download, RotateCcw, Check, 
   Search, ArrowLeft, Star, Tag, Layers, Sliders, Shield,
   CheckCircle2, AlertCircle, Eye, Image as ImageIcon, LogOut,
-  Package, Database, X, Sparkles, Bot, Key, MessageSquare
+  Package, Database, X, Sparkles, Bot, Key, MessageSquare,
+  FileText, HelpCircle, Play, Zap, Save, RefreshCw, ExternalLink
 } from 'lucide-react';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 import { 
@@ -22,7 +23,20 @@ import {
 } from '../utils/catalogStorage';
 import { optimizeImageFile } from '../utils/imageOptimizer';
 import { getGeminiApiKey, saveGeminiApiKey } from '../utils/jarvisBrain';
-import { getStoreKnowledge, saveStoreKnowledge, addOwnerDirective, removeOwnerDirective } from '../data/storeKnowledge';
+import { 
+  getStoreKnowledge, 
+  saveStoreKnowledge, 
+  saveQuickPrompts,
+  addCustomDocument,
+  updateCustomDocument,
+  removeCustomDocument,
+  addReferenceImage,
+  removeReferenceImage,
+  addOwnerDirective, 
+  removeOwnerDirective,
+  exportJarvisMemoryAsJSON,
+  importJarvisMemoryFromJSON
+} from '../data/storeKnowledge';
 
 export default function AdminDashboard({ onNavigate, onLogout }) {
   const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'create' | 'franchises' | 'categories' | 'jarvis' | 'backup'
@@ -34,8 +48,29 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
   
   // J.A.R.V.I.S. AI & Knowledge Base State
   const [geminiKeyInput, setGeminiKeyInput] = useState(getGeminiApiKey());
-  const [knowledgeData, setKnowledgeData] = useState(getStoreKnowledge());
+  const [knowledgeData, setKnowledgeData] = useState(() => getStoreKnowledge());
   const [newDirectiveText, setNewDirectiveText] = useState('');
+  const [jarvisSubTab, setJarvisSubTab] = useState('greeting'); // 'greeting' | 'prompts' | 'docs' | 'images' | 'directives' | 'apikey' | 'backup'
+  const [greetingInput, setGreetingInput] = useState(() => getStoreKnowledge().initialGreeting || '');
+  
+  // Quick Prompts State
+  const [promptLabelInput, setPromptLabelInput] = useState('');
+  const [promptTextInput, setPromptTextInput] = useState('');
+  const [editingPromptId, setEditingPromptId] = useState(null);
+
+  // Custom Docs State
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [docModalId, setDocModalId] = useState(null);
+  const [docTitleInput, setDocTitleInput] = useState('');
+  const [docCategoryInput, setDocCategoryInput] = useState('Políticas');
+  const [docContentInput, setDocContentInput] = useState('');
+
+  // Reference Images State
+  const [refImageTitle, setRefImageTitle] = useState('');
+  const [refImageDesc, setRefImageDesc] = useState('');
+  const [isUploadingRefImage, setIsUploadingRefImage] = useState(false);
+  const refImageInputRef = useRef(null);
+  const jarvisMemoryInputRef = useRef(null);
   
   // Notification toast
   const [toast, setToast] = useState(null);
@@ -229,7 +264,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
         sizeBadge,
         availableSizes: selectedSizeIds,
         priceDisplay,
-        description: description.trim() || `Impresión fotográfica de alta definición sobre base sólida de MDF 5.5mm. Incluye cinta Tessa de montaje rápido.`
+        description: description.trim() || `Impresión fotográfica de alta definición sobre base sólida de MDF 5.5mm. Incluye cinta Tesa de montaje rápido.`
       };
 
       await saveOrUpdatePoster(posterData);
@@ -371,24 +406,191 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
     }
   };
 
-  // J.A.R.V.I.S. Handlers
+  // J.A.R.V.I.S. Command Center Handlers
+  const reloadKnowledge = () => {
+    const k = getStoreKnowledge();
+    setKnowledgeData(k);
+    setGreetingInput(k.initialGreeting || '');
+  };
+
   const handleSaveApiKey = () => {
     saveGeminiApiKey(geminiKeyInput);
     showToast('¡Clave de Google Gemini API guardada con éxito!', 'success');
   };
 
-  const handleAddDirective = () => {
+  const handleSaveGreeting = async () => {
+    if (!greetingInput.trim()) return;
+    const current = getStoreKnowledge();
+    await saveStoreKnowledge({ ...current, initialGreeting: greetingInput.trim() });
+    reloadKnowledge();
+    showToast('¡Saludo de bienvenida de J.A.R.V.I.S. guardado!', 'success');
+  };
+
+  const handleAddOrUpdatePrompt = async () => {
+    if (!promptLabelInput.trim() || !promptTextInput.trim()) {
+      showToast('Por favor completa la etiqueta visible y la consulta.', 'error');
+      return;
+    }
+    const current = getStoreKnowledge();
+    let prompts = current.quickPrompts || [];
+    if (editingPromptId) {
+      prompts = prompts.map(p => p.id === editingPromptId ? { ...p, label: promptLabelInput.trim(), prompt: promptTextInput.trim() } : p);
+      setEditingPromptId(null);
+      showToast('Botón rápido actualizado.', 'success');
+    } else {
+      const newPrompt = {
+        id: 'qp-' + Date.now(),
+        label: promptLabelInput.trim(),
+        prompt: promptTextInput.trim()
+      };
+      prompts = [...prompts, newPrompt];
+      showToast('Nuevo botón rápido agregado a J.A.R.V.I.S.', 'success');
+    }
+    await saveQuickPrompts(prompts);
+    setPromptLabelInput('');
+    setPromptTextInput('');
+    reloadKnowledge();
+  };
+
+  const handleEditPrompt = (p) => {
+    setEditingPromptId(p.id);
+    setPromptLabelInput(p.label);
+    setPromptTextInput(p.prompt);
+  };
+
+  const handleDeletePrompt = async (id) => {
+    const current = getStoreKnowledge();
+    const prompts = (current.quickPrompts || []).filter(p => p.id !== id);
+    await saveQuickPrompts(prompts);
+    reloadKnowledge();
+    showToast('Botón rápido eliminado.', 'info');
+  };
+
+  const handleOpenDocModal = (doc = null) => {
+    if (doc) {
+      setDocModalId(doc.id);
+      setDocTitleInput(doc.title || '');
+      setDocCategoryInput(doc.category || 'Políticas');
+      setDocContentInput(doc.content || '');
+    } else {
+      setDocModalId(null);
+      setDocTitleInput('');
+      setDocCategoryInput('Políticas');
+      setDocContentInput('');
+    }
+    setShowDocModal(true);
+  };
+
+  const handleSaveDoc = async () => {
+    if (!docTitleInput.trim() || !docContentInput.trim()) {
+      showToast('Por favor ingresa el título y contenido del documento.', 'error');
+      return;
+    }
+    if (docModalId) {
+      await updateCustomDocument(docModalId, {
+        title: docTitleInput.trim(),
+        category: docCategoryInput.trim(),
+        content: docContentInput.trim()
+      });
+      showToast('Documento de conocimiento actualizado.', 'success');
+    } else {
+      await addCustomDocument({
+        title: docTitleInput.trim(),
+        category: docCategoryInput.trim(),
+        content: docContentInput.trim()
+      });
+      showToast('Nuevo documento asimilado por J.A.R.V.I.S.', 'success');
+    }
+    setShowDocModal(false);
+    reloadKnowledge();
+  };
+
+  const handleDeleteDoc = async (id) => {
+    if (window.confirm('¿Seguro que deseas eliminar este documento del conocimiento de J.A.R.V.I.S.?')) {
+      await removeCustomDocument(id);
+      reloadKnowledge();
+      showToast('Documento eliminado de J.A.R.V.I.S.', 'info');
+    }
+  };
+
+  const handleUploadRefImageFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingRefImage(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target.result;
+        let savedUrl = dataUrl;
+        try {
+          const res = await fetch('/api/jarvis/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dataUrl, title: refImageTitle || 'referencia' })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.url) savedUrl = data.url;
+          }
+        } catch (apiErr) {}
+
+        await addReferenceImage({
+          title: refImageTitle.trim() || file.name.replace(/\.[^/.]+$/, ''),
+          url: savedUrl,
+          description: refImageDesc.trim() || 'Foto de referencia de producto o montaje en pared.'
+        });
+
+        setIsUploadingRefImage(false);
+        setRefImageTitle('');
+        setRefImageDesc('');
+        reloadKnowledge();
+        showToast('¡Imagen de referencia registrada en J.A.R.V.I.S.!', 'success');
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setIsUploadingRefImage(false);
+      showToast('Error al procesar imagen: ' + err.message, 'error');
+    }
+  };
+
+  const handleDeleteRefImage = async (id) => {
+    await removeReferenceImage(id);
+    reloadKnowledge();
+    showToast('Imagen de referencia eliminada.', 'info');
+  };
+
+  const handleAddDirective = async () => {
     if (!newDirectiveText.trim()) return;
-    const updated = addOwnerDirective(newDirectiveText.trim());
-    setKnowledgeData(prev => ({ ...prev, ownerDirectives: updated }));
+    await addOwnerDirective(newDirectiveText.trim());
     setNewDirectiveText('');
+    reloadKnowledge();
     showToast('¡Nueva directiva agregada a J.A.R.V.I.S.!', 'success');
   };
 
-  const handleRemoveDirective = (idx) => {
-    const updated = removeOwnerDirective(idx);
-    setKnowledgeData(prev => ({ ...prev, ownerDirectives: updated }));
+  const handleRemoveDirective = async (idx) => {
+    await removeOwnerDirective(idx);
+    reloadKnowledge();
     showToast('Directiva eliminada de J.A.R.V.I.S.', 'info');
+  };
+
+  const handleImportJarvisMemory = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const res = await importJarvisMemoryFromJSON(event.target.result);
+        if (res.success) {
+          reloadKnowledge();
+          showToast('¡Memoria de entrenamiento de J.A.R.V.I.S. restaurada!', 'success');
+        } else {
+          showToast('Error al importar memoria: ' + res.error, 'error');
+        }
+      };
+      reader.readAsText(file);
+    } catch (err) {
+      showToast('Error al leer archivo: ' + err.message, 'error');
+    }
   };
 
   return (
@@ -1991,219 +2193,1000 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
           )}
 
           {/* ======================================================== */}
-          {/* TAB 5: IA J.A.R.V.I.S. & BASE DE CONOCIMIENTO            */}
+          {/* TAB 5: CENTRO DE CONTROL Y ENTRENAMIENTO J.A.R.V.I.S.    */}
           {/* ======================================================== */}
           {activeTab === 'jarvis' && (
-            <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ maxWidth: '1080px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               
-              {/* 1. API Key Config Card */}
-              <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* J.A.R.V.I.S. Header HUD */}
+              <div className="glass-card" style={{
+                padding: 'clamp(20px, 4vw, 28px)',
+                background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(6, 10, 20, 0.95) 100%)',
+                border: '1px solid rgba(0, 242, 254, 0.35)',
+                boxShadow: '0 0 30px rgba(0, 242, 254, 0.12)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: 'rgba(0, 242, 254, 0.12)',
-                      border: '1px solid rgba(0, 242, 254, 0.35)',
+                      width: '54px',
+                      height: '54px',
+                      borderRadius: '14px',
+                      background: 'radial-gradient(circle, rgba(0, 242, 254, 0.25) 0%, rgba(6, 10, 20, 0.9) 100%)',
+                      border: '1px solid var(--accent-cyan)',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      boxShadow: '0 0 20px rgba(0, 242, 254, 0.4)'
                     }}>
-                      <Bot size={22} color="var(--accent-cyan)" />
+                      <Bot size={30} color="var(--accent-cyan)" />
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
-                        Conexión de IA J.A.R.V.I.S. (Google Gemini)
-                      </h3>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
-                        Conecta tu clave de Google Gemini API para activar razonamiento autónomo y funciones de ventas en vivo.
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 900, color: '#fff', margin: 0 }}>
+                          Centro de Control & Entrenamiento <span className="text-gradient-cyan">J.A.R.V.I.S.</span>
+                        </h2>
+                      </div>
+                      <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
+                        Gestiona el comportamiento, saludos, botones de sugerencia, manuales de conocimiento e imágenes de referencia de tu agente de IA.
                       </p>
                     </div>
                   </div>
 
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: geminiKeyInput ? 'rgba(0, 245, 160, 0.12)' : 'rgba(234, 179, 8, 0.12)',
-                    border: geminiKeyInput ? '1px solid rgba(0, 245, 160, 0.35)' : '1px solid rgba(234, 179, 8, 0.35)',
-                    color: geminiKeyInput ? '#00f5a0' : '#eab308',
-                    padding: '4px 12px',
-                    borderRadius: 'var(--radius-full)',
-                    fontSize: '0.74rem',
-                    fontWeight: 800
-                  }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: geminiKeyInput ? '#00f5a0' : '#eab308' }} />
-                    {geminiKeyInput ? 'MOTOR GEMINI 1.5 FLASH CONECTADO' : 'MODO LOCAL DE RESERVA (SIN API KEY)'}
-                  </span>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: geminiKeyInput ? 'rgba(0, 245, 160, 0.12)' : 'rgba(234, 179, 8, 0.12)',
+                      border: geminiKeyInput ? '1px solid rgba(0, 245, 160, 0.4)' : '1px solid rgba(234, 179, 8, 0.4)',
+                      color: geminiKeyInput ? '#00f5a0' : '#eab308',
+                      padding: '6px 14px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.78rem',
+                      fontWeight: 800,
+                      letterSpacing: '0.04em'
+                    }}>
+                      <span style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: geminiKeyInput ? '#00f5a0' : '#eab308',
+                        boxShadow: geminiKeyInput ? '0 0 10px #00f5a0' : 'none'
+                      }} />
+                      {geminiKeyInput ? 'GEMINI 3.6 FLASH ACTIVO' : 'MODO LOCAL ASISTIDO'}
+                    </span>
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
-                    <input
-                      type="password"
-                      placeholder="Pega aquí tu clave Gemini API (ej: AIzaSy...)"
-                      value={geminiKeyInput}
-                      onChange={(e) => setGeminiKeyInput(e.target.value)}
+                {/* Sub-Navigation Tabs */}
+                <div style={{
+                  marginTop: '22px',
+                  display: 'flex',
+                  gap: '8px',
+                  overflowX: 'auto',
+                  paddingBottom: '4px',
+                  scrollbarWidth: 'none'
+                }}>
+                  {[
+                    { id: 'greeting', label: '💬 Saludo Inicial', icon: MessageSquare },
+                    { id: 'prompts', label: '🔘 Botones y Atajos', icon: Zap },
+                    { id: 'docs', label: '📚 Documentos y Manuales', icon: FileText, count: (knowledgeData.customDocuments || []).length },
+                    { id: 'images', label: '🖼️ Imágenes de Referencia', icon: ImageIcon, count: (knowledgeData.referenceImages || []).length },
+                    { id: 'directives', label: '⚡ Directivas del Dueño', icon: Sparkles, count: (knowledgeData.ownerDirectives || []).length },
+                    { id: 'apikey', label: '🔌 Conexión Gemini API', icon: Key },
+                    { id: 'backup', label: '💾 Respaldo JSON', icon: Database }
+                  ].map(tab => {
+                    const Icon = tab.icon;
+                    const isActive = jarvisSubTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setJarvisSubTab(tab.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          background: isActive ? 'var(--grad-cyan)' : 'rgba(255, 255, 255, 0.04)',
+                          border: isActive ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.08)',
+                          color: isActive ? '#040609' : '#ffffff',
+                          fontWeight: 800,
+                          fontSize: '0.78rem',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease',
+                          boxShadow: isActive ? '0 0 14px rgba(0, 242, 254, 0.35)' : 'none'
+                        }}
+                      >
+                        <Icon size={14} />
+                        <span>{tab.label}</span>
+                        {typeof tab.count === 'number' && (
+                          <span style={{
+                            background: isActive ? '#040609' : 'rgba(0, 242, 254, 0.2)',
+                            color: isActive ? '#00f2fe' : '#ffffff',
+                            padding: '1px 6px',
+                            borderRadius: '10px',
+                            fontSize: '0.7rem',
+                            fontWeight: 900
+                          }}>
+                            {tab.count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SUBTAB 1: SALUDO INICIAL */}
+              {jarvisSubTab === 'greeting' && (
+                <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <MessageSquare size={22} color="var(--accent-cyan)" />
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                      Mensaje de Saludo y Bienvenida Inicial
+                    </h3>
+                  </div>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.4' }}>
+                    Este es el primer mensaje que J.A.R.V.I.S. emite en cuanto el cliente abre el chat. Puedes adaptarlo para eventos especiales, ofertas del mes o campañas comerciales.
+                  </p>
+
+                  <div style={{ marginBottom: '18px' }}>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Texto del Saludo Inicial:
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={greetingInput}
+                      onChange={(e) => setGreetingInput(e.target.value)}
+                      placeholder="Escribe el saludo de bienvenida de J.A.R.V.I.S...."
                       style={{
                         width: '100%',
-                        padding: '11px 14px 11px 38px',
+                        padding: '14px',
+                        borderRadius: '10px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid rgba(0, 242, 254, 0.3)',
+                        color: '#ffffff',
+                        fontSize: '0.9rem',
+                        lineHeight: '1.5',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        resize: 'vertical'
+                      }}
+                    />
+                  </div>
+
+                  {/* Live Bubble Preview */}
+                  <div style={{
+                    padding: '16px',
+                    borderRadius: '12px',
+                    background: 'rgba(0, 242, 254, 0.04)',
+                    border: '1px dashed rgba(0, 242, 254, 0.3)',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                      👁️ Vista Previa en el Chat del Cliente:
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                      <div style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        background: 'rgba(0, 242, 254, 0.2)',
+                        border: '1px solid var(--accent-cyan)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <Bot size={15} color="var(--accent-cyan)" />
+                      </div>
+                      <div style={{
+                        background: 'rgba(6, 10, 20, 0.9)',
+                        border: '1px solid rgba(0, 242, 254, 0.25)',
+                        padding: '12px 16px',
+                        borderRadius: '0 12px 12px 12px',
+                        fontSize: '0.85rem',
+                        color: '#e6edf3',
+                        lineHeight: '1.45'
+                      }}>
+                        {greetingInput || 'Escribe un saludo arriba para previsualizarlo...'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={handleSaveGreeting}
+                      className="btn-cyan"
+                      style={{ padding: '10px 24px', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                      <Save size={16} />
+                      <span>Guardar Saludo Instantáneo</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 2: BOTONES Y ATAJOS RÁPIDOS */}
+              {jarvisSubTab === 'prompts' && (
+                <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <Zap size={22} color="var(--accent-cyan)" />
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                      Botones de Sugerencia Rápida (Chips Inferiores)
+                    </h3>
+                  </div>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.4' }}>
+                    Estos botones aparecen en la barra inferior del chat de J.A.R.V.I.S. Al hacer clic en ellos, el cliente envía automáticamente la consulta configurada.
+                  </p>
+
+                  {/* Add / Edit Form */}
+                  <div style={{
+                    padding: '18px',
+                    borderRadius: '12px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(0, 242, 254, 0.2)',
+                    marginBottom: '24px'
+                  }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fff', margin: '0 0 12px 0' }}>
+                      {editingPromptId ? '✏️ Editar Botón Tecnológico' : '➕ Agregar Nuevo Botón Tecnológico'}
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                          Texto del Botón Tecnológico:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="ej: Colección de Autos"
+                          value={promptLabelInput}
+                          onChange={(e) => setPromptLabelInput(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            color: '#fff',
+                            fontSize: '0.85rem',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                          Consulta que enviará el cliente:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="ej: Recomiéndame los mejores cuadros de autos deportivos"
+                          value={promptTextInput}
+                          onChange={(e) => setPromptTextInput(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            color: '#fff',
+                            fontSize: '0.85rem',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      {editingPromptId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingPromptId(null);
+                            setPromptLabelInput('');
+                            setPromptTextInput('');
+                          }}
+                          className="btn-secondary"
+                          style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleAddOrUpdatePrompt}
+                        className="btn-cyan"
+                        style={{ padding: '8px 20px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        {editingPromptId ? <Check size={15} /> : <Plus size={15} />}
+                        <span>{editingPromptId ? 'Actualizar Botón' : 'Guardar Botón'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* List of Active Prompts */}
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '12px' }}>
+                    Botones Activos en el Chat:
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {(knowledgeData.quickPrompts || []).map((qp, idx) => (
+                      <div
+                        key={qp.id || idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          borderRadius: '10px',
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid rgba(0, 242, 254, 0.15)',
+                          flexWrap: 'wrap'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px' }}>
+                          <span style={{
+                            background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.12) 0%, rgba(5, 12, 24, 0.9) 100%)',
+                            color: '#ffffff',
+                            border: '1px solid rgba(0, 242, 254, 0.35)',
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            fontSize: '0.76rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.03em',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: '0 0 10px rgba(0, 242, 254, 0.15)'
+                          }}>
+                            <span style={{ width: '5px', height: '5px', borderRadius: '1px', background: '#00f2fe', boxShadow: '0 0 5px #00f2fe' }} />
+                            {qp.label}
+                          </span>
+                          <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                            ➔ "{qp.prompt}"
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleEditPrompt(qp)}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.06)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              color: '#fff',
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '0.75rem'
+                            }}
+                          >
+                            <Edit3 size={13} />
+                            <span>Editar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePrompt(qp.id)}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#ef4444',
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '0.75rem'
+                            }}
+                          >
+                            <Trash2 size={13} />
+                            <span>Eliminar</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 3: DOCUMENTOS Y MANUALES DE CONOCIMIENTO */}
+              {jarvisSubTab === 'docs' && (
+                <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                        <FileText size={22} color="var(--accent-cyan)" />
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                          Base de Conocimiento y Manuales de J.A.R.V.I.S.
+                        </h3>
+                      </div>
+                      <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
+                        Todo documento que agregues aquí es asimilado de forma inmediata por Gemini 3.6 Flash.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDocModal()}
+                      className="btn-cyan"
+                      style={{ padding: '9px 18px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Plus size={16} />
+                      <span>Nuevo Documento</span>
+                    </button>
+                  </div>
+
+                  {/* Grid of Knowledge Documents */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginTop: '16px' }}>
+                    {(knowledgeData.customDocuments || []).map((doc, idx) => (
+                      <div
+                        key={doc.id || idx}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid rgba(0, 242, 254, 0.2)',
+                          borderRadius: '12px',
+                          padding: '18px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: '12px'
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <span style={{
+                              background: 'rgba(0, 242, 254, 0.12)',
+                              color: 'var(--accent-cyan)',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.7rem',
+                              fontWeight: 800,
+                              textTransform: 'uppercase'
+                            }}>
+                              {doc.category || 'General'}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                              {doc.dateAdded || 'Registrado'}
+                            </span>
+                          </div>
+
+                          <h4 style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', margin: '0 0 8px 0' }}>
+                            {doc.title}
+                          </h4>
+
+                          <p style={{
+                            fontSize: '0.8rem',
+                            color: 'var(--text-secondary)',
+                            margin: 0,
+                            lineHeight: '1.45',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 4,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}>
+                            {doc.content}
+                          </p>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDocModal(doc)}
+                            className="btn-secondary"
+                            style={{ flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <Edit3 size={13} />
+                            <span>Editar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDoc(doc.id)}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#ef4444',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              cursor: 'pointer'
+                            }}
+                            title="Eliminar documento"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 4: IMÁGENES DE REFERENCIA */}
+              {jarvisSubTab === 'images' && (
+                <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <ImageIcon size={22} color="var(--accent-cyan)" />
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                      Galería de Referencia e Imágenes de Contexto
+                    </h3>
+                  </div>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.4' }}>
+                    Sube fotografías reales de cuadros montados en salas, fotos de eventos o empaques. J.A.R.V.I.S. conocerá estas referencias para explicarlas a los clientes.
+                  </p>
+
+                  {/* Upload Form */}
+                  <div style={{
+                    padding: '18px',
+                    borderRadius: '12px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(0, 242, 254, 0.2)',
+                    marginBottom: '24px'
+                  }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fff', margin: '0 0 12px 0' }}>
+                      📸 Subir Nueva Foto de Referencia
+                    </h4>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                          Título de la Referencia:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="ej: Montaje en Sala Gamer con Cinta Tesa"
+                          value={refImageTitle}
+                          onChange={(e) => setRefImageTitle(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            color: '#fff',
+                            fontSize: '0.85rem',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                          Descripción de Contexto:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="ej: Muestra cómo queda adherido el MDF 5.5mm firmemente a la pared sin clavos."
+                          value={refImageDesc}
+                          onChange={(e) => setRefImageDesc(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            color: '#fff',
+                            fontSize: '0.85rem',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <input
+                      type="file"
+                      ref={refImageInputRef}
+                      onChange={handleUploadRefImageFile}
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                    />
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        onClick={() => refImageInputRef.current?.click()}
+                        disabled={isUploadingRefImage}
+                        className="btn-cyan"
+                        style={{ padding: '9px 20px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Upload size={16} />
+                        <span>{isUploadingRefImage ? 'Subiendo y Optimizando...' : 'Seleccionar Foto y Registrar'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Grid of Reference Images */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+                    {(knowledgeData.referenceImages || []).map((img, idx) => (
+                      <div
+                        key={img.id || idx}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid rgba(0, 242, 254, 0.15)',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}
+                      >
+                        <div style={{ height: '160px', background: '#070c18', overflow: 'hidden' }}>
+                          <img
+                            src={img.url}
+                            alt={img.title}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => { e.target.src = '/posters/wallpaper.jpg'; }}
+                          />
+                        </div>
+                        <div style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div>
+                            <h4 style={{ fontSize: '0.88rem', fontWeight: 800, color: '#fff', margin: '0 0 4px 0' }}>
+                              {img.title}
+                            </h4>
+                            <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4' }}>
+                              {img.description}
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRefImage(img.id)}
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                color: '#ef4444',
+                                padding: '5px 10px',
+                                borderRadius: '6px',
+                                fontSize: '0.72rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Trash2 size={12} />
+                              <span>Eliminar</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 5: DIRECTIVAS DEL DUEÑO */}
+              {jarvisSubTab === 'directives' && (
+                <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <Sparkles size={22} color="var(--accent-cyan)" />
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                      Directivas y Reglas de Negocio en Vivo
+                    </h3>
+                  </div>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '18px', lineHeight: '1.4' }}>
+                    J.A.R.V.I.S. lee estas directivas en tiempo real antes de formular sus respuestas. Puedes agregar promociones temporales, condiciones de entrega o instrucciones de venta.
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      placeholder="Ej: Este mes tenemos envío gratis en compras mayores a Q250..."
+                      value={newDirectiveText}
+                      onChange={(e) => setNewDirectiveText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddDirective(); }}
+                      style={{
+                        flex: 1,
+                        minWidth: '260px',
+                        padding: '11px 14px',
                         borderRadius: '10px',
                         background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(0, 242, 254, 0.3)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
                         color: '#ffffff',
                         fontSize: '0.88rem',
                         outline: 'none',
                         boxSizing: 'border-box'
                       }}
                     />
-                    <Key size={16} color="var(--accent-cyan)" style={{ position: 'absolute', left: '12px', top: '13px' }} />
+                    <button
+                      type="button"
+                      onClick={handleAddDirective}
+                      className="btn-cyan"
+                      style={{ padding: '11px 18px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                    >
+                      <Plus size={16} />
+                      <span>Agregar Directiva</span>
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleSaveApiKey}
-                    className="btn-cyan"
-                    style={{ padding: '11px 20px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
-                  >
-                    <Check size={16} />
-                    <span>Guardar Clave</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 2. Directivas del Dueño (Knowledge Base Viva) */}
-              <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <Sparkles size={22} color="var(--accent-cyan)" />
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
-                    Directivas y Reglas de Negocio en Vivo
-                  </h3>
-                </div>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '18px', lineHeight: '1.4' }}>
-                  J.A.R.V.I.S. lee estas directivas en tiempo real antes de responder a los clientes. Puedes agregar promociones temporales, condiciones especiales de entrega o instrucciones de atención.
-                </p>
-
-                {/* Add New Directive Form */}
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                  <input
-                    type="text"
-                    placeholder="Ej: Este mes tenemos envío gratis en compras mayores a Q250..."
-                    value={newDirectiveText}
-                    onChange={(e) => setNewDirectiveText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddDirective(); }}
-                    style={{
-                      flex: 1,
-                      minWidth: '260px',
-                      padding: '11px 14px',
-                      borderRadius: '10px',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
-                      color: '#ffffff',
-                      fontSize: '0.88rem',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddDirective}
-                    className="btn-cyan"
-                    style={{ padding: '11px 18px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
-                  >
-                    <Plus size={16} />
-                    <span>Agregar Directiva</span>
-                  </button>
-                </div>
-
-                {/* List of Directives */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(knowledgeData.ownerDirectives || []).map((dir, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        padding: '12px 16px',
-                        borderRadius: '10px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid rgba(0, 242, 254, 0.15)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: '#e6edf3', lineHeight: '1.4' }}>
-                        <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>#{idx + 1}</span>
-                        <span>{dir}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDirective(idx)}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {(knowledgeData.ownerDirectives || []).map((dir, idx) => (
+                      <div
+                        key={idx}
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#ef4444',
-                          cursor: 'pointer',
-                          padding: '6px',
-                          borderRadius: '6px',
-                          opacity: 0.7,
-                          flexShrink: 0
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          borderRadius: '10px',
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid rgba(0, 242, 254, 0.15)'
                         }}
-                        title="Eliminar directiva"
                       >
-                        <Trash2 size={15} />
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: '#e6edf3', lineHeight: '1.4' }}>
+                          <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>#{idx + 1}</span>
+                          <span>{dir}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDirective(idx)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            padding: '6px',
+                            borderRadius: '6px',
+                            opacity: 0.7,
+                            flexShrink: 0
+                          }}
+                          title="Eliminar directiva"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 6: API KEY & CONEXIÓN */}
+              {jarvisSubTab === 'apikey' && (
+                <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <Key size={22} color="var(--accent-cyan)" />
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                      Conexión de IA J.A.R.V.I.S. (Google Gemini 3.6 Flash)
+                    </h3>
+                  </div>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.4' }}>
+                    Tu clave de Google Gemini API activa el motor cognitivo de razonamiento multi-factor de J.A.R.V.I.S. para atender clientes y cotizar obras.
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
+                      <input
+                        type="password"
+                        placeholder="Pega aquí tu clave Gemini API (ej: AIzaSy...)"
+                        value={geminiKeyInput}
+                        onChange={(e) => setGeminiKeyInput(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '11px 14px 11px 38px',
+                          borderRadius: '10px',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid rgba(0, 242, 254, 0.3)',
+                          color: '#ffffff',
+                          fontSize: '0.88rem',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <Key size={16} color="var(--accent-cyan)" style={{ position: 'absolute', left: '12px', top: '13px' }} />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveApiKey}
+                      className="btn-cyan"
+                      style={{ padding: '11px 20px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                    >
+                      <Check size={16} />
+                      <span>Guardar Clave</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 7: RESPALDO Y RESTAURACIÓN DE MEMORIA */}
+              {jarvisSubTab === 'backup' && (
+                <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <Database size={22} color="var(--accent-cyan)" />
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                      Copia de Seguridad y Memoria de J.A.R.V.I.S.
+                    </h3>
+                  </div>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.4' }}>
+                    Exporta o restaura en archivo JSON toda la configuración de J.A.R.V.I.S. (saludo, botones, documentos, referencias y directivas).
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '18px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                      <Download size={26} color="var(--accent-cyan)" style={{ marginBottom: '8px' }} />
+                      <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', margin: '0 0 6px 0' }}>Descargar Memoria JSON</h4>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', marginBottom: '14px', lineHeight: '1.4' }}>
+                        Descarga toda la base de conocimiento y configuración de J.A.R.V.I.S.
+                      </p>
+                      <button onClick={exportJarvisMemoryAsJSON} className="btn-cyan" style={{ width: '100%', justifyContent: 'center', padding: '9px', fontSize: '0.82rem' }}>
+                        Descargar Memoria
                       </button>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* 3. Enciclopedia de Especificaciones Comerciales */}
-              <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 14px 0' }}>
-                  Enciclopedia Base Asimilada por J.A.R.V.I.S.
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px' }}>
-                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.88rem', marginBottom: '6px' }}>
-                      📐 Tabla de 6 Tamaños Oficiales
+                    <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '18px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                      <Upload size={26} color="var(--accent-cyan)" style={{ marginBottom: '8px' }} />
+                      <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', margin: '0 0 6px 0' }}>Restaurar Memoria JSON</h4>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', marginBottom: '14px', lineHeight: '1.4' }}>
+                        Carga un archivo JSON para restaurar toda la base de J.A.R.V.I.S.
+                      </p>
+                      <input
+                        type="file"
+                        ref={jarvisMemoryInputRef}
+                        onChange={handleImportJarvisMemory}
+                        accept=".json"
+                        style={{ display: 'none' }}
+                      />
+                      <button
+                        onClick={() => jarvisMemoryInputRef.current?.click()}
+                        className="btn-secondary"
+                        style={{ width: '100%', justifyContent: 'center', padding: '9px', fontSize: '0.82rem' }}
+                      >
+                        Subir Archivo JSON
+                      </button>
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                      <li>Mini (14x21 cm) ➔ Q25.00</li>
-                      <li>Pequeño (21x27 cm) ➔ Q35.00</li>
-                      <li>Portada Álbum (30x30 cm) ➔ Q55.00</li>
-                      <li>Mediano (30x45 cm) ➔ Q65.00 (Más Vendido)</li>
-                      <li>Grande (45x60 cm) ➔ Q125.00</li>
-                      <li>Gigante (60x100 cm) ➔ Q210.00</li>
-                    </ul>
-                  </div>
-
-                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px' }}>
-                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.88rem', marginBottom: '6px' }}>
-                      🛡️ Manufactura y Montaje
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                      <li>Madera MDF 5.5mm sólida y rígida.</li>
-                      <li>Tintas HP Látex HD ecológicas sin olor.</li>
-                      <li>Cinta industrial Tessa incluida en dorso.</li>
-                      <li>Opción PVC 5mm (impermeable) y Vinil.</li>
-                    </ul>
-                  </div>
-
-                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px' }}>
-                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.88rem', marginBottom: '6px' }}>
-                      💳 Políticas y Tiempos
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                      <li>50% de anticipo para iniciar producción.</li>
-                      <li>50% saldo contra entrega / previo a envío.</li>
-                      <li>2 a 4 días hábiles de entrega nacional.</li>
-                      <li>Cobertura en los 22 departamentos.</li>
-                    </ul>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* DOCUMENT MODAL */}
+              {showDocModal && (
+                <div style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(2, 4, 10, 0.88)',
+                  backdropFilter: 'blur(10px)',
+                  zIndex: 3000,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '20px'
+                }}>
+                  <div className="glass-card" style={{
+                    maxWidth: '680px',
+                    width: '100%',
+                    padding: '28px',
+                    border: '1px solid rgba(0, 242, 254, 0.4)',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.9)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <FileText size={22} color="var(--accent-cyan)" />
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                          {docModalId ? 'Editar Documento de Conocimiento' : 'Nuevo Documento de Conocimiento'}
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => setShowDocModal(false)}
+                        style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                          Título del Documento o Guía:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="ej: Guía de Envíos Departamentales y Tiempos de Entrega"
+                          value={docTitleInput}
+                          onChange={(e) => setDocTitleInput(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '11px 14px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(0, 242, 254, 0.3)',
+                            color: '#fff',
+                            fontSize: '0.88rem',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                          Categoría:
+                        </label>
+                        <select
+                          value={docCategoryInput}
+                          onChange={(e) => setDocCategoryInput(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            background: '#0a101f',
+                            border: '1px solid rgba(0, 242, 254, 0.3)',
+                            color: '#fff',
+                            fontSize: '0.85rem',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <option value="Políticas">Políticas y Garantías</option>
+                          <option value="Logística">Logística y Envíos</option>
+                          <option value="Instalación">Instalación y Montaje</option>
+                          <option value="Producción">Producción y Materiales</option>
+                          <option value="Promociones">Promociones y Descuentos</option>
+                          <option value="Franquicias">Historias y Franquicias</option>
+                          <option value="General">General / FAQs</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                          Contenido Detallado (J.A.R.V.I.S. lo usará para responder):
+                        </label>
+                        <textarea
+                          rows={7}
+                          placeholder="Escribe la información detallada, preguntas frecuentes, reglas o instrucciones..."
+                          value={docContentInput}
+                          onChange={(e) => setDocContentInput(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(0, 242, 254, 0.3)',
+                            color: '#fff',
+                            fontSize: '0.88rem',
+                            lineHeight: '1.45',
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            resize: 'vertical'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowDocModal(false)}
+                        className="btn-secondary"
+                        style={{ padding: '9px 18px', fontSize: '0.82rem' }}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveDoc}
+                        className="btn-cyan"
+                        style={{ padding: '9px 22px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Save size={15} />
+                        <span>Guardar Documento en Memoria</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}

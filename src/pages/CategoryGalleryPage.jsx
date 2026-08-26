@@ -159,7 +159,7 @@ export default function CategoryGalleryPage({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>⚡</span>
-              <span>Incluye Cinta Tessa de Montaje</span>
+              <span>Incluye Cinta Tesa de Montaje</span>
             </div>
           </div>
         </div>
