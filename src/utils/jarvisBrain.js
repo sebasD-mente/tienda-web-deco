@@ -349,32 +349,62 @@ function normalizeSearch(str) {
     .replace(/[^a-z0-9]/g, '');
 }
 
+const SEARCH_STOP_WORDS = new Set([
+  'los', 'las', 'les', 'para', 'como', 'con', 'por', 'que', 'del', 'una', 'uno', 'unos', 'unas',
+  'este', 'esta', 'estos', 'estas', 'mis', 'sus', 'tus', 'recomiendame', 'recomienda', 'muestrame',
+  'muestra', 'tienen', 'quiero', 'cuadros', 'posters', 'poster', 'cuadro', 'obras', 'obra', 'foto',
+  'fotos', 'mejores', 'favoritos', 'ver', 'algo', 'opciones', 'algun', 'alguna', 'cuales', 'son'
+]);
+
+function searchCatalogScored(rawQuery, posters = [], maxResults = 4) {
+  const cleanQ = normalizeSearch(rawQuery);
+  const queryWords = (rawQuery || '')
+    .toLowerCase()
+    .split(/[\s,.-]+/)
+    .filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(normalizeSearch(w)));
+
+  const scored = (posters || []).map(p => {
+    let score = 0;
+    const titleNorm = normalizeSearch(p.title);
+    const subNorm = normalizeSearch(p.subtitle);
+    const catNorm = normalizeSearch(p.category);
+    const descNorm = normalizeSearch(p.description);
+    const idNorm = normalizeSearch(p.id);
+    const tagsNorm = Array.isArray(p.tags) ? normalizeSearch(p.tags.join(' ')) : '';
+    const fullNorm = `${titleNorm}${subNorm}${descNorm}${catNorm}${idNorm}${tagsNorm}`;
+
+    if (cleanQ.length > 2 && fullNorm.includes(cleanQ)) {
+      score += 100;
+    }
+
+    queryWords.forEach(w => {
+      const wNorm = normalizeSearch(w);
+      if (titleNorm.includes(wNorm)) score += 45;
+      if (subNorm.includes(wNorm)) score += 30;
+      if (catNorm.includes(wNorm)) score += 40;
+      if (idNorm.includes(wNorm)) score += 35;
+      if (tagsNorm.includes(wNorm)) score += 25;
+      if (descNorm.includes(wNorm)) score += 10;
+    });
+
+    return { poster: p, score };
+  }).filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxResults)
+    .map(item => item.poster);
+
+  return scored;
+}
+
 // Local Tool Executor for Gemini Function Calls
 function executeLocalTool(toolName, args, catalog, cart, onExecuteTool) {
   if (toolName === 'search_catalog') {
-    const rawQuery = (args.query || '').toLowerCase().trim();
-    const rawCat = (args.category || '').toLowerCase().trim();
-    const cleanQ = normalizeSearch(rawQuery);
-    const cleanCat = normalizeSearch(rawCat);
+    const rawQuery = (args.query || '').trim();
+    const rawCat = (args.category || '').trim();
+    const fullSearchText = `${rawQuery} ${rawCat}`.trim();
     const posters = catalog.posters || [];
 
-    const matches = posters.filter(p => {
-      const title = p.title || '';
-      const subtitle = p.subtitle || '';
-      const desc = p.description || '';
-      const franchise = p.franchise || '';
-      const pCat = p.category || '';
-      const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
-      const id = p.id || '';
-
-      const fullRaw = `${title} ${subtitle} ${desc} ${franchise} ${pCat} ${tags} ${id}`.toLowerCase();
-      const fullNorm = normalizeSearch(`${title} ${subtitle} ${desc} ${franchise} ${pCat} ${tags} ${id}`);
-
-      const matchCategory = !cleanCat || fullNorm.includes(cleanCat) || fullRaw.includes(rawCat);
-      const matchQuery = !cleanQ || fullNorm.includes(cleanQ) || fullRaw.includes(rawQuery) || rawQuery.split(' ').some(word => word.length > 2 && fullRaw.includes(word));
-
-      return matchCategory && matchQuery;
-    }).slice(0, args.maxResults || 4);
+    const matches = searchCatalogScored(fullSearchText || rawQuery, posters, args.maxResults || 4);
 
     if (onExecuteTool) onExecuteTool('search_results', matches);
 
@@ -494,23 +524,8 @@ function handleLocalIntelligentFallback(userMessage, knowledge, catalog, cart) {
     };
   }
 
-  // 5. Semantic Catalog Search with normalized text
-  const searchTerms = q.split(' ').filter(w => w.length > 2);
-  const found = posters.filter(p => {
-    const title = p.title || '';
-    const subtitle = p.subtitle || '';
-    const desc = p.description || '';
-    const franchise = p.franchise || '';
-    const cat = p.category || '';
-    const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
-    const id = p.id || '';
-
-    const fullRaw = `${title} ${subtitle} ${desc} ${franchise} ${cat} ${tags} ${id}`.toLowerCase();
-    const fullNorm = normalizeSearch(`${title} ${subtitle} ${desc} ${franchise} ${cat} ${tags} ${id}`);
-
-    if (fullNorm.includes(cleanQ) || fullRaw.includes(q)) return true;
-    return searchTerms.some(term => fullRaw.includes(term) || fullNorm.includes(normalizeSearch(term)));
-  }).slice(0, 4);
+  // 5. Semantic Catalog Search with scored ranking
+  const found = searchCatalogScored(q, posters, 4);
 
   if (found.length > 0) {
     return {

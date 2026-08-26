@@ -443,10 +443,11 @@ export default function JarvisAgent({
                     padding: '12px 16px',
                     fontSize: '0.88rem',
                     lineHeight: '1.45',
-                    boxShadow: isJarvis ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0, 242, 254, 0.3)',
-                    whiteSpace: 'pre-line'
+                    boxShadow: isJarvis ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0, 242, 254, 0.3)'
                   }}>
-                    {msg.text}
+                    <div style={{ whiteSpace: 'pre-line' }}>
+                      {msg.text}
+                    </div>
 
                     {/* Interactive Catalog Cards (When J.A.R.V.I.S. recommends posters) */}
                     {msg.actions && msg.actions.map((act, actIdx) => {
@@ -456,7 +457,8 @@ export default function JarvisAgent({
                             marginTop: '12px',
                             display: 'grid',
                             gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                            gap: '10px'
+                            gap: '10px',
+                            whiteSpace: 'normal'
                           }}>
                             {act.posters.map((p) => (
                               <div
