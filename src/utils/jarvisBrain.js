@@ -292,7 +292,7 @@ INSTRUCCIONES DE ACCIÓN:
 
     if (functionCalls && functionCalls.length > 0) {
       for (const call of functionCalls) {
-        const actionResult = executeLocalTool(call.name, call.args, catalog, cart, onExecuteTool);
+        const actionResult = executeLocalTool(call.name, call.args, catalog, cart, onExecuteTool, cleanInput);
         executedActions.push(actionResult);
         toolResults.push({
           toolName: call.name,
@@ -411,14 +411,22 @@ function searchCatalogScored(rawQuery, posters = [], maxResults = 4) {
 }
 
 // Local Tool Executor for Gemini Function Calls
-function executeLocalTool(toolName, args, catalog, cart, onExecuteTool) {
+function executeLocalTool(toolName, args, catalog, cart, onExecuteTool, cleanInput = '') {
   if (toolName === 'search_catalog') {
     const rawQuery = (args.query || '').trim();
     const rawCat = (args.category || '').trim();
     const fullSearchText = `${rawQuery} ${rawCat}`.trim();
-    const posters = catalog.posters || [];
+    const posters = (catalog && Array.isArray(catalog.posters) && catalog.posters.length > 0) ? catalog.posters : (CATALOG_POSTERS || []);
 
-    const matches = searchCatalogScored(fullSearchText || rawQuery, posters, args.maxResults || 4);
+    let matches = searchCatalogScored(fullSearchText, posters, args.maxResults || 4);
+
+    if (matches.length === 0 && cleanInput) {
+      matches = searchCatalogScored(cleanInput, posters, args.maxResults || 4);
+    }
+
+    if (matches.length === 0) {
+      matches = posters.filter(p => p.isFeatured || p.isBestSeller || p.category === 'AUTOS').slice(0, 4);
+    }
 
     if (onExecuteTool) onExecuteTool('search_results', matches);
 
