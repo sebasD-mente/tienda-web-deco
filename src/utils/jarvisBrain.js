@@ -341,24 +341,37 @@ function isSimpleGreetingOrKeyword(text) {
   return simpleList.includes(t) || t.length <= 3;
 }
 
+function normalizeSearch(str) {
+  return (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
 // Local Tool Executor for Gemini Function Calls
 function executeLocalTool(toolName, args, catalog, cart, onExecuteTool) {
   if (toolName === 'search_catalog') {
-    const q = (args.query || '').toLowerCase().trim();
-    const cat = (args.category || '').toLowerCase().trim();
+    const rawQuery = (args.query || '').toLowerCase().trim();
+    const rawCat = (args.category || '').toLowerCase().trim();
+    const cleanQ = normalizeSearch(rawQuery);
+    const cleanCat = normalizeSearch(rawCat);
     const posters = catalog.posters || [];
 
     const matches = posters.filter(p => {
-      const title = (p.title || '').toLowerCase();
-      const desc = (p.description || '').toLowerCase();
-      const franchise = (p.franchise || '').toLowerCase();
-      const pCat = (p.category || '').toLowerCase();
-      const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
+      const title = p.title || '';
+      const subtitle = p.subtitle || '';
+      const desc = p.description || '';
+      const franchise = p.franchise || '';
+      const pCat = p.category || '';
+      const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
+      const id = p.id || '';
 
-      const fullText = `${title} ${desc} ${franchise} ${pCat} ${tags}`;
+      const fullRaw = `${title} ${subtitle} ${desc} ${franchise} ${pCat} ${tags} ${id}`.toLowerCase();
+      const fullNorm = normalizeSearch(`${title} ${subtitle} ${desc} ${franchise} ${pCat} ${tags} ${id}`);
 
-      const matchCategory = !cat || pCat === cat || fullText.includes(cat);
-      const matchQuery = !q || fullText.includes(q) || q.split(' ').some(word => word.length > 2 && fullText.includes(word));
+      const matchCategory = !cleanCat || fullNorm.includes(cleanCat) || fullRaw.includes(rawCat);
+      const matchQuery = !cleanQ || fullNorm.includes(cleanQ) || fullRaw.includes(rawQuery) || rawQuery.split(' ').some(word => word.length > 2 && fullRaw.includes(word));
 
       return matchCategory && matchQuery;
     }).slice(0, args.maxResults || 4);
@@ -445,12 +458,13 @@ function executeLocalTool(toolName, args, catalog, cart, onExecuteTool) {
 // Ultra-fast and rich local intelligence fallback engine
 function handleLocalIntelligentFallback(userMessage, knowledge, catalog, cart) {
   const q = (userMessage || '').toLowerCase().trim();
+  const cleanQ = normalizeSearch(q);
   const posters = catalog.posters || [];
 
   // 1. Single letter or very short greeting
   if (!q || q.length <= 2 || q === 'hola' || q === 'buenas' || q === 'hey' || q === 'jarvis') {
     return {
-      text: `👋 Saludos, soy **J.A.R.V.I.S.**, el asistente táctico de Deco Vintage Guate.\n\nPuedo ayudarle a:\n• 🔍 **Buscar cuadros:** Escriba temas como *Autos, Anime, Marvel, Star Wars, Cine, Música*.\n• 📐 **Medidas y Precios:** Conozca los 6 tamaños en MDF 5.5mm (desde Q25.00).\n• 🎨 **Cuadros Personalizados:** Cotice cualquier medida especial con sus propias fotos.\n• 📦 **Gestionar su Pedido:** Dejarlo listo para coordinar el 50% de anticipo por WhatsApp.`,
+      text: `👋 Saludos, soy **J.A.R.V.I.S.**, el asistente táctico de Deco Vintage Guate.\n\nPuedo ayudarle a:\n• 🔍 **Buscar cuadros:** Escriba temas como *Autos, Spider-Man, Iron Man, Breaking Bad, El Padrino, Jurassic Park*.\n• 📐 **Medidas y Precios:** Conozca los 6 tamaños en MDF 5.5mm (desde Q25.00).\n• 🎨 **Cuadros Personalizados:** Cotice cualquier medida especial con sus propias fotos.\n• 📦 **Gestionar su Pedido:** Dejarlo listo para coordinar el 50% de anticipo por WhatsApp.`,
       poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
     };
   }
@@ -480,18 +494,22 @@ function handleLocalIntelligentFallback(userMessage, knowledge, catalog, cart) {
     };
   }
 
-  // 5. Semantic Catalog Search (Category, franchise, keyword, or character)
+  // 5. Semantic Catalog Search with normalized text
   const searchTerms = q.split(' ').filter(w => w.length > 2);
   const found = posters.filter(p => {
-    const title = (p.title || '').toLowerCase();
-    const desc = (p.description || '').toLowerCase();
-    const franchise = (p.franchise || '').toLowerCase();
-    const cat = (p.category || '').toLowerCase();
-    const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
-    const fullText = `${title} ${desc} ${franchise} ${cat} ${tags}`;
+    const title = p.title || '';
+    const subtitle = p.subtitle || '';
+    const desc = p.description || '';
+    const franchise = p.franchise || '';
+    const cat = p.category || '';
+    const tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
+    const id = p.id || '';
 
-    if (fullText.includes(q)) return true;
-    return searchTerms.some(term => fullText.includes(term));
+    const fullRaw = `${title} ${subtitle} ${desc} ${franchise} ${cat} ${tags} ${id}`.toLowerCase();
+    const fullNorm = normalizeSearch(`${title} ${subtitle} ${desc} ${franchise} ${cat} ${tags} ${id}`);
+
+    if (fullNorm.includes(cleanQ) || fullRaw.includes(q)) return true;
+    return searchTerms.some(term => fullRaw.includes(term) || fullNorm.includes(normalizeSearch(term)));
   }).slice(0, 4);
 
   if (found.length > 0) {
@@ -502,10 +520,18 @@ function handleLocalIntelligentFallback(userMessage, knowledge, catalog, cart) {
     };
   }
 
-  // 6. General fallback
-  const sampleBestSellers = posters.filter(p => p.isBestSeller).slice(0, 3);
+  // 6. Customization advisory if category not in current stock (e.g. anime, futbol, etc.)
+  if (q.includes('anime') || q.includes('dragon ball') || q.includes('naruto') || q.includes('one piece') || q.includes('futbol') || q.includes('messi') || q.includes('cr7')) {
+    return {
+      text: `🎨 **CUADROS PERSONALIZADOS A MEDIDA:**\n\nActualmente nuestras colecciones listas en catálogo son **Autos Deportivos**, **Superhéroes (Spider-Man e Iron Man)** y **Series y Películas**.\n\n✨ **¡Pero podemos fabricar cualquier cuadro de Anime, Deportes o tu foto favorita!**\nSolo envíanos la imagen que deseas por WhatsApp y te lo fabricamos en madera MDF 5.5mm o PVC impermeable en cualquiera de nuestros 6 tamaños oficiales (desde Q25.00).`,
+      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
+    };
+  }
+
+  // 7. General fallback with best sellers
+  const sampleBestSellers = posters.filter(p => p.isBestSeller || p.category === 'AUTOS').slice(0, 3);
   return {
-    text: `Sistemas en línea. No encontré una coincidencia exacta para "${userMessage}", pero puedo mostrarle nuestras obras más vendidas o asistirle con cualquier medida personalizada:`,
+    text: `Sistemas en línea. No encontré una coincidencia exacta para "${userMessage}", pero puedo mostrarle nuestras obras más destacadas o cotizarle cualquier medida personalizada:`,
     actions: sampleBestSellers.length > 0 ? [{ type: 'catalog_matches', count: sampleBestSellers.length, posters: sampleBestSellers }] : [],
     poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
   };
