@@ -325,6 +325,93 @@ function executeAgentTool(toolName, args, catalog) {
   return { type: 'unknown', summary: `Acción ${toolName} ejecutada.` };
 }
 
+const normalizeText = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+
+function findMatchingPosters(userQuery, replyText, posters) {
+  const qNorm = normalizeText(userQuery);
+  const rNorm = normalizeText(replyText);
+
+  // Character, movie, actor and theme aliases to catalog poster IDs
+  const aliases = {
+    'marlon brando': ['el-padrino-4985', 'el-padrino-9715'],
+    'el padrino': ['el-padrino-4985', 'el-padrino-9715'],
+    'godfather': ['el-padrino-4985', 'el-padrino-9715'],
+    'tony stark': ['iron-man-7158', 'iron-man-2438', 'iron-man-0231', 'iron-man-7668'],
+    'iron man': ['iron-man-7158', 'iron-man-2438', 'iron-man-0231', 'iron-man-7668'],
+    'robert downey': ['iron-man-7158', 'iron-man-2438'],
+    'walter white': ['breaking-bad-3656', 'breaking-bad-3918'],
+    'heisenberg': ['breaking-bad-3656', 'breaking-bad-3918'],
+    'breaking bad': ['breaking-bad-3656', 'breaking-bad-3918'],
+    'pablo escobar': ['pablo-escobar-0509', 'pablo-escobar-0031'],
+    'spider man': ['spiderman-no-way-home', 'spiderman-green-goblin-battle', 'spiderman-amazing-fantasy-15', 'spiderman-316-venom'],
+    'spiderman': ['spiderman-no-way-home', 'spiderman-green-goblin-battle', 'spiderman-amazing-fantasy-15', 'spiderman-316-venom'],
+    'peter parker': ['spiderman-no-way-home', 'spiderman-green-goblin-battle', 'spiderman-amazing-fantasy-15'],
+    'venom': ['spiderman-316-venom'],
+    'duende verde': ['spiderman-green-goblin-battle'],
+    'green goblin': ['spiderman-green-goblin-battle'],
+    'miles morales': ['spiderman-miles-morales-hoodie', 'spiderman-spider-verse-all-spiders'],
+    'spiderverse': ['spiderman-spider-verse-all-spiders'],
+    'spider verse': ['spiderman-spider-verse-all-spiders'],
+    'vincent': ['van-gogh-2098'],
+    'van gogh': ['van-gogh-2098'],
+    'noche estrellada': ['van-gogh-2098'],
+    'mona lisa': ['la-mona-lisa-3306'],
+    'gioconda': ['la-mona-lisa-3306'],
+    'da vinci': ['la-mona-lisa-3306'],
+    'goku': ['goku-0051'],
+    'dragon ball': ['goku-0051'],
+    'saiyajin': ['goku-0051'],
+    'freddy': ['five-nights-at-freddy-s-0980'],
+    'fnaf': ['five-nights-at-freddy-s-0980'],
+    'jurassic': ['jurassic-park-9462', 'jurassic-park-8621'],
+    'dinosaurio': ['jurassic-park-9462', 'jurassic-park-8621'],
+    'indiana': ['indiana-jones-6555', 'indiana-jones-5273'],
+    'senor de los anillos': ['el-se-or-de-los-anillos-5503'],
+    'lord of the rings': ['el-se-or-de-los-anillos-5503']
+  };
+
+  const matchedIds = new Set();
+
+  // 1. Direct alias check
+  for (const [alias, ids] of Object.entries(aliases)) {
+    if (qNorm.includes(alias) || rNorm.includes(alias)) {
+      ids.forEach(id => matchedIds.add(id));
+    }
+  }
+
+  // 2. Poster titles, subtitles, franchises match
+  for (const p of posters) {
+    const titleNorm = normalizeText(p.title);
+    const subNorm = normalizeText(p.subtitle);
+    const franNorm = normalizeText(p.franchise);
+
+    if (titleNorm.length > 2 && (qNorm.includes(titleNorm) || rNorm.includes(titleNorm))) {
+      matchedIds.add(p.id);
+    } else if (franNorm.length > 2 && (qNorm.includes(franNorm) || rNorm.includes(franNorm))) {
+      matchedIds.add(p.id);
+    } else if (subNorm.length > 4 && (qNorm.includes(subNorm) || rNorm.includes(subNorm))) {
+      matchedIds.add(p.id);
+    }
+  }
+
+  // 3. Category matching (autos, anime, etc.)
+  if (matchedIds.size === 0) {
+    if (qNorm.includes('auto') || qNorm.includes('carro') || qNorm.includes('coche') || qNorm.includes('porsche') || qNorm.includes('supra') || qNorm.includes('skyline') || qNorm.includes('bmw') || qNorm.includes('delorean') || qNorm.includes('amg')) {
+      posters.filter(p => p.category === 'AUTOS').slice(0, 3).forEach(p => matchedIds.add(p.id));
+    } else if (qNorm.includes('superheroe') || qNorm.includes('marvel') || qNorm.includes('dc')) {
+      posters.filter(p => p.category === 'SUPERHEROES').slice(0, 3).forEach(p => matchedIds.add(p.id));
+    } else if (qNorm.includes('anime') || qNorm.includes('manga')) {
+      posters.filter(p => p.category === 'ANIME').slice(0, 3).forEach(p => matchedIds.add(p.id));
+    } else if (qNorm.includes('serie') || qNorm.includes('pelicula') || qNorm.includes('cine')) {
+      posters.filter(p => p.category === 'SERIESYPELICULAS').slice(0, 3).forEach(p => matchedIds.add(p.id));
+    } else if (qNorm.includes('arte') || qNorm.includes('pintura')) {
+      posters.filter(p => p.category === 'OBRASDEARTE').slice(0, 3).forEach(p => matchedIds.add(p.id));
+    }
+  }
+
+  return posters.filter(p => matchedIds.has(p.id)).slice(0, 3);
+}
+
 // Sanitizes and formats history ensuring clean alternance of user/model messages
 function sanitizeChatHistory(history) {
   if (!Array.isArray(history) || history.length === 0) return [];
@@ -451,43 +538,14 @@ export async function askJarvis(queryOrOptions, history = []) {
         }
       }
 
-      // Proactive safety net: If no catalog action was generated by tool call, but the user asked about designs or the reply mentioned catalog titles, auto-attach matching cards
+      // Proactive safety net: If no catalog action was generated by tool call, but the query or reply refers to catalog items, auto-attach matching cards
       if (!executedActions.some(a => a.type === 'catalog_matches') && !executedActions.some(a => a.type === 'custom_quote')) {
-        const queryLower = userQuery.toLowerCase();
-        const replyLower = replyText.toLowerCase();
+        const matched = findMatchingPosters(userQuery, replyText, posters);
 
-        const matched = posters.filter(p => {
-          const titleLower = p.title.toLowerCase();
-          const subLower = (p.subtitle || '').toLowerCase();
-          const franchiseLower = (p.franchise || '').toLowerCase();
-          
-          const queryMatches = (
-            (titleLower.length > 2 && queryLower.includes(titleLower)) ||
-            (franchiseLower && queryLower.includes(franchiseLower))
-          );
-          
-          const replyMatches = (
-            (titleLower.length > 3 && replyLower.includes(titleLower)) ||
-            (subLower.length > 5 && replyLower.includes(subLower))
-          );
-          
-          return queryMatches || replyMatches;
-        });
-
-        if (matched.length > 0 && (
-          queryLower.includes('tien') ||
-          queryLower.includes('hay') ||
-          queryLower.includes('cuadro') ||
-          queryLower.includes('poster') ||
-          queryLower.includes('obra') ||
-          queryLower.includes('muestr') ||
-          queryLower.includes('recomiend') ||
-          queryLower.includes('busca') ||
-          queryLower.includes('ver')
-        )) {
+        if (matched.length > 0) {
           const autoAction = {
             type: 'catalog_matches',
-            posters: matched.slice(0, 3),
+            posters: matched,
             motivo: 'Obras oficiales disponibles en nuestro catálogo:',
             summary: `🎯 Obras seleccionadas por J.A.R.V.I.S.`
           };
