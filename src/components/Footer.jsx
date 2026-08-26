@@ -1,6 +1,5 @@
 import React from 'react';
 import { MapPin, MessageSquare, ArrowRight } from 'lucide-react';
-import { OFFICIAL_SIZES } from '../data/catalogData';
 
 export default function Footer({ onNavigate }) {
   const handleNav = (e, page) => {
@@ -54,19 +53,7 @@ export default function Footer({ onNavigate }) {
             </div>
           </div>
 
-          {/* Col 2: Official Sizes */}
-          <div>
-            <h4 style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 800, marginBottom: '16px' }}>
-              Tamaños Oficiales
-            </h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-              {OFFICIAL_SIZES.map(s => (
-                <li key={s.id}>
-                  • {s.name} ({s.dimensions}) ➔ <strong style={{ color: 'var(--accent-cyan)' }}>Q{s.price.toFixed(2)}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
+
 
           {/* Col 3: Quick Navigation */}
           <div>
@@ -76,14 +63,26 @@ export default function Footer({ onNavigate }) {
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.88rem' }}>
               <li>
                 <a
-                  href="#catalogo"
+                  href="#inicio"
                   onClick={(e) => handleNav(e, 'home')}
                   style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }}
                   onMouseEnter={e => e.target.style.color = '#00f2fe'}
                   onMouseLeave={e => e.target.style.color = 'var(--text-secondary)'}
                 >
                   <ArrowRight size={14} color="var(--accent-cyan)" />
-                  <span>Catálogo de Colecciones</span>
+                  <span>Inicio (Destacados)</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#catalogo"
+                  onClick={(e) => handleNav(e, 'catalog')}
+                  style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  onMouseEnter={e => e.target.style.color = '#00f2fe'}
+                  onMouseLeave={e => e.target.style.color = 'var(--text-secondary)'}
+                >
+                  <ArrowRight size={14} color="var(--accent-cyan)" />
+                  <span>Catálogo Completo</span>
                 </a>
               </li>
               <li>
@@ -108,18 +107,6 @@ export default function Footer({ onNavigate }) {
                 >
                   <ArrowRight size={14} color="var(--accent-cyan)" />
                   <span>Pósters Personalizados</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#admin"
-                  onClick={(e) => handleNav(e, 'admin')}
-                  style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }}
-                  onMouseEnter={e => e.target.style.color = '#00f2fe'}
-                  onMouseLeave={e => e.target.style.color = 'var(--text-secondary)'}
-                >
-                  <ArrowRight size={14} color="var(--accent-cyan)" />
-                  <span>Panel de Administración</span>
                 </a>
               </li>
             </ul>
@@ -159,8 +146,37 @@ export default function Footer({ onNavigate }) {
           <div>
             © {new Date().getFullYear()} Deco Vintage Guate. Todos los derechos reservados.
           </div>
-          <div style={{ color: 'var(--text-muted)' }}>
-            Tecnología HP Látex • Madera Rígida MDF 5.5mm • Cinta Tessa Industrial
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <span style={{ color: 'var(--text-muted)' }}>
+              Tecnología HP Látex • Madera Rígida MDF 5.5mm • Cinta Tessa Industrial
+            </span>
+            <button
+              onClick={() => onNavigate && onNavigate('admin')}
+              style={{
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: 'var(--text-muted)',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = '#00f2fe';
+                e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.4)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--text-muted)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+              }}
+              title="Panel de Administración"
+            >
+              <span>⚙️ Administración</span>
+            </button>
           </div>
         </div>
 

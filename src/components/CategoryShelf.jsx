@@ -1,9 +1,9 @@
 import React, { useRef, useMemo } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { CATEGORIES as DEFAULT_CATEGORIES, CATALOG_POSTERS as DEFAULT_POSTERS } from '../data/catalogData';
 import OptimizedImage from './OptimizedImage';
 
-// Fisher-Yates shuffle algorithm for truly random & fair distribution
+// Fisher-Yates shuffle algorithm for fair distribution
 function shuffleArray(array) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -15,19 +15,29 @@ function shuffleArray(array) {
 
 export default function CategoryShelf({
   onSelectPoster,
-  filterCategory,
+  onSelectCategory,
+  onNavigate,
   searchQuery,
   posters = DEFAULT_POSTERS,
   categories = DEFAULT_CATEGORIES
 }) {
   const scrollRefs = useRef({});
 
-  // Randomize posters per category shelf on load or when catalog changes
+  // 1. Pick 3 distinct categories that actually have posters
+  const spotlightCategories = useMemo(() => {
+    const populated = categories.filter(
+      c => c.id !== 'TODAS' && c.id !== 'TODOS' && posters.some(p => p.category === c.id)
+    );
+    const shuffled = shuffleArray(populated);
+    return shuffled.slice(0, 3);
+  }, [categories, posters]);
+
+  // 2. Randomize posters for each category (max 8 preview images to optimize performance)
   const shuffledPostersByCategory = useMemo(() => {
     const map = {};
     categories.forEach(cat => {
       const catItems = posters.filter(p => p.category === cat.id);
-      map[cat.id] = shuffleArray(catItems);
+      map[cat.id] = shuffleArray(catItems).slice(0, 8);
     });
     return map;
   }, [posters, categories]);
@@ -40,10 +50,6 @@ export default function CategoryShelf({
     }
   };
 
-  const displayedCategories = filterCategory && filterCategory !== 'TODOS'
-    ? categories.filter(c => c.id === filterCategory)
-    : categories.filter(c => c.id !== 'TODOS');
-
   const filterPosters = (catId) => {
     const pool = shuffledPostersByCategory[catId] || [];
     if (!searchQuery) return pool;
@@ -55,31 +61,33 @@ export default function CategoryShelf({
   };
 
   return (
-    <section id="catalogo" style={{ padding: '0 0 80px 0', position: 'relative', background: '#060910' }}>
+    <section id="catalogo" style={{ padding: '0 0 70px 0', position: 'relative', background: '#060910' }}>
       <div className="container">
-        
-        {/* Categories Shelves Loop */}
-        {displayedCategories.map((category) => {
+
+        {/* 3 Random Spotlight Categories Shelves */}
+        {spotlightCategories.map((category) => {
           const catPosters = filterPosters(category.id);
           if (catPosters.length === 0) return null;
 
           return (
-            <div key={category.id} style={{ marginBottom: '65px' }}>
+            <div key={category.id} style={{ marginBottom: '55px' }}>
               
               {/* Shelf Category Header */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'flex-end',
-                marginBottom: '20px',
+                alignItems: 'center',
+                marginBottom: '18px',
                 borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-                paddingBottom: '12px'
+                paddingBottom: '14px',
+                flexWrap: 'wrap',
+                gap: '12px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                   <h2 style={{
                     fontFamily: 'var(--font-bebas)',
-                    fontSize: '2.8rem',
-                    letterSpacing: '0.05em',
+                    fontSize: '2.5rem',
+                    letterSpacing: '0.04em',
                     color: '#ffffff',
                     textTransform: 'uppercase',
                     lineHeight: 1,
@@ -87,25 +95,76 @@ export default function CategoryShelf({
                   }}>
                     {category.name}
                   </h2>
-                  <span style={{
-                    fontSize: '0.85rem',
-                    fontWeight: 800,
-                    color: 'var(--text-secondary)',
-                    fontFamily: 'var(--font-display)',
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase'
-                  }}>
-                    ({catPosters.length} DISEÑOS)
-                  </span>
+
+                  {/* Subtle Badge Button: Number of designs & Ver todos */}
+                  <button
+                    onClick={() => onSelectCategory && onSelectCategory(category.id)}
+                    style={{
+                      background: 'rgba(4, 6, 9, 0.85)',
+                      border: '1px solid rgba(0, 242, 254, 0.35)',
+                      color: '#00f2fe',
+                      padding: '4px 14px',
+                      borderRadius: '9999px',
+                      cursor: 'pointer',
+                      backdropFilter: 'blur(8px)',
+                      display: 'inline-flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      fontFamily: 'var(--font-body)',
+                      lineHeight: 1.25,
+                      transition: 'all 0.25s ease',
+                      boxShadow: '0 0 10px rgba(0, 242, 254, 0.12)',
+                      textDecoration: 'none'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(0, 242, 254, 0.15)';
+                      e.currentTarget.style.borderColor = '#00f2fe';
+                      e.currentTarget.style.boxShadow = '0 0 16px rgba(0, 242, 254, 0.35)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(4, 6, 9, 0.85)';
+                      e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.35)';
+                      e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 242, 254, 0.12)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                    title={`Ver todos los diseños de ${category.name}`}
+                  >
+                    <span style={{
+                      fontSize: '0.62rem',
+                      fontWeight: 400,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      color: '#00f2fe',
+                      textAlign: 'center',
+                      width: '100%',
+                      display: 'block'
+                    }}>
+                      {catPosters.length} DISEÑOS
+                    </span>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 500,
+                      color: '#00f2fe',
+                      letterSpacing: '0.02em',
+                      textAlign: 'center',
+                      width: '100%',
+                      display: 'block'
+                    }}>
+                      Ver todos
+                    </span>
+                  </button>
                 </div>
 
-                {/* Left/Right Carousel Nav Arrows */}
-                <div style={{ display: 'flex', gap: '8px' }}>
+                {/* Carousel Controls (Only navigation arrows) */}
+                <div className="carousel-nav-arrows" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
                     onClick={() => handleScroll(category.id, 'left')}
                     style={{
-                      width: '38px',
-                      height: '38px',
+                      width: '36px',
+                      height: '36px',
                       borderRadius: '50%',
                       background: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -126,14 +185,14 @@ export default function CategoryShelf({
                     }}
                     title="Anterior"
                   >
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={18} />
                   </button>
 
                   <button
                     onClick={() => handleScroll(category.id, 'right')}
                     style={{
-                      width: '38px',
-                      height: '38px',
+                      width: '36px',
+                      height: '36px',
                       borderRadius: '50%',
                       background: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -154,7 +213,7 @@ export default function CategoryShelf({
                     }}
                     title="Siguiente"
                   >
-                    <ChevronRight size={20} />
+                    <ChevronRight size={18} />
                   </button>
                 </div>
               </div>
@@ -163,7 +222,7 @@ export default function CategoryShelf({
               <div
                 ref={el => scrollRefs.current[category.id] = el}
                 className="shelf-track"
-                style={{ paddingBottom: '16px' }}
+                style={{ paddingBottom: '14px' }}
               >
                 {catPosters.map((poster, index) => (
                   <div
@@ -198,7 +257,7 @@ export default function CategoryShelf({
                         src={poster.thumb || poster.image}
                         alt={poster.title}
                         objectFit="contain"
-                        priority={index < 3}
+                        priority={index < 2}
                         style={{ background: 'transparent' }}
                       />
 
@@ -232,7 +291,7 @@ export default function CategoryShelf({
                           letterSpacing: '0.04em',
                           marginBottom: '4px'
                         }}>
-                          {poster.category}
+                          {poster.subtitle || category.name}
                         </div>
                         <h4 style={{
                           fontSize: '0.98rem',
@@ -252,7 +311,7 @@ export default function CategoryShelf({
                         paddingTop: '10px',
                         borderTop: '1px solid rgba(255, 255, 255, 0.05)'
                       }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
+                        <span style={{ fontSize: '0.98rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
                           {poster.priceDisplay || (poster.availableSizes?.length === 1 ? 'Q 125.00' : 'Desde Q 25.00')}
                         </span>
                         
@@ -271,11 +330,127 @@ export default function CategoryShelf({
 
                   </div>
                 ))}
-              </div>
 
-            </div>
-          );
-        })}
+                  {/* End Card: Invites to visit the full collection */}
+                  {posters.filter(p => p.category === category.id).length > 8 && (
+                    <div
+                      onClick={() => onSelectCategory && onSelectCategory(category.id)}
+                      className="shelf-item glass-card"
+                      style={{
+                        padding: '24px 20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(6, 12, 22, 0.95) 100%)',
+                        border: '2px dashed rgba(0, 242, 254, 0.35)',
+                        borderRadius: '16px',
+                        cursor: 'pointer',
+                        minWidth: '220px',
+                        transition: 'all 0.25s ease'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = '#00f2fe';
+                        e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 242, 254, 0.16) 0%, rgba(6, 12, 22, 0.98) 100%)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.35)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(6, 12, 22, 0.95) 100%)';
+                      }}
+                      title={`Ver todos los diseños de ${category.name}`}
+                    >
+                      <div style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        background: 'rgba(0, 242, 254, 0.15)',
+                        border: '1px solid rgba(0, 242, 254, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '14px'
+                      }}>
+                        <ArrowRight size={22} color="#00f2fe" />
+                      </div>
+                      <h4 style={{
+                        color: '#fff',
+                        fontSize: '1.25rem',
+                        fontFamily: 'var(--font-bebas)',
+                        letterSpacing: '0.04em',
+                        margin: '0 0 6px 0',
+                        lineHeight: 1.1
+                      }}>
+                        VER TODA LA COLECCIÓN
+                      </h4>
+                      <p style={{
+                        color: 'var(--accent-cyan)',
+                        fontSize: '0.8rem',
+                        margin: 0,
+                        fontWeight: 800
+                      }}>
+                        +{posters.filter(p => p.category === category.id).length - 8} obras más en {category.name} ➔
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            );
+          })}
+
+        {/* High-Impact Bottom Call to Action: Go to Full Catalog */}
+        <div style={{
+          marginTop: '20px',
+          background: 'linear-gradient(135deg, rgba(9, 21, 38, 0.8) 0%, rgba(6, 12, 22, 0.95) 100%)',
+          border: '1px solid rgba(0, 242, 254, 0.3)',
+          borderRadius: '20px',
+          padding: 'clamp(28px, 6vw, 45px)',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.6)'
+        }}>
+          <h3 style={{
+            fontFamily: 'var(--font-bebas)',
+            fontSize: 'clamp(2rem, 5vw, 3.2rem)',
+            letterSpacing: '0.04em',
+            margin: '0 0 10px 0',
+            color: '#ffffff',
+            textTransform: 'uppercase'
+          }}>
+            ¿BUSCAS MÁS COLECCIONES Y DISEÑOS?
+          </h3>
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: '0.95rem',
+            maxWidth: '650px',
+            margin: '0 auto 22px auto',
+            lineHeight: 1.6
+          }}>
+            Descubre nuestro catálogo maestro con más de 32 obras exclusivas divididas en todas las categorías: Anime, Super Héroes, Autos Clásicos, Cine, Series y Música.
+          </p>
+          <button
+            onClick={() => {
+              if (onNavigate) onNavigate('catalog');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="btn-cyan"
+            style={{
+              padding: '14px 32px',
+              fontSize: '1rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              borderRadius: '12px',
+              cursor: 'pointer'
+            }}
+          >
+            <span>EXPLORAR EL CATÁLOGO COMPLETO</span>
+            <ArrowRight size={18} />
+          </button>
+        </div>
 
       </div>
     </section>

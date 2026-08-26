@@ -55,6 +55,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+button, input, select, textarea {
+  font-family: var(--font-body);
+}
+
 /* Solid Clean Background - No Reflections */
 .ambient-bg {
   display: none;
@@ -194,7 +198,16 @@ h1, h2, h3, h4, .font-display {
 
 @media (max-width: 640px) {
   .shelf-item {
-    flex: 0 0 240px;
+    flex: 0 0 230px;
+  }
+}
+
+@media (max-width: 420px) {
+  .shelf-item {
+    flex: 0 0 210px;
+  }
+  .container {
+    padding: 0 14px;
   }
 }
 
@@ -224,3 +237,111 @@ html {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* ==========================================================================
+   J.A.R.V.I.S. STARK INDUSTRIES HUD & ARC REACTOR STYLING
+   ========================================================================== */
+
+@keyframes arcSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes arcSpinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes arcPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.7)) drop-shadow(0 0 25px rgba(0, 119, 255, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 22px rgba(0, 242, 254, 1)) drop-shadow(0 0 45px rgba(0, 242, 254, 0.8));
+  }
+}
+
+@keyframes radarPing {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+@keyframes hudScanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(800%); }
+}
+
+@keyframes hudGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.25), inset 0 0 20px rgba(0, 242, 254, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(0, 242, 254, 0.45), inset 0 0 35px rgba(0, 242, 254, 0.16);
+  }
+}
+
+@keyframes equalizerWave {
+  0%, 100% { height: 4px; }
+  50% { height: 16px; }
+}
+
+/* Jarvis Hologram Overlay Background */
+.jarvis-grid-bg {
+  background-image: 
+    linear-gradient(rgba(0, 242, 254, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Jarvis Trigger Floating Orb */
+.jarvis-trigger-orb {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  background: radial-gradient(circle at center, #091322 0%, #03060c 100%);
+  border-radius: 50%;
+  border: 2px solid rgba(0, 242, 254, 0.8);
+  box-shadow: 0 0 24px rgba(0, 242, 254, 0.45), inset 0 0 12px rgba(0, 242, 254, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 999;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: arcPulse 3s infinite ease-in-out;
+}
+
+.jarvis-trigger-orb:hover {
+  transform: scale(1.08) translateY(-3px);
+  box-shadow: 0 0 40px rgba(0, 242, 254, 0.75), inset 0 0 20px rgba(0, 242, 254, 0.45);
+  border-color: #00f2fe;
+}
+
+/* Hide carousel navigation arrows on mobile & touch devices */
+@media (max-width: 768px) {
+  .carousel-nav-arrows {
+    display: none !important;
+  }
+}
+
+/* Responsive Admin Dashboard Layout */
+.admin-mobile-cards {
+  display: none !important;
+}
+
+.admin-desktop-table {
+  display: block !important;
+}
+
+@media (max-width: 768px) {
+  .admin-mobile-cards {
+    display: flex !important;
+  }
+  .admin-desktop-table {
+    display: none !important;
+  }
+}
+
+

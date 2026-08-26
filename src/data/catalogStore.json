@@ -1,0 +1,979 @@
+{
+  "updatedAt": "2026-08-26T00:18:21.197Z",
+  "categories": [
+    {
+      "id": "TODOS",
+      "name": "TODAS LAS OBRAS"
+    },
+    {
+      "id": "AUTOS",
+      "name": "AUTOS"
+    },
+    {
+      "id": "SUPERHEROES",
+      "name": "SUPER HEROES"
+    },
+    {
+      "id": "ANIME",
+      "name": "ANIME"
+    },
+    {
+      "id": "CINE",
+      "name": "CINE"
+    },
+    {
+      "id": "MUSICA",
+      "name": "MUSICA"
+    },
+    {
+      "id": "SERIESYPELICULAS",
+      "name": "SERIES Y PELICULAS"
+    },
+    {
+      "id": "OBRASDEARTE",
+      "name": "OBRAS DE ARTE"
+    },
+    {
+      "id": "INFANTILYDIBUJOSANIMADOS",
+      "name": "INFANTIL Y DIBUJOS ANIMADOS"
+    }
+  ],
+  "franchises": [
+    {
+      "id": "dragon-ball",
+      "name": "Dragon Ball",
+      "img": "/franchises/dragon-ball.webp",
+      "category": "ANIME"
+    },
+    {
+      "id": "disney",
+      "name": "Walt Disney",
+      "img": "/franchises/disney.webp",
+      "category": "CINE"
+    },
+    {
+      "id": "nba",
+      "name": "NBA",
+      "img": "/franchises/nba.webp",
+      "category": "AUTOS"
+    },
+    {
+      "id": "back-to-future",
+      "name": "Back to the Future",
+      "img": "/franchises/back-to-future.webp",
+      "category": "AUTOS"
+    },
+    {
+      "id": "dc",
+      "name": "DC Comics",
+      "img": "/franchises/dc.webp",
+      "category": "SUPERHEROES"
+    },
+    {
+      "id": "star-wars",
+      "name": "Star Wars",
+      "img": "/franchises/star-wars.webp",
+      "category": "CINE"
+    },
+    {
+      "id": "marvel",
+      "name": "MARVEL",
+      "img": "data:image/webp;base64,UklGRiRQAABXRUJQVlA4WAoAAAAwAAAAnQQAnQQASUNDUMgBAAAAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADZBTFBIBAgAAA0ktW3bMLL/f7tkzBgRE6AZlF3iR9QBh0aTgUK27Vkj60UBrQK6CsIqABQ0q4BUQVMFk1UwwUEcTFDQoGCDggUFDQrmd1vaAnvO6XddJyImQFq2bWFbvVUADoKDfA6CgzAFYQpGHSAhUTAkZA46B5mD1kEmo+l1fuW5diJiAhy1kSRJybggjRrJzDLoYtDLYHnM9VtHROrfaT4ERcmcztsN4EPwweOvMlqw0OkMngHpapWu0r7znfdh+UUz63VCTzbpJk0H751bbjHGQef2JE3zvPHOLq+Q4qiTfJbmvLHOLyjLSSf7jOdra/wispx0yk+4WFvjF05IRSf+hIu1Md1ySbnX2T8RojdmkfhcxICZKIwOSyPUKA5MhKxVtySsDILBUvXKLYVYnYAwU5FySyA0UWGmIuXmLtRBYJipQXZz5sskONzqWoXZylWAuD9oPU82ixFjVUg3P76MwkSmWxVmJs5Cxf1B2jnxtRcsxiYSYTbiLGDcVsLNRB2EjLFtVZiB0ISN+x/ST16qAkdWGTNxtRc6xjoSU+ab8LE85GGybBZAspr7iYpVCBnXxkxSngSRsW71BNVOHPm8FpPThJJlIcO0NMFkueNhQvwqnGQVD5PhVwElq3iYCL8KKVnFwyT4VVDJKh6mYBVWsoqH+2sCS1bxcG9NaMl28s6q4LIsxEvlji5QfqsvFCfx5dOjvYxVEebnsr2In8WYt7S/RhNkuq/4ElWY2V/zC6SeMzRd2uFCFWnObTvaKtR0S9mPVQWb/Vs9VBxoQx+P9UB+Fm+2sh+nCjjdkg8Te+LQeFkP4mcxZyv7MYqg0y35EDZSh8bf2xFmcWfLB8gCz+69Ps1X8lBZ788qQk93rU8KE3to+tmeU0Wfc3lKGPAji9w1mvhTqStEAWgWufEqgUCp0cwhSBa5sYoYVKmRwgAhWeTGqaJQqUfxEUO2bTdGFodKPUYBEWHDZUkgGhf2skwikPqi0KMIi/wlSSwqzCWFTUwwGhf2vEwj4BckNjHhaFzYczKPgJ+V2CQISOPv7k+JSMDtnyKS5O5PI5KwPnwVxaTc0ia5o1EGKEmG8CmKSnP3ybAk9bRJ7miT1H/qsSRed1AUl6YeMjgJcGJgsumgACashTowwaYzsYmHk/CHk1UQmqY+ogl1ugpswlpDE8DByZ9Oczj53//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85/9///Of//znP///KDo4IU+/BzZh05446bAZmQC7JxNPnARsRiYdds8mm7GJHh2b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"
+    }
+  ],
+  "posters": [
+    {
+      "id": "five-nights-at-freddy-s-0980",
+      "title": "Five Nights at Freddy's",
+      "subtitle": "Celebrate!",
+      "category": "INFANTILYDIBUJOSANIMADOS",
+      "franchise": null,
+      "image": "/posters/uploads/full/five-nights-at-freddy-s-0980-0986.webp",
+      "thumb": "/posters/uploads/thumb/five-nights-at-freddy-s-0980-0986.webp",
+      "tags": [
+        "INFANTILYDIBUJOSANIMADOS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "El famoso póster del exitoso videojuego de terror Five Nights at Freddy's. El diseño presenta a los icónicos animatrónicos originales sobre el escenario de la pizzería: Bonnie con su guitarra roja, Freddy Fazbear en el centro con su micrófono, y Chica con su inconfundible babero \"LET'S EAT!!!\". Coronado con la palabra \"CELEBRATE!\" en letras burbujeantes de estilo retro. Una pieza de culto, nostálgica y escalofriante, imprescindible para la colección de cualquier fan de la saga."
+    },
+    {
+      "id": "la-mona-lisa-3306",
+      "title": "La Mona Lisa",
+      "subtitle": "Obra Maestra del Renacimiento",
+      "category": "OBRASDEARTE",
+      "franchise": null,
+      "image": "/posters/uploads/full/la-mona-lisa-3306-3312.webp",
+      "thumb": "/posters/uploads/thumb/la-mona-lisa-3306-3312.webp",
+      "tags": [
+        "OBRASDEARTE"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "4 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Póster decorativo que reproduce fielmente la pintura más famosa de la historia: La Gioconda de Leonardo da Vinci. La impresión captura con gran detalle la icónica y enigmática sonrisa de la modelo, así como la suave técnica del sfumato sobre el misterioso y sereno paisaje de fondo. Una pieza de arte clásico, atemporal y sofisticada, perfecta para quienes buscan aportar la elegancia de un museo a sus propios espacios."
+    },
+    {
+      "id": "goku-0051",
+      "title": "Goku",
+      "subtitle": "Todas las Fases",
+      "category": "ANIME",
+      "franchise": "dragon-ball",
+      "image": "/posters/uploads/full/goku-0051-0057.webp",
+      "thumb": "/posters/uploads/thumb/goku-0051-0057.webp",
+      "tags": [
+        "ANIME"
+      ],
+      "isFeatured": true,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Un póster espectacular y definitivo para los verdaderos fans de Dragon Ball. Este dinámico diseño estilo collage ilustra la evolución completa de Goku, comenzando desde su estado base en la parte inferior hasta coronarse con el imponente Ultra Instinto en la cima. La composición recorre todas sus icónicas transformaciones (Super Saiyajin clásico, fase 3, Dios y Blue), destacando las vibrantes auras de energía de cada nivel sobre un profundo fondo cósmico y estelar. Una inyección de poder puro para cualquier espacio."
+    },
+    {
+      "id": "jurassic-park-9462",
+      "title": "Jurassic Park",
+      "subtitle": "El Escape del T-Rex",
+      "category": "SERIESYPELICULAS",
+      "franchise": null,
+      "image": "/posters/uploads/full/jurassic-park-9462-9468.webp",
+      "thumb": "/posters/uploads/thumb/jurassic-park-9462-9468.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "3 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Impresionante póster cinematográfico que recrea la escena más tensa e icónica de Jurassic Park. La ilustración, dominada por dramáticos tonos fríos y lluvia, captura el momento exacto en que el imponente T-Rex escapa del cerco eléctrico junto al vehículo volcado, contrastando espectacularmente con el rojo intenso de la bengala. Acompañado del clásico eslogan \"An Adventure 65 Million Years In The Making\" y los créditos originales de la película en la base, es una pieza de arte llena de suspenso indispensable para cualquier coleccionista del cine de los 90."
+    },
+    {
+      "id": "jurassic-park-8621",
+      "title": "Jurassic Park",
+      "subtitle": "Póster Ilustrado de Colección",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/jurassic-park-8621-8629.webp",
+      "thumb": "/posters/uploads/thumb/jurassic-park-8621-8629.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "6 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "PORTADA_ALBUM",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Espectacular póster ilustrado estilo collage que rinde tributo al gran clásico del cine Jurassic Park. El diseño rebosa de detalles nostálgicos, destacando al imponente T-Rex, los velociraptores y los icónicos vehículos de exploración de la Isla Nublar. Alrededor del inconfundible logo central se agrupan los personajes principales como Alan Grant, Ellie Sattler, Ian Malcolm sosteniendo una bengala y John Hammond presenciando el nacimiento de un dinosaurio. Una pieza de arte vibrante y detallada, perfecta para cualquier fanático de la cultura pop y la era jurásica."
+    },
+    {
+      "id": "indiana-jones-6555",
+      "title": "Indiana Jones",
+      "subtitle": "Indiana Jones y la Última Cruzada",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/indiana-jones-6555-6562.webp",
+      "thumb": "/posters/uploads/thumb/indiana-jones-6555-6562.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "4 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Un impresionante póster de arte ilustrado pintado a mano para \"Indiana Jones y la Última Cruzada\". Este diseño de \"bóveda\" detallado presenta retratos dinámicos de Harrison Ford como Indy y Sean Connery como su padre, el Dr. Henry Jones, Sr., en el centro. El marco de piedra que lo rodea incluye a Sallah, Marcus Brody, Elsa Schneider y Walter Donovan. En la parte inferior, una escena de acción ilustrada muestra la emocionante persecución en el desierto. El logotipo icónico de la película está en la base. Una pieza de colección esencial."
+    },
+    {
+      "id": "indiana-jones-5273",
+      "title": "Indiana Jones",
+      "subtitle": "Indiana Jones y el Arca Perdida",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/indiana-jones-5273-5282.webp",
+      "thumb": "/posters/uploads/thumb/indiana-jones-5273-5282.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "4 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Un impresionante póster de arte de película clásico de En busca del arca perdida (Raiders of the Lost Ark). Este diseño ilustrado detallado presenta a Indiana Jones en el centro con su látigo, flanqueado por viñetas de villanos nazis, personajes clave como Marion Ravenwood, y el Arca de la Alianza de oro sobre un fondo de jeroglíficos antiguos. Un tributo retro esencial a la aventura definitiva."
+    },
+    {
+      "id": "el-se-or-de-los-anillos-5503",
+      "title": "El Señor de los Anillos",
+      "subtitle": "La Comunidad del Anillo",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/el-se-or-de-los-anillos-5503-5510.webp",
+      "thumb": "/posters/uploads/thumb/el-se-or-de-los-anillos-5503-5510.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "4 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Póster cinematográfico clásico de la aclamada película \"La Comunidad del Anillo\". Un majestuoso diseño tipo collage que destaca a Frodo en el centro, con sutiles inscripciones del Anillo Único sobre su capa, rodeado por Gandalf, Aragorn y el resto de los protagonistas. En la base, los temibles Nazgûl cabalgan entre la niebla sobre el clásico logo dorado de la saga. Con una cálida paleta de tonos tierra, es una pieza épica imprescindible para la colección de cualquier fan del universo de Tolkien."
+    },
+    {
+      "id": "breaking-bad-3656",
+      "title": "Breaking Bad",
+      "subtitle": "Química Perfecta",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/breaking-bad-3656-3661.webp",
+      "thumb": "/posters/uploads/thumb/breaking-bad-3656-3661.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": true,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Espectacular póster ilustrado estilo collage que rinde homenaje a la aclamada serie. El diseño reúne a los personajes principales (Walter, Jesse, Hank, Skyler, Saul y Mike) junto al clásico logo \"Br Ba\" y la icónica casa rodante en el desierto. Coronada con la frase \"It was all in the chemistry\", esta es una pieza narrativa y de estética cinematográfica, ideal para los verdaderos coleccionistas y seguidores del universo de Heisenberg."
+    },
+    {
+      "id": "breaking-bad-3918",
+      "title": "Breaking Bad",
+      "subtitle": "Descanso en Traje Hazmat",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/breaking-bad-3918-3925.webp",
+      "thumb": "/posters/uploads/thumb/breaking-bad-3918-3925.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Un póster irreverente y con mucho estilo que muestra a Walter White y Jesse Pinkman en un merecido descanso. Vestidos con sus icónicos trajes protectores amarillos y las máscaras de gas con filtros rosas sobre la cabeza, ambos personajes aparecen sentados en el sofá disfrutando de unas cervezas, snacks y humo. Una pieza con un toque de humor, contraste surrealista y colores vibrantes, perfecta para darle personalidad a la pared de cualquier fanático de la serie."
+    },
+    {
+      "id": "el-padrino-4985",
+      "title": "El Padrino",
+      "subtitle": "Linaje Corleone",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/el-padrino-4985-4989.webp",
+      "thumb": "/posters/uploads/thumb/el-padrino-4985-4989.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Póster de colección de El Padrino que reune a la familia Corleone bajo un imponente diseño de arte premium con espectaculares salpicaduras de oro sobre fondo negro. El retrato de Vito (Marlon Brando) domina la parte superior, con Michael (Al Pacino) central y sentado, rodeados por Sonny, Tom Hagen y Connie, junto con detalles icónicos como la rosa roja y un auto clásico. Una pieza de prestigio y elegancia indispensable para cualquier fan de la saga."
+    },
+    {
+      "id": "el-padrino-9715",
+      "title": "El Padrino",
+      "subtitle": "Clásico Don Vito Corleone",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/el-padrino-9715-9718.webp",
+      "thumb": "/posters/uploads/thumb/el-padrino-9715-9718.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Póster de la aclamada obra maestra del cine, \"El Padrino\" (The Godfather). Presenta el icónico retrato de Marlon Brando como Don Vito Corleone, luciendo su elegante esmoquin y su distintiva rosa roja bajo una iluminación dramática. En la base destaca el legendario logo dorado de la película con los hilos de marioneta. Una pieza cinematográfica vintage y elegante, imprescindible en la pared de cualquier cinéfilo."
+    },
+    {
+      "id": "pablo-escobar-0509",
+      "title": "Pablo Escobar",
+      "subtitle": "Sneakerhead",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/pablo-escobar-0509-0511.webp",
+      "thumb": "/posters/uploads/thumb/pablo-escobar-0509-0511.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "4 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Llamativo póster en blanco y negro que fusiona la cultura pop con el estilo urbano (streetwear). La imagen presenta un retrato surrealista e irreverente de Pablo Escobar sosteniendo en alto una clásica caja negra de Nike con una zapatilla estilo Air Jordan 1 desgastada sobre ella. Una pieza de arte alternativa y con estética callejera, ideal para darle un toque único y moderno a cualquier habitación."
+    },
+    {
+      "id": "pablo-escobar-0031",
+      "title": "Pablo Escobar",
+      "subtitle": "Sonrisa Histórica",
+      "category": "SERIESYPELICULAS",
+      "image": "/posters/uploads/full/pablo-escobar-0031-0034.webp",
+      "thumb": "/posters/uploads/thumb/pablo-escobar-0031-0034.webp",
+      "tags": [
+        "SERIESYPELICULAS"
+      ],
+      "isFeatured": true,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Póster en blanco y negro que reproduce la célebre fotografía policial de Pablo Escobar. La imagen captura su icónica e inusual sonrisa mientras sostiene la placa original de la \"Cárcel Dtto. Judicial Medellín\" con el número de registro 128482. Una pieza de estética documental e histórica, perfecta para decoraciones de estilo urbano o para los seguidores de la cultura pop y el género true crime."
+    },
+    {
+      "id": "iron-man-7158",
+      "title": "Iron Man",
+      "subtitle": "Héroe en Batalla (Estilo Cómic)",
+      "category": "SUPERHEROES",
+      "image": "/posters/uploads/full/iron-man-7158-7162.webp",
+      "thumb": "/posters/uploads/thumb/iron-man-7158-7162.webp",
+      "tags": [
+        "SUPERHEROES"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Espectacular póster de Iron Man con un clásico arte estilo cómic. La ilustración captura a Tony Stark en plena acción, emergiendo entre humo y escombros de una zona de guerra. Su armadura roja y dorada presenta detalles realistas de daño de batalla, mientras apunta hacia el frente con su repulsor brillando intensamente. Una pieza dinámica y llena de energía, perfecta para los amantes de la acción gráfica de Marvel.",
+      "franchise": "marvel"
+    },
+    {
+      "id": "iron-man-2438",
+      "title": "Iron Man",
+      "subtitle": "La Obra de Arte de Stark",
+      "category": "SUPERHEROES",
+      "image": "/posters/uploads/full/iron-man-2438-2440.webp",
+      "thumb": "/posters/uploads/thumb/iron-man-2438-2440.webp",
+      "tags": [
+        "SUPERHEROES"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Esta es la pieza definitiva para la colección de cualquier verdadero fan de Stark Industries. Este póster reproduce fielmente el icónico diseño de arte pop que aparece en la película \"Iron Man 2\". En la escena, Tony Stark, al verlo, se refiere a él como una \"obra de arte\" y decide colgarlo en su taller, retirando un cuadro tradicional. El diseño utiliza una paleta de colores de estilo retro (crema, rojo apagado y azul grisáceo) y líneas gráficas limpias, con el casco de Iron Man en primer plano y el texto \"IRON MAN\" en letras grandes y mayúsculas en la base. Perfecta para cualquier fan de la tecnología Stark.",
+      "franchise": "marvel"
+    },
+    {
+      "id": "iron-man-0231",
+      "title": "Iron Man",
+      "subtitle": "Geometría de Poder",
+      "category": "SUPERHEROES",
+      "image": "/posters/uploads/full/iron-man-0231-0234.webp",
+      "thumb": "/posters/uploads/thumb/iron-man-0231-0234.webp",
+      "tags": [
+        "SUPERHEROES"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Impactante primer plano de Iron Man en un estilo de arte poligonal y geométrico de facetas. Construido a partir de cientos de formas triangulares de colores rojos y dorados vibrantes, con ojos azules cian brillantes. El fondo es un degradado burdeos profundo. Este póster captura la esencia del héroe con un toque minimalista e imponente, ideal para coleccionistas modernos.",
+      "franchise": "marvel"
+    },
+    {
+      "id": "iron-man-7668",
+      "title": "Iron Man",
+      "subtitle": "Resplandor del  Arc",
+      "category": "SUPERHEROES",
+      "image": "/posters/uploads/full/iron-man-7668-7673.webp",
+      "thumb": "/posters/uploads/thumb/iron-man-7668-7673.webp",
+      "tags": [
+        "SUPERHEROES"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 25,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Impactante póster vertical de Iron Man con su armadura Mark VII. Presenta el icónico Reactor Arc circular y las ópticas de los ojos intensamente iluminados en azul brillante, contrastando con la armadura roja metálica y un fondo de esquemas tecnológicos oscuros. Una pieza poderosa para cualquier fan."
+    },
+    {
+      "id": "porsche-gt3",
+      "title": "Porsche 911 GT3 RS Patente Técnica",
+      "subtitle": "Blueprint Automotriz Motorsport",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/porche-gt3-patente.webp",
+      "thumb": "/posters/optimized/thumb/porche-gt3-patente.webp",
+      "tags": [
+        "Porsche",
+        "GT3",
+        "Motorsport",
+        "Blueprint",
+        "Alemania"
+      ],
+      "isFeatured": false,
+      "rating": 4.9,
+      "reviewsCount": 38,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "Diagrama técnico esquemático del icónico Porsche 911 GT3 RS. Impresión de alta definición con detalles milimétricos sobre base rígida de MDF 5.5mm."
+    },
+    {
+      "id": "skyline-r34",
+      "title": "Nissan Skyline GT-R R34 Patente Técnica",
+      "subtitle": "Leyenda JDM Godzilla",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/skyline-patente.webp",
+      "thumb": "/posters/optimized/thumb/skyline-patente.webp",
+      "tags": [
+        "Nissan",
+        "Skyline",
+        "R34",
+        "JDM",
+        "Godzilla"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 52,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "El rey absoluto de la cultura JDM. Esquema técnico patentado del Nissan Skyline R34 V-Spec, montado en soporte de madera listo para colgar."
+    },
+    {
+      "id": "toyota-supra",
+      "title": "Toyota Supra MK4 2JZ Patente Técnica",
+      "subtitle": "El Rey del 2JZ Twin Turbo",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/toyota-supra-patente.webp",
+      "thumb": "/posters/optimized/thumb/toyota-supra-patente.webp",
+      "tags": [
+        "Toyota",
+        "Supra",
+        "MK4",
+        "2JZ",
+        "JDM"
+      ],
+      "isFeatured": false,
+      "rating": 4.9,
+      "reviewsCount": 44,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "La leyenda de las pistas y los cuartos de milla. Esquema de patente del motor y chasis del legendario Toyota Supra MK4."
+    },
+    {
+      "id": "delorean-dmc12",
+      "title": "DeLorean DMC-12 Time Machine Patente",
+      "subtitle": "Volver al Futuro & Cultura Ochentera",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/delorean-dmc-12-patente.webp",
+      "thumb": "/posters/optimized/thumb/delorean-dmc-12-patente.webp",
+      "tags": [
+        "Delorean",
+        "DMC12",
+        "BackToTheFuture",
+        "SciFi",
+        "Vintage"
+      ],
+      "isFeatured": false,
+      "rating": 4.8,
+      "reviewsCount": 29,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "El condensador de flujo y el diseño técnico del auto más icónico del cine de ciencia ficción de los 80s."
+    },
+    {
+      "id": "bmw-m5",
+      "title": "BMW M5 Patente Técnica",
+      "subtitle": "Sedán Deportivo Alemán de Alta Potencia",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/bmw-m5-patente.webp",
+      "thumb": "/posters/optimized/thumb/bmw-m5-patente.webp",
+      "tags": [
+        "BMW",
+        "M5",
+        "Motorsport",
+        "Alemania",
+        "Blueprint"
+      ],
+      "isFeatured": false,
+      "rating": 4.9,
+      "reviewsCount": 28,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "Blueprint detallado del BMW M5. Ingeniería de alto rendimiento plasamada en una patente técnica sobre madera MDF de 5.5mm."
+    },
+    {
+      "id": "honda-civic-type-r",
+      "title": "Honda Civic Type R Patente Técnica",
+      "subtitle": "Hot Hatch Legendario VTEC",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/honda-civic-type-r-patente.webp",
+      "thumb": "/posters/optimized/thumb/honda-civic-type-r-patente.webp",
+      "tags": [
+        "Honda",
+        "Civic",
+        "TypeR",
+        "VTEC",
+        "JDM"
+      ],
+      "isFeatured": false,
+      "rating": 4.9,
+      "reviewsCount": 31,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "Esquema técnico del rey de la tracción delantera. Diseño minucioso de motor y aerodinámica del Civic Type R."
+    },
+    {
+      "id": "mazda-mx5",
+      "title": "Mazda MX-5 Miata Patente Técnica",
+      "subtitle": "El Roadster Más Vendido del Mundo",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/mazda-mx5-patente.webp",
+      "thumb": "/posters/optimized/thumb/mazda-mx5-patente.webp",
+      "tags": [
+        "Mazda",
+        "MX5",
+        "Miata",
+        "Roadster",
+        "JDM"
+      ],
+      "isFeatured": false,
+      "rating": 4.8,
+      "reviewsCount": 25,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "Plano esquemático del icónico Miata. Distribución de peso perfecta 50/50 y chasis ligero."
+    },
+    {
+      "id": "mercedez-amg",
+      "title": "Mercedes-AMG GT Patente Técnica",
+      "subtitle": "Superdeportivo V8 Biturbo de Affalterbach",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/mercedez-amg-patente.webp",
+      "thumb": "/posters/optimized/thumb/mercedez-amg-patente.webp",
+      "tags": [
+        "Mercedes",
+        "AMG",
+        "V8",
+        "Affalterbach",
+        "Supercar"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 36,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "Elegancia y poder descomunal. Blueprint de la patente técnica del Mercedes-AMG GT."
+    },
+    {
+      "id": "subaru-impreza",
+      "title": "Subaru Impreza WRC Patente Técnica",
+      "subtitle": "Tracción Total Symmetrical AWD Boxer",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/subaru-impreza-patente.webp",
+      "thumb": "/posters/optimized/thumb/subaru-impreza-patente.webp",
+      "tags": [
+        "Subaru",
+        "Impreza",
+        "WRC",
+        "Boxer",
+        "Rally"
+      ],
+      "isFeatured": false,
+      "rating": 4.9,
+      "reviewsCount": 34,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "La leyenda de las etapas de rally mundial. Diagrama técnico del Subaru Impreza AWD."
+    },
+    {
+      "id": "toyota-prado",
+      "title": "Toyota Land Cruiser Prado Patente Técnica",
+      "subtitle": "El Conquistador Todo Terreno 4WD",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/toyota-prado-patente.webp",
+      "thumb": "/posters/optimized/thumb/toyota-prado-patente.webp",
+      "tags": [
+        "Toyota",
+        "Prado",
+        "LandCruiser",
+        "4x4",
+        "OffRoad"
+      ],
+      "isFeatured": false,
+      "rating": 4.9,
+      "reviewsCount": 30,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "Robusto, indestructible y sofisticado. Esquema técnico patentado del Toyota Prado 4x4."
+    },
+    {
+      "id": "toyota-sr5",
+      "title": "Toyota Hilux SR5 Patente Técnica",
+      "subtitle": "El Todoterreno Clásico Legendario",
+      "category": "AUTOS",
+      "image": "/posters/optimized/full/toyota-sr5-patente.webp",
+      "thumb": "/posters/optimized/thumb/toyota-sr5-patente.webp",
+      "tags": [
+        "Toyota",
+        "SR5",
+        "Hilux",
+        "PickUp",
+        "Vintage"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 42,
+      "sizeBadge": "45 x 60 cm",
+      "availableSizes": [
+        "GRANDE"
+      ],
+      "priceDisplay": "Q 125.00",
+      "description": "La camioneta 4x4 más icónica de los años 80 y 90. Plano técnico detallado de suspensión y chasis."
+    },
+    {
+      "id": "spiderman-amazing-fantasy-15",
+      "title": "Amazing Fantasy #15 Debut 1962",
+      "subtitle": "Primera Aparición Histórica de Spider-Man",
+      "category": "SUPERHEROES",
+      "image": "/posters/optimized/full/6326644814-(3).webp",
+      "thumb": "/posters/optimized/thumb/6326644814-(3).webp",
+      "tags": [
+        "Spider-Man",
+        "Marvel",
+        "AmazingFantasy",
+        "StanLee",
+        "VintageComic"
+      ],
+      "isFeatured": true,
+      "rating": 5,
+      "reviewsCount": 64,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "La portada de cómic más codiciada del mundo. El debut original de Spider-Man creado por Stan Lee y Steve Ditko en 1962."
+    },
+    {
+      "id": "spiderman-316-venom",
+      "title": "The Amazing Spider-Man #316 Venom Debut",
+      "subtitle": "Todd McFarlane Clásico de 1989",
+      "category": "SUPERHEROES",
+      "image": "/posters/optimized/full/origin-(3).webp",
+      "thumb": "/posters/optimized/thumb/origin-(3).webp",
+      "tags": [
+        "Spider-Man",
+        "Venom",
+        "ToddMcFarlane",
+        "Marvel",
+        "CoverArt"
+      ],
+      "isFeatured": true,
+      "rating": 4.9,
+      "reviewsCount": 47,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "La legendaria portada de Todd McFarlane donde Venom regresa triunfal. Impresión de alto gramaje con colores retro saturados."
+    },
+    {
+      "id": "spiderman-no-way-home",
+      "title": "Spider-Man: No Way Home Trío Épico",
+      "subtitle": "Tobey, Andrew y Tom vs Doc Ock",
+      "category": "SUPERHEROES",
+      "image": "/posters/optimized/full/whatsapp-image-2022-12-13-at-5.15.33-pm.webp",
+      "thumb": "/posters/optimized/thumb/whatsapp-image-2022-12-13-at-5.15.33-pm.webp",
+      "tags": [
+        "SpiderMan",
+        "NoWayHome",
+        "Multiverso",
+        "Marvel",
+        "Cinema"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 58,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "El encuentro cinematográfico más grande del multiverso arácnido. Póster cinematográfico con acabado de alta definición."
+    },
+    {
+      "id": "spiderman-miles-morales-hoodie",
+      "title": "Miles Morales: Into The Spider-Verse",
+      "subtitle": "Estilo Urbano con Capucha Roja",
+      "category": "SUPERHEROES",
+      "image": "/posters/optimized/full/03a7036fdfcef43eeedce692adbcdba0-(1).webp",
+      "thumb": "/posters/optimized/thumb/03a7036fdfcef43eeedce692adbcdba0-(1).webp",
+      "tags": [
+        "MilesMorales",
+        "SpiderVerse",
+        "Brooklyn",
+        "Sony",
+        "Art"
+      ],
+      "isFeatured": false,
+      "rating": 4.9,
+      "reviewsCount": 39,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "El arte conceptual urbano de Miles Morales en su icónico traje con sudadera roja y zapatillas Nike Chicago."
+    },
+    {
+      "id": "spiderman-insomniac-advanced-suit",
+      "title": "Spider-Man Advanced Suit PS5",
+      "subtitle": "Arte Óleo con Araña Blanca",
+      "category": "SUPERHEROES",
+      "image": "/posters/optimized/full/e8yxpkzvgaqvyyp-(3).webp",
+      "thumb": "/posters/optimized/thumb/e8yxpkzvgaqvyyp-(3).webp",
+      "tags": [
+        "SpiderMan",
+        "Insomniac",
+        "PS5",
+        "Gaming",
+        "Art"
+      ],
+      "isFeatured": false,
+      "rating": 4.9,
+      "reviewsCount": 34,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Ilustración artística de estilo óleo y textura de pintura del Spider-Man de Insomniac Games con la emblemática araña blanca."
+    },
+    {
+      "id": "spiderman-spider-verse-all-spiders",
+      "title": "Spider-Verse: All Spiders Assemble",
+      "subtitle": "Portada Marvel Now Comics",
+      "category": "SUPERHEROES",
+      "image": "/posters/optimized/full/gwsyhwshsh-(1).webp",
+      "thumb": "/posters/optimized/thumb/gwsyhwshsh-(1).webp",
+      "tags": [
+        "SpiderVerse",
+        "MarvelComics",
+        "SpiderGwen",
+        "SpiderNoir",
+        "AllSpiders"
+      ],
+      "isFeatured": false,
+      "rating": 5,
+      "reviewsCount": 42,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Todas las variantes del Spider-Verse en una sola ilustración coral de combate interdimensional."
+    },
+    {
+      "id": "spiderman-green-goblin-battle",
+      "title": "Spider-Man vs Duende Verde & Doc Ock",
+      "subtitle": "Batalla Épica en Manhattan",
+      "category": "SUPERHEROES",
+      "image": "/posters/optimized/full/whatsapp-image-2022-12-13-at-5.17.42-pm-(1).webp",
+      "thumb": "/posters/optimized/thumb/whatsapp-image-2022-12-13-at-5.17.42-pm-(1).webp",
+      "tags": [
+        "SpiderMan",
+        "GreenGoblin",
+        "DocOck",
+        "Villains",
+        "Marvel"
+      ],
+      "isFeatured": false,
+      "rating": 4.8,
+      "reviewsCount": 29,
+      "sizeBadge": "5 Tamaños",
+      "availableSizes": [
+        "MINI",
+        "PEQUENO",
+        "MEDIANO",
+        "GRANDE",
+        "GIGANTE"
+      ],
+      "priceDisplay": "Desde Q 25.00",
+      "description": "Batalla aérea sobre los rascacielos de Nueva York entre Spider-Man y sus más grandes archienemigos."
+    }
+  ]
+}

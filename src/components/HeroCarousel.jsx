@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { CATALOG_POSTERS } from '../data/catalogData';
+import { getStoredFranchises } from '../utils/catalogStorage';
 import OptimizedImage from './OptimizedImage';
 
 // Fisher-Yates shuffle algorithm
@@ -12,27 +14,41 @@ function shuffleArray(array) {
   return arr;
 }
 
-const FRANCHISES = [
-  { id: 'avengers', name: 'Avengers', img: '/franchises/avengers.png', category: 'SUPERHEROES' },
-  { id: 'dragon-ball', name: 'Dragon Ball', img: '/franchises/dragon-ball.png', category: 'ANIME' },
-  { id: 'disney', name: 'Walt Disney', img: '/franchises/disney.png', category: 'CINE' },
-  { id: 'nba', name: 'NBA', img: '/franchises/nba.png', category: 'AUTOS' },
-  { id: 'back-to-future', name: 'Back to the Future', img: '/franchises/back-to-future.png', category: 'AUTOS' },
-  { id: 'dc', name: 'DC Comics', img: '/franchises/dc.png', category: 'SUPERHEROES' },
-  { id: 'star-wars', name: 'Star Wars', img: '/franchises/star-wars.png', category: 'CINE' }
-];
+export default function HeroCarousel({ onSelectPoster, onSelectCategory, onSelectFranchise, onNavigate, posters = CATALOG_POSTERS }) {
+  const bestSellersScrollRef = useRef(null);
+  const [franchises, setFranchises] = useState(() => getStoredFranchises());
 
-export default function HeroCarousel({ onSelectPoster, posters = CATALOG_POSTERS }) {
-  // Randomize featured best sellers on load
+  useEffect(() => {
+    const handleUpdate = () => {
+      setFranchises(getStoredFranchises());
+    };
+    window.addEventListener('deco-catalog-updated', handleUpdate);
+    return () => window.removeEventListener('deco-catalog-updated', handleUpdate);
+  }, []);
+
+  // Only display posters explicitly marked as isFeatured (Best Sellers) - max 8
   const featuredPosters = useMemo(() => {
-    const featured = posters.filter(p => p.isFeatured);
-    const pool = featured.length >= 4 ? featured : posters;
-    return shuffleArray(pool).slice(0, 4);
+    const featured = posters.filter(p => Boolean(p.isFeatured));
+    return shuffleArray(featured).slice(0, 8);
   }, [posters]);
+
+  const handleScrollFranchises = (direction) => {
+    if (franchiseScrollRef.current) {
+      const amount = direction === 'left' ? -220 : 220;
+      franchiseScrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollBestSellers = (direction) => {
+    if (bestSellersScrollRef.current) {
+      const amount = direction === 'left' ? -320 : 320;
+      bestSellersScrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
 
   return (
     <section style={{
-      paddingTop: '108px',
+      paddingTop: '96px',
       position: 'relative',
       background: '#060910'
     }}>
@@ -44,24 +60,23 @@ export default function HeroCarousel({ onSelectPoster, posters = CATALOG_POSTERS
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',
-        paddingTop: '80px',
-        paddingBottom: '60px',
+        padding: 'clamp(42px, 7vw, 75px) 0 clamp(32px, 5.5vw, 55px) 0',
         textAlign: 'center',
         borderBottom: '1px solid rgba(255, 255, 255, 0.04)'
       }}>
         <div className="container" style={{ position: 'relative', zIndex: 2 }}>
           
-          {/* Main Headline (Exact from Illustrator) */}
+          {/* Main Headline (Scaled cleanly on Mobile) */}
           <h1 style={{
             fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(2.5rem, 5.8vw, 4.8rem)',
+            fontSize: 'clamp(1.6rem, 5.8vw, 4.2rem)',
             fontWeight: 900,
-            lineHeight: 1.08,
-            marginBottom: '16px',
+            lineHeight: 1.12,
+            marginBottom: '14px',
             letterSpacing: '-0.02em',
             textTransform: 'uppercase',
-            maxWidth: '1050px',
-            margin: '0 auto 16px auto',
+            maxWidth: '960px',
+            margin: '0 auto 14px auto',
             color: '#ffffff'
           }}>
             DESCUBRE POSTERS <br />
@@ -72,12 +87,19 @@ export default function HeroCarousel({ onSelectPoster, posters = CATALOG_POSTERS
           </h1>
 
           {/* User Button: Botón Categorías Disponibles */}
-          <div style={{ margin: '32px 0 0 0', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ margin: '24px 0 0 0', display: 'flex', justifyContent: 'center' }}>
             <a
               href="#catalogo"
+              onClick={(e) => {
+                e.preventDefault();
+                if (onNavigate) {
+                  onNavigate('catalog');
+                }
+              }}
               style={{
                 display: 'inline-block',
                 textDecoration: 'none',
+                cursor: 'pointer',
                 transition: 'transform 0.25s ease, filter 0.25s ease'
               }}
               onMouseEnter={e => {
@@ -93,8 +115,9 @@ export default function HeroCarousel({ onSelectPoster, posters = CATALOG_POSTERS
                 src="/assets/boton-categorias.png"
                 alt="Explora las Categorías Disponibles"
                 style={{
-                  height: '52px',
-                  width: 'auto',
+                  height: 'clamp(38px, 6vw, 48px)',
+                  maxWidth: '85vw',
+                  objectFit: 'contain',
                   display: 'block'
                 }}
               />
@@ -105,44 +128,60 @@ export default function HeroCarousel({ onSelectPoster, posters = CATALOG_POSTERS
       </div>
 
       {/* 2. Franchises and Catalog Content on Solid Dark Background */}
-      <div style={{ padding: '45px 0 80px 0', background: '#060910' }}>
+      <div style={{ padding: '36px 0 25px 0', background: '#060910' }}>
         <div className="container">
           
-          {/* 7 Franchise Buttons Row (Exact User Exported PNGs) */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '16px',
-            flexWrap: 'wrap',
-            marginBottom: '65px'
-          }}>
-            {FRANCHISES.map((franchise) => (
-              <a
+          {/* Franchise Buttons Row (Pure Original Style: Borderless, Floating Logos with Glow Effect) */}
+          <div
+            className="franchise-track hide-scrollbar"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'clamp(14px, 2.5vw, 24px)',
+              scrollbarWidth: 'none',
+              WebkitOverflowScrolling: 'touch'
+            }}
+          >
+            {franchises.map((franchise) => (
+              <button
                 key={franchise.id}
-                href="#catalogo"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (onSelectFranchise) {
+                    onSelectFranchise(franchise);
+                  } else if (onSelectCategory) {
+                    onSelectCategory(franchise.category);
+                  }
+                }}
                 style={{
-                  width: '92px',
-                  height: '92px',
+                  width: 'clamp(72px, 8.5vw, 92px)',
+                  height: 'clamp(72px, 8.5vw, 92px)',
+                  flexShrink: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
                   textDecoration: 'none',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   cursor: 'pointer'
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-6px) scale(1.08)';
-                  e.currentTarget.style.filter = 'drop-shadow(0 10px 20px rgba(0, 242, 254, 0.4))';
+                  e.currentTarget.style.filter = 'drop-shadow(0 10px 20px rgba(0, 242, 254, 0.45))';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.filter = 'none';
                 }}
+                title={`Colección ${franchise.name}`}
               >
                 <img
                   src={franchise.img}
-                  alt={franchise.name}
+                  alt={`Colección ${franchise.name}`}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -150,144 +189,239 @@ export default function HeroCarousel({ onSelectPoster, posters = CATALOG_POSTERS
                     display: 'block'
                   }}
                 />
-              </a>
+              </button>
             ))}
           </div>
 
-          {/* BEST SELLERS Header (Exact from Illustrator) */}
-          <div style={{ textAlign: 'left', marginBottom: '22px' }}>
-            <h2 style={{
-              fontFamily: 'var(--font-bebas)',
-              fontSize: '2.8rem',
-              letterSpacing: '0.05em',
-              color: '#ffffff',
-              textTransform: 'uppercase',
-              lineHeight: 1
-            }}>
-              BEST SELLERS
-            </h2>
-          </div>
-
-          {/* 4 Standout Featured Cards Grid (Exact from Illustrator) */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '20px',
-            maxWidth: '1280px',
-            margin: '0 auto',
-            textAlign: 'left'
-          }}>
-            {featuredPosters.map((poster, index) => (
-              <div
-                key={poster.id}
-                className="glass-card"
-                style={{
-                  padding: '0',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  background: '#070b12',
-                  position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: '16px'
-                }}
-                onClick={() => onSelectPoster(poster)}
-              >
-                  {/* Poster Frame (100% Horizontal & Vertical Proportion without Cropping) */}
-                  <div style={{
-                    width: '100%',
-                    height: '240px',
-                    position: 'relative',
-                    background: '#040609',
-                    padding: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+          {/* BEST SELLERS Horizontal Carousel (Only rendered if there are featured posters) */}
+          {featuredPosters.length > 0 && (
+            <div style={{ marginBottom: '10px' }}>
+              
+              {/* Header with Title and Nav Controls */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                paddingBottom: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                  <h2 style={{
+                    fontFamily: 'var(--font-bebas)',
+                    fontSize: '2.6rem',
+                    letterSpacing: '0.05em',
+                    color: '#ffffff',
+                    textTransform: 'uppercase',
+                    lineHeight: 1,
+                    margin: 0
                   }}>
-                    <OptimizedImage
-                      src={poster.thumb || poster.image}
-                      alt={poster.title}
-                      objectFit="contain"
-                      priority={index < 2}
-                      style={{ background: 'transparent' }}
-                    />
+                    BEST SELLERS
+                  </h2>
+                </div>
 
-                    {/* Available Size Pill Badge */}
+                {/* Navigation Arrows for Best Sellers */}
+                <div className="carousel-nav-arrows" style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => handleScrollBestSellers('left')}
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(0, 242, 254, 0.2)';
+                      e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.6)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    }}
+                    title="Anterior"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+
+                  <button
+                    onClick={() => handleScrollBestSellers('right')}
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(0, 242, 254, 0.2)';
+                      e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.6)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    }}
+                    title="Siguiente"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Horizontal Scroll Track for Best Sellers */}
+              <div
+                ref={bestSellersScrollRef}
+                className="shelf-track"
+                style={{ paddingBottom: '14px' }}
+              >
+                {featuredPosters.map((poster, index) => (
+                  <div
+                    key={poster.id}
+                    className="shelf-item glass-card"
+                    style={{
+                      padding: '0',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      border: '1px solid rgba(0, 242, 254, 0.25)',
+                      background: '#070b12',
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      borderRadius: '16px'
+                    }}
+                    onClick={() => onSelectPoster(poster)}
+                  >
+                    {/* Poster Frame */}
                     <div style={{
-                      position: 'absolute',
-                      top: '12px',
-                      right: '12px',
-                      background: 'rgba(4, 6, 9, 0.85)',
-                      border: '1px solid rgba(0, 242, 254, 0.4)',
-                      color: 'var(--accent-cyan)',
-                      fontWeight: 800,
-                      fontSize: '0.7rem',
-                      padding: '3px 10px',
-                      borderRadius: 'var(--radius-full)',
-                      backdropFilter: 'blur(8px)',
-                      zIndex: 2
+                      width: '100%',
+                      height: '240px',
+                      position: 'relative',
+                      background: '#040609',
+                      padding: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
                     }}>
-                      {poster.sizeBadge || (poster.availableSizes?.length === 1 ? '45 x 60 cm' : '6 Tamaños')}
-                    </div>
-                  </div>
+                      <OptimizedImage
+                        src={poster.thumb || poster.image}
+                        alt={poster.title}
+                        objectFit="contain"
+                        priority={index < 2}
+                        style={{ background: 'transparent' }}
+                      />
 
-                  {/* Card Bottom Details */}
-                  <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
+                      {/* Available Size Pill Badge */}
                       <div style={{
-                        fontSize: '0.72rem',
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        background: 'rgba(4, 6, 9, 0.85)',
+                        border: '1px solid rgba(0, 242, 254, 0.4)',
                         color: 'var(--accent-cyan)',
                         fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        marginBottom: '4px'
+                        fontSize: '0.7rem',
+                        padding: '3px 10px',
+                        borderRadius: 'var(--radius-full)',
+                        backdropFilter: 'blur(8px)',
+                        zIndex: 2
                       }}>
-                        {poster.category}
+                        {poster.sizeBadge || (poster.availableSizes?.length === 1 ? '45 x 60 cm' : '6 Tamaños')}
                       </div>
-                      <h4 style={{
-                        fontSize: '0.98rem',
-                        fontWeight: 800,
-                        color: '#ffffff',
-                        marginBottom: '12px',
-                        lineHeight: '1.3'
-                      }}>
-                        {poster.title}
-                      </h4>
                     </div>
 
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      paddingTop: '10px',
-                      borderTop: '1px solid rgba(255, 255, 255, 0.05)'
-                    }}>
-                      <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
-                        {poster.priceDisplay || (poster.availableSizes?.length === 1 ? 'Q 125.00' : 'Desde Q 25.00')}
-                      </span>
-                      
-                      <span style={{
-                        fontSize: '0.8rem',
-                        fontWeight: 800,
-                        color: '#ffffff',
+                    {/* Card Bottom Details */}
+                    <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{
+                          fontSize: '0.72rem',
+                          color: 'var(--accent-cyan)',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          marginBottom: '4px'
+                        }}>
+                          {poster.subtitle || 'Edición Especial'}
+                        </div>
+                        <h3 style={{
+                          fontSize: '1.05rem',
+                          fontWeight: 800,
+                          color: '#ffffff',
+                          marginBottom: '10px',
+                          lineHeight: 1.25
+                        }}>
+                          {poster.title}
+                        </h3>
+                      </div>
+
+                      {/* Price & Action */}
+                      <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        justifyContent: 'space-between',
+                        paddingTop: '10px',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.06)'
                       }}>
-                        Ver Detalle ➔
-                      </span>
+                        <span style={{ fontSize: '0.98rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
+                          {poster.priceDisplay || (poster.availableSizes?.length === 1 ? 'Q 125.00' : 'Desde Q 25.00')}
+                        </span>
+                        
+                        <span style={{
+                          fontSize: '0.8rem',
+                          fontWeight: 800,
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          Ver Detalle ➔
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                </div>
-            ))}
-          </div>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          )}
 
         </div>
       </div>
 
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .franchise-track {
+          justify-content: center;
+          flex-wrap: nowrap;
+          overflow: visible !important;
+          padding: 24px 10px 40px 10px;
+          margin-bottom: 20px;
+        }
+        @media (max-width: 768px) {
+          .franchise-track {
+            justify-content: flex-start;
+            overflow-x: auto !important;
+            overflow-y: visible !important;
+            padding: 24px 16px 40px 16px;
+            margin-bottom: 20px;
+          }
+        }
+      `}</style>
     </section>
   );
 }

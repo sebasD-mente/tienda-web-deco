@@ -2,62 +2,236 @@ import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import HeroCarousel from './components/HeroCarousel';
 import CategoryShelf from './components/CategoryShelf';
+import CatalogPage from './pages/CatalogPage';
+import CategoryGalleryPage from './pages/CategoryGalleryPage';
+import FranchiseGalleryPage from './pages/FranchiseGalleryPage';
 import AboutPostersPage from './pages/AboutPostersPage';
 import CustomPostersPage from './pages/CustomPostersPage';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminLoginModal from './components/AdminLoginModal';
 import ProductModal from './components/ProductModal';
 import JarvisAgent from './components/JarvisAgent';
+import ArcReactor from './components/ArcReactor';
 import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
 import { Bot } from 'lucide-react';
-import { getStoredPosters, getStoredCategories } from './utils/catalogStorage';
+import { getStoredPosters, getStoredCategories, getStoredFranchises } from './utils/catalogStorage';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'about' | 'custom' | 'admin'
+  const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'catalog' | 'category' | 'franchise' | 'about' | 'custom' | 'admin'
+  const [selectedCategoryId, setSelectedCategoryId] = useState('AUTOS');
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState('avengers');
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isJarvisOpen, setIsJarvisOpen] = useState(false);
   const [selectedPosterForModal, setSelectedPosterForModal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('TODOS');
 
-  // Dynamic state for posters and categories
+  // Admin authentication state (persisted per session)
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+    return sessionStorage.getItem('deco_admin_auth') === 'true';
+  });
+  const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
+
+  // Dynamic state for posters, categories, and franchises
   const [posters, setPosters] = useState(getStoredPosters());
   const [categories, setCategories] = useState(getStoredCategories());
+  const [franchises, setFranchises] = useState(getStoredFranchises());
 
   // Listen to catalog updates from Admin
   useEffect(() => {
     const handleUpdate = () => {
       setPosters(getStoredPosters());
       setCategories(getStoredCategories());
+      setFranchises(getStoredFranchises());
     };
 
     window.addEventListener('deco-catalog-updated', handleUpdate);
     return () => window.removeEventListener('deco-catalog-updated', handleUpdate);
   }, []);
 
-  const handleNavigate = (page) => {
+  // Initialize initial history entry on first load
+  useEffect(() => {
+    if (!window.history.state) {
+      window.history.replaceState({ type: 'page', page: 'home' }, '');
+    }
+  }, []);
+
+  // Handle native mobile back button, gestures & desktop browser Back/Forward arrows
+  useEffect(() => {
+    const handlePopState = (event) => {
+      // 1. If any modal is active, close the modal and remain on current page
+      if (selectedPosterForModal || isCartOpen || isJarvisOpen || showAdminLoginModal) {
+        setSelectedPosterForModal(null);
+        setIsCartOpen(false);
+        setIsJarvisOpen(false);
+        setShowAdminLoginModal(false);
+        return;
+      }
+
+      // 2. Otherwise navigate to the previous page state
+      const state = event.state;
+      if (state && state.type === 'page') {
+        setCurrentPage(state.page || 'home');
+        if (state.categoryId) setSelectedCategoryId(state.categoryId);
+        if (state.franchiseId) setSelectedFranchiseId(state.franchiseId);
+        window.scrollTo(0, 0);
+      } else {
+        // Root fallback to Home
+        setCurrentPage('home');
+        window.scrollTo(0, 0);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [selectedPosterForModal, isCartOpen, isJarvisOpen, showAdminLoginModal]);
+
+  // Modal Open / Close Handlers with Browser History Sync
+  const handleOpenPosterModal = (poster) => {
+    if (poster) {
+      window.history.pushState({ type: 'modal', modalType: 'poster' }, '');
+      setSelectedPosterForModal(poster);
+    }
+  };
+
+  const handleClosePosterModal = () => {
+    setSelectedPosterForModal(null);
+    if (window.history.state?.type === 'modal' && window.history.state?.modalType === 'poster') {
+      window.history.back();
+    }
+  };
+
+  const handleOpenCart = () => {
+    window.history.pushState({ type: 'modal', modalType: 'cart' }, '');
+    setIsCartOpen(true);
+  };
+
+  const handleCloseCart = () => {
+    setIsCartOpen(false);
+    if (window.history.state?.type === 'modal' && window.history.state?.modalType === 'cart') {
+      window.history.back();
+    }
+  };
+
+  const handleOpenJarvis = () => {
+    window.history.pushState({ type: 'modal', modalType: 'jarvis' }, '');
+    setIsJarvisOpen(true);
+  };
+
+  const handleCloseJarvis = () => {
+    setIsJarvisOpen(false);
+    if (window.history.state?.type === 'modal' && window.history.state?.modalType === 'jarvis') {
+      window.history.back();
+    }
+  };
+
+  const handleOpenAdminLogin = () => {
+    window.history.pushState({ type: 'modal', modalType: 'adminLogin' }, '');
+    setShowAdminLoginModal(true);
+  };
+
+  const handleCloseAdminLogin = () => {
+    setShowAdminLoginModal(false);
+    if (window.history.state?.type === 'modal' && window.history.state?.modalType === 'adminLogin') {
+      window.history.back();
+    }
+  };
+
+  const handleNavigate = (page, categoryId = null) => {
+    if (page === 'admin' && !isAdminAuthenticated) {
+      handleOpenAdminLogin();
+      return;
+    }
+    if (page === 'category' && categoryId) {
+      setSelectedCategoryId(categoryId);
+    }
+
+    // Push new page state to browser history if moving to a different view
+    if (page !== currentPage || (page === 'category' && categoryId !== selectedCategoryId)) {
+      window.history.pushState({
+        type: 'page',
+        page,
+        categoryId: categoryId || (page === 'category' ? selectedCategoryId : null)
+      }, '');
+    }
+
     setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
+  };
+
+  const handleAdminLoginSuccess = () => {
+    setIsAdminAuthenticated(true);
+    sessionStorage.setItem('deco_admin_auth', 'true');
+    setShowAdminLoginModal(false);
+    window.history.pushState({ type: 'page', page: 'admin' }, '');
+    setCurrentPage('admin');
+    window.scrollTo(0, 0);
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminAuthenticated(false);
+    sessionStorage.removeItem('deco_admin_auth');
+    window.history.pushState({ type: 'page', page: 'home' }, '');
+    setCurrentPage('home');
+    window.scrollTo(0, 0);
+  };
+
+  const handleSelectCategory = (catId) => {
+    setSelectedCategoryId(catId);
+    window.history.pushState({
+      type: 'page',
+      page: 'category',
+      categoryId: catId
+    }, '');
+    setCurrentPage('category');
+    window.scrollTo(0, 0);
+  };
+
+  const handleSelectFranchise = (fId) => {
+    const cleanId = typeof fId === 'object' ? fId.id : fId;
+    setSelectedFranchiseId(cleanId);
+    window.history.pushState({
+      type: 'page',
+      page: 'franchise',
+      franchiseId: cleanId
+    }, '');
+    setCurrentPage('franchise');
+    window.scrollTo(0, 0);
   };
 
   // Add item to cart or increment existing
   const handleAddToCart = (item) => {
     setCart(prev => {
       const existingIdx = prev.findIndex(
-        i => i.poster.id === item.poster.id && i.size.id === item.size.id
+        i => i.poster?.id === item.poster?.id && i.size?.id === item.size?.id
       );
       if (existingIdx > -1) {
         const updated = [...prev];
-        updated[existingIdx].quantity += item.quantity;
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity: (Number(updated[existingIdx].quantity) || 1) + (Number(item.quantity) || 1)
+        };
         return updated;
       }
-      return [...prev, item];
+      return [...prev, { ...item, quantity: Number(item.quantity) || 1 }];
     });
   };
 
   const handleRemoveItem = (index) => {
     setCart(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateQuantity = (index, delta) => {
+    setCart(prev => {
+      const updated = [...prev];
+      const newQty = (Number(updated[index]?.quantity) || 1) + delta;
+      if (newQty <= 0) {
+        return updated.filter((_, i) => i !== index);
+      }
+      updated[index] = { ...updated[index], quantity: newQty };
+      return updated;
+    });
   };
 
   const handleQuickWhatsApp = (item) => {
@@ -75,11 +249,16 @@ export default function App() {
       {/* Top Fixed Minimalist Navbar */}
       <Navbar
         cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)}
-        onOpenCart={() => setIsCartOpen(true)}
-        onOpenJarvis={() => setIsJarvisOpen(true)}
+        onOpenCart={handleOpenCart}
+        onOpenJarvis={handleOpenJarvis}
+        posters={posters}
+        categories={categories}
+        onSelectPoster={handleOpenPosterModal}
         onSearch={(query) => {
           setSearchQuery(query);
-          if (currentPage !== 'home') setCurrentPage('home');
+          if (currentPage !== 'catalog' && currentPage !== 'home') {
+            setCurrentPage('catalog');
+          }
         }}
         searchQuery={searchQuery}
         activePage={currentPage}
@@ -88,20 +267,22 @@ export default function App() {
 
       {/* Main Multi-Page Body */}
       <main>
+        {/* 1. HOME PAGE: 5 Selected Carousels (Franchises, Best Sellers, and 3 Random Daily Spotlight Categories) */}
         {currentPage === 'home' && (
           <>
-            {/* Hero Showcase with Dynamic Featured Posters */}
             <HeroCarousel
-              onSelectPoster={(p) => setSelectedPosterForModal(p)}
+              onSelectPoster={handleOpenPosterModal}
+              onSelectCategory={handleSelectCategory}
+              onSelectFranchise={handleSelectFranchise}
+              onNavigate={handleNavigate}
               posters={posters}
+              franchises={franchises}
             />
 
-            {/* Dynamic Shelf Catalog */}
             <CategoryShelf
-              onSelectPoster={(p) => setSelectedPosterForModal(p)}
-              onAddToCart={handleAddToCart}
-              onQuickWhatsApp={handleQuickWhatsApp}
-              filterCategory={selectedCategory}
+              onSelectPoster={handleOpenPosterModal}
+              onSelectCategory={handleSelectCategory}
+              onNavigate={handleNavigate}
               searchQuery={searchQuery}
               posters={posters}
               categories={categories}
@@ -109,26 +290,79 @@ export default function App() {
           </>
         )}
 
+        {/* 2. FULL CATALOG PAGE: Showcases all collections with direct category gallery entry buttons */}
+        {currentPage === 'catalog' && (
+          <CatalogPage
+            categories={categories}
+            posters={posters}
+            onSelectPoster={handleOpenPosterModal}
+            onSelectCategory={handleSelectCategory}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {/* 3. CATEGORY GALLERY PAGE: Dedicated grid gallery for the chosen category */}
+        {currentPage === 'category' && (
+          <CategoryGalleryPage
+            categoryId={selectedCategoryId}
+            categories={categories}
+            posters={posters}
+            onSelectPoster={handleOpenPosterModal}
+            onNavigate={handleNavigate}
+            onSelectCategory={handleSelectCategory}
+          />
+        )}
+
+        {/* 4. FRANCHISE GALLERY PAGE: Dedicated grid gallery for the chosen franchise */}
+        {currentPage === 'franchise' && (
+          <FranchiseGalleryPage
+            franchiseId={selectedFranchiseId}
+            franchises={franchises}
+            categories={categories}
+            posters={posters}
+            onSelectPoster={handleOpenPosterModal}
+            onNavigate={handleNavigate}
+            onSelectFranchise={handleSelectFranchise}
+            onSelectCategory={handleSelectCategory}
+          />
+        )}
+
+        {/* 5. ABOUT POSTERS PAGE */}
         {currentPage === 'about' && (
           <AboutPostersPage onNavigate={handleNavigate} />
         )}
 
+        {/* 5. CUSTOM POSTERS PAGE */}
         {currentPage === 'custom' && (
           <CustomPostersPage onNavigate={handleNavigate} />
         )}
 
+        {/* 6. ADMIN DASHBOARD (Protected) */}
         {currentPage === 'admin' && (
-          <AdminDashboard onNavigate={handleNavigate} />
+          isAdminAuthenticated ? (
+            <AdminDashboard onNavigate={handleNavigate} onLogout={handleAdminLogout} />
+          ) : (
+            <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+              Acceso protegido. Por favor inicie sesión.
+            </div>
+          )
         )}
       </main>
 
       {/* Global Footer with Page Navigation */}
       <Footer onNavigate={handleNavigate} />
 
+      {/* Admin Login Modal (Single Admin SebasDmente) */}
+      <AdminLoginModal
+        isOpen={showAdminLoginModal}
+        onClose={handleCloseAdminLogin}
+        onSuccess={handleAdminLoginSuccess}
+      />
+
       {/* Product Detail Modal */}
       <ProductModal
         poster={selectedPosterForModal}
-        onClose={() => setSelectedPosterForModal(null)}
+        onClose={handleClosePosterModal}
         onAddToCart={handleAddToCart}
         onQuickWhatsApp={handleQuickWhatsApp}
       />
@@ -136,44 +370,38 @@ export default function App() {
       {/* Jarvis AI Assistant Widget */}
       <JarvisAgent
         isOpen={isJarvisOpen}
-        onClose={() => setIsJarvisOpen(false)}
+        onClose={handleCloseJarvis}
         onQuickWhatsApp={handleQuickWhatsApp}
+        cart={cart}
       />
 
-      {/* Floating Jarvis Trigger Button (When closed) */}
+      {/* Floating Jarvis Arc Reactor Trigger Button (When closed) */}
       {!isJarvisOpen && (
-        <button
-          onClick={() => setIsJarvisOpen(true)}
+        <div
+          onClick={handleOpenJarvis}
+          className="jarvis-trigger-orb"
           style={{
             position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'var(--grad-cyan)',
-            border: '2px solid rgba(0, 242, 254, 0.6)',
-            boxShadow: '0 8px 30px rgba(0, 242, 254, 0.4)',
-            color: '#070a10',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            bottom: '20px',
+            right: '20px',
             cursor: 'pointer',
-            zIndex: 99,
-            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+            zIndex: 999,
+            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            padding: 0
           }}
-          title="Abrir Jarvis IA"
+          title="Abrir J.A.R.V.I.S. AI"
         >
-          <Bot size={28} />
-        </button>
+          <ArcReactor size={52} />
+        </div>
       )}
 
       {/* Shopping Cart Drawer */}
       <CartDrawer
         isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
+        onClose={handleCloseCart}
         cartItems={cart}
         onRemoveItem={handleRemoveItem}
+        onUpdateQuantity={handleUpdateQuantity}
         onClearCart={() => setCart([])}
       />
     </div>

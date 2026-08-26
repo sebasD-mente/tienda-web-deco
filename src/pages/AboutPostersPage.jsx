@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Cpu, Layers, Hammer, CheckCircle2, Sparkles, ArrowRight, Ruler, Eye, Award } from 'lucide-react';
+import { ShieldCheck, Cpu, Layers, Hammer, CheckCircle2, ArrowRight, Ruler, Award } from 'lucide-react';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 
 export default function AboutPostersPage({ onNavigate }) {
@@ -42,7 +42,7 @@ export default function AboutPostersPage({ onNavigate }) {
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
             <button
-              onClick={() => onNavigate('home')}
+              onClick={() => onNavigate && onNavigate('catalog')}
               className="btn-cyan"
               style={{ padding: '13px 26px', fontSize: '0.92rem' }}
             >
@@ -306,7 +306,7 @@ export default function AboutPostersPage({ onNavigate }) {
 
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
-                onClick={() => onNavigate('home')}
+                onClick={() => onNavigate && onNavigate('catalog')}
                 className="btn-cyan"
                 style={{ padding: '14px 28px' }}
               >
