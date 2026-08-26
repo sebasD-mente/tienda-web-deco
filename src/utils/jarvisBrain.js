@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getStoreKnowledge } from '../data/storeKnowledge';
+import { CATALOG_POSTERS } from '../data/catalogData';
 import { getStoredPosters, getStoredCategories, getStoredFranchises } from './catalogStorage';
 
 const API_KEY_STORAGE_KEY = 'deco_gemini_api_key_v1';
@@ -152,7 +153,8 @@ export async function askJarvis({
   const cleanInput = (userMessage || '').trim();
   const apiKey = getGeminiApiKey();
   const knowledge = getStoreKnowledge();
-  const posters = getStoredPosters();
+  const storedPosters = getStoredPosters();
+  const posters = Array.isArray(storedPosters) && storedPosters.length > 0 ? storedPosters : (CATALOG_POSTERS || []);
   const categories = getStoredCategories();
   const franchises = getStoredFranchises();
   const catalog = { posters, categories, franchises };
