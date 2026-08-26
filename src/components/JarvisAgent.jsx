@@ -87,7 +87,14 @@ export default function JarvisAgent({
   const [poweredModel, setPoweredModel] = useState('');
 
   const messagesEndRef = useRef(null);
+  const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
+
+  const scrollToBottom = () => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  };
 
   // Live Telemetry Clock (Guatemala CST)
   useEffect(() => {
@@ -106,16 +113,19 @@ export default function JarvisAgent({
       if (soundEnabled) playTechSound('boot');
       const prevBodyOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
+      scrollToBottom();
       return () => {
         document.body.style.overflow = prevBodyOverflow;
       };
     }
   }, [isOpen, soundEnabled]);
 
-  // Auto-scroll to bottom of messages
+  // Auto-scroll to bottom of messages reliably
   useEffect(() => {
     if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollToBottom();
+      const t = setTimeout(scrollToBottom, 80);
+      return () => clearTimeout(t);
     }
   }, [messages, isTyping, isOpen]);
 
@@ -385,6 +395,7 @@ export default function JarvisAgent({
 
         {/* 3. Área de Mensajes con Scroll Fluido */}
         <div
+          ref={chatScrollRef}
           className="jarvis-messages-body"
           style={{
             flex: 1,
