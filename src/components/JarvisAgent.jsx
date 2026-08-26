@@ -703,6 +703,7 @@ export default function JarvisAgent({
           {/* Text Input */}
           <input
             type="text"
+            autoFocus
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => {

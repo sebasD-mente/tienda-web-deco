@@ -40,7 +40,7 @@ const JARVIS_TOOL_DECLARATIONS = [
       properties: {
         query: {
           type: 'STRING',
-          description: 'Término de búsqueda, personaje, franquicia o descripción (ej: Porsche, Batman, Dragon Ball, Anime, Cine)'
+          description: 'Término de búsqueda, personaje, franquicia o descripción (ej: Porsche, Batman, Dragon Ball, Anime, Cine, Autos)'
         },
         category: {
           type: 'STRING',
@@ -102,21 +102,21 @@ const JARVIS_TOOL_DECLARATIONS = [
   },
   {
     name: 'generate_whatsapp_order',
-    description: 'Genera el enlace de WhatsApp estructurado con la orden cerrada lista para que el vendedor reciba el pago del 50% de anticipo.',
+    description: 'Prepara el pedido con el cálculo del 50% de anticipo y genera el mensaje de WhatsApp estructurado para el vendedor.',
     parameters: {
       type: 'OBJECT',
       properties: {
         customerName: {
           type: 'STRING',
-          description: 'Nombre del cliente (opcional)'
+          description: 'Nombre del cliente'
         },
         customerPhone: {
           type: 'STRING',
-          description: 'Teléfono o WhatsApp de contacto del cliente'
+          description: 'Teléfono o WhatsApp del cliente (opcional)'
         },
         customNotes: {
           type: 'STRING',
-          description: 'Detalles adicionales, medidas o especificaciones de los cuadros acordados'
+          description: 'Resumen detallado de las obras, medidas y acabados pedidos'
         }
       },
       required: ['customNotes']
@@ -124,7 +124,7 @@ const JARVIS_TOOL_DECLARATIONS = [
   },
   {
     name: 'navigate_store',
-    description: 'Redirige o filtra la vista de la tienda a una sección específica solicitada por el usuario.',
+    description: 'Navega a una sección específica de la tienda web Deco Vintage.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -149,12 +149,18 @@ export async function askJarvis({
   cart = [],
   onExecuteTool = null
 }) {
+  const cleanInput = (userMessage || '').trim();
   const apiKey = getGeminiApiKey();
   const knowledge = getStoreKnowledge();
   const posters = getStoredPosters();
   const categories = getStoredCategories();
   const franchises = getStoredFranchises();
   const catalog = { posters, categories, franchises };
+
+  // If message is very short or simple greeting/keyword, handle with hyper-fast local intelligence
+  if (cleanInput.length <= 2 || isSimpleGreetingOrKeyword(cleanInput)) {
+    return handleLocalIntelligentFallback(cleanInput, knowledge, catalog, cart);
+  }
 
   // Summary of available posters for LLM indexing
   const catalogSummary = (catalog.posters || []).slice(0, 50).map(p => ({
@@ -163,106 +169,114 @@ export async function askJarvis({
     category: p.category,
     franchise: p.franchise || 'General',
     bestSeller: !!p.isBestSeller,
-    sizes: p.availableSizes ? Object.keys(p.availableSizes) : ['all']
+    price: p.priceDisplay || 'Desde Q 25.00'
   }));
 
   // Build high-context tactical system instructions
   const systemInstruction = `
 Eres J.A.R.V.I.S., el Asistente Táctico y de Inteligencia Artificial Comercial de "Deco Vintage Guate" (Guatemala).
-Tu personalidad es educada, sofisticada, sumamente eficiente, proactiva y enfocada en ayudar a los clientes a elegir los mejores cuadros decorativos rígidos para sus espacios (habitaciones, oficinas, salas de juegos, negocios).
+Tu personalidad es educada, sumamente eficiente, proactiva, elegante y enfocada en ayudar a los clientes a elegir los mejores cuadros decorativos rígidos para sus espacios (habitaciones, oficinas, salas de juegos, negocios).
 
-CONOCIMIENTO FUNDAMENTAL DE DECO VINTAGE:
-• Especialidad: Pósters rígidos impresos con tecnología HP Látex en alta definición sobre madera MDF de 5.5mm.
-• Montaje: TODOS los cuadros rígidos incluyen cinta industrial de doble cara Tessa en el reverso (fijación instantánea sin clavos ni taladros).
-• Materiales:
-  1. Madera MDF 5.5mm (Estándar de máxima rigidez y durabilidad).
-  2. PVC Espumado 5mm (100% impermeable a la humedad).
-  3. Solo Vinil Adhesivo (50% del valor, sin base rígida).
-• Tabla Oficial de Tamaños y Precios en Quetzales (GTQ):
-  - Mini (14 x 21 cm) ➔ Q 25.00
-  - Pequeño (21 x 27 cm) ➔ Q 35.00
-  - Portada Álbum (30 x 30 cm) ➔ Q 55.00
-  - Mediano (30 x 45 cm) ➔ Q 65.00 ⭐ (Más Vendido / Más Recomendado)
-  - Grande (45 x 60 cm) ➔ Q 125.00
-  - Gigante (60 x 100 cm) ➔ Q 210.00
-• Políticas Comerciales Clave:
-  - Anticipo del 50% OBLIGATORIO para iniciar fabricación artesanal.
-  - Saldo del 50% restante contra entrega o previo a despacho.
-  - Tiempo de entrega: 2 a 4 días hábiles en toda Guatemala.
-  - Cobertura: Envíos a todo el país.
-  - Cuadros Personalizados: Fabricamos cualquier foto familiar, diseño o arte que el cliente envíe.
-
-DIRECTIVAS ACTIVAS DEL DUEÑO DE LA TIENDA:
+DIRECTIVAS ACTIVAS DEL DUEÑO:
 ${(knowledge.ownerDirectives || []).map((d, i) => `${i + 1}. ${d}`).join('\n')}
 
-ESTADO DEL CLIENTE EN TIEMPO REAL:
-• Carrito actual del cliente: ${cart.length} obra(s) seleccionada(s). Total: Q${cart.reduce((s, i) => s + (i.price * (Number(i.quantity) || 1)), 0).toFixed(2)}.
+INFORMACIÓN CLAVE DEL NEGOCIO:
+- Empresa: Deco Vintage Guate (Guatemala).
+- Teléfono / WhatsApp de atención: 5998-0504.
+- Especialidad: Fabricación de cuadros decorativos rígidos sobre madera MDF de 5.5 mm de espesor y PVC espumado impermeable.
+- Impresión: Tintas ecológicas HP Látex de alta definición fotográfica, resistente a decoloración y sin olores.
+- Instalación: Todos los cuadros incluyen cinta industrial de doble cara marca Tessa en el dorso para montaje rápido sin clavos ni agujeros.
+- Cobertura: Envíos a todo el territorio nacional de Guatemala (los 22 departamentos).
+- Tiempos de entrega: 2 a 4 días hábiles.
+- POLÍTICA DE PAGO OBLIGATORIA: 50% de anticipo para iniciar producción y el 50% restante contra entrega o previo a despacho.
+
+MATRIZ OFICIAL DE 6 TAMAÑOS Y PRECIOS:
+1. Mini (14 x 21 cm) ➔ Q 25.00 (Espacios reducidos, escritorios)
+2. Pequeño (21 x 27 cm) ➔ Q 35.00 (Entradas, repisas)
+3. Portada Álbum (30 x 30 cm) ➔ Q 55.00 (Formato cuadrado vinilos y portadas musicales)
+4. Mediano (30 x 45 cm) ➔ Q 65.00 (EL MÁS VENDIDO / Tamaño estrella de cabecera o pared)
+5. Grande (45 x 60 cm) ➔ Q 125.00 (Salas, piezas centrales)
+6. Gigante (60 x 100 cm) ➔ Q 210.00 (Murales y piezas imponentes)
+
+MUESTRA DE CATÁLOGO DISPONIBLE:
+${JSON.stringify(catalogSummary, null, 2)}
 
 INSTRUCCIONES DE ACCIÓN:
 1. Sé conciso, elegante y persuasivo.
-2. Si el cliente pide buscar obras o recomienda arte, UTILIZA la herramienta 'search_catalog' para que el sistema le muestre las tarjetas interactivas de compra.
+2. Si el cliente pide buscar obras, nombra una temática o categoría (autos, anime, marvel, etc.), UTILIZA la herramienta 'search_catalog' para que el sistema le muestre las tarjetas interactivas de compra.
 3. Si el cliente quiere añadir un producto, usa 'add_to_cart'.
 4. Si el cliente pide cotizar medidas personalizadas, usa 'quote_custom_poster'.
 5. Cuando el cliente confirme que desea comprar o pregunte cómo pagar, usa 'generate_whatsapp_order' para pasar el pedido listo al vendedor con el cálculo del 50% de anticipo.
 `.trim();
 
-  // If no Gemini API Key is configured yet, use sophisticated local intelligence with clear advisory
+  // If no API Key configured, use local engine
   if (!apiKey) {
-    return handleLocalIntelligentFallback(userMessage, knowledge, catalog, cart);
+    return handleLocalIntelligentFallback(cleanInput, knowledge, catalog, cart);
   }
 
+  // Use Gemini with a 5-second timeout and candidate fallback
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('TIMEOUT_GEMINI')), 5000)
+    );
 
-    // Format history for Gemini
-    const contents = [];
-    conversationHistory.slice(-8).forEach(msg => {
-      contents.push({
-        role: msg.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.text }]
+    const geminiExecution = async () => {
+      const genAI = new GoogleGenerativeAI(apiKey);
+
+      const contents = [];
+      conversationHistory.slice(-6).forEach(msg => {
+        contents.push({
+          role: msg.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.text }]
+        });
       });
-    });
 
-    contents.push({
-      role: 'user',
-      parts: [{ text: userMessage }]
-    });
+      contents.push({
+        role: 'user',
+        parts: [{ text: cleanInput }]
+      });
 
-    const candidateModels = [
-      'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-3.5-flash-lite',
-      'gemini-2.5-flash',
-      'gemini-1.5-flash'
-    ];
-    let result = null;
-    let successfulModel = 'Google Gemini 3.6 Flash';
+      const candidateModels = [
+        'gemini-3.6-flash',
+        'gemini-3.5-flash',
+        'gemini-3.5-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-1.5-flash'
+      ];
 
-    for (const modelName of candidateModels) {
-      try {
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: systemInstruction,
-          tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-        });
+      let result = null;
+      let successfulModel = 'Google Gemini 3.6 Flash';
 
-        result = await model.generateContent({
-          contents: contents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 650
-          }
-        });
-        successfulModel = modelName;
-        break;
-      } catch (err) {
-        console.warn(`Model ${modelName} failed, trying next candidate...`, err.message);
+      for (const modelName of candidateModels) {
+        try {
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: systemInstruction,
+            tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+          });
+
+          result = await model.generateContent({
+            contents: contents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 600
+            }
+          });
+          successfulModel = modelName;
+          break;
+        } catch (err) {
+          console.warn(`Model ${modelName} attempt:`, err.message);
+        }
       }
-    }
 
-    if (!result) {
-      throw new Error('Todos los modelos de Gemini reportaron restricción en esta clave.');
-    }
+      if (!result) {
+        throw new Error('All Gemini candidate models failed');
+      }
+
+      return { result, successfulModel };
+    };
+
+    const { result, successfulModel } = await Promise.race([geminiExecution(), timeoutPromise]);
 
     const response = result.response;
     const functionCalls = response.functionCalls();
@@ -309,25 +323,40 @@ INSTRUCCIONES DE ACCIÓN:
     };
 
   } catch (error) {
-    console.error('Error in Gemini Agent response:', error);
-    // Fallback to local intelligent assistant if network/quota issue
-    const fallback = handleLocalIntelligentFallback(userMessage, knowledge, catalog, cart);
-    fallback.error = error.message;
-    return fallback;
+    console.warn('Gemini call failed or timed out, seamlessly falling back to local brain:', error.message);
+    return handleLocalIntelligentFallback(cleanInput, knowledge, catalog, cart);
   }
+}
+
+function isSimpleGreetingOrKeyword(text) {
+  const t = text.toLowerCase().trim();
+  const simpleList = [
+    'hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'que tal',
+    'saludos', 'hey', 'jarvis', 'ayuda', 'info', 'menu', 'inicio', 'gracias', 'ok'
+  ];
+  return simpleList.includes(t) || t.length <= 3;
 }
 
 // Local Tool Executor for Gemini Function Calls
 function executeLocalTool(toolName, args, catalog, cart, onExecuteTool) {
   if (toolName === 'search_catalog') {
-    const q = (args.query || '').toLowerCase();
-    const cat = (args.category || '').toLowerCase();
+    const q = (args.query || '').toLowerCase().trim();
+    const cat = (args.category || '').toLowerCase().trim();
     const posters = catalog.posters || [];
 
     const matches = posters.filter(p => {
-      const matchText = (p.title + ' ' + (p.description || '') + ' ' + (p.franchise || '') + ' ' + (p.category || '')).toLowerCase();
-      const matchCat = !cat || (p.category || '').toLowerCase() === cat;
-      return matchCat && matchText.includes(q);
+      const title = (p.title || '').toLowerCase();
+      const desc = (p.description || '').toLowerCase();
+      const franchise = (p.franchise || '').toLowerCase();
+      const pCat = (p.category || '').toLowerCase();
+      const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
+
+      const fullText = `${title} ${desc} ${franchise} ${pCat} ${tags}`;
+
+      const matchCategory = !cat || pCat === cat || fullText.includes(cat);
+      const matchQuery = !q || fullText.includes(q) || q.split(' ').some(word => word.length > 2 && fullText.includes(word));
+
+      return matchCategory && matchQuery;
     }).slice(0, args.maxResults || 4);
 
     if (onExecuteTool) onExecuteTool('search_results', matches);
@@ -363,7 +392,7 @@ function executeLocalTool(toolName, args, catalog, cart, onExecuteTool) {
     const area = width * height;
     const rate = args.material === 'pvc' ? 0.058 : args.material === 'vinil' ? 0.024 : 0.048;
     const basePrice = Math.max(30.00, area * rate);
-    const roundedPrice = Math.round(basePrice / 5) * 5; // round to multiple of 5
+    const roundedPrice = Math.round(basePrice / 5) * 5;
     const advance = roundedPrice * 0.5;
 
     return {
@@ -390,7 +419,7 @@ function executeLocalTool(toolName, args, catalog, cart, onExecuteTool) {
       `Hola, el asistente J.A.R.V.I.S. me ha preparado este pedido. Deseo confirmar y realizar el anticipo del 50%.`;
 
     const encoded = encodeURIComponent(message);
-    const waUrl = `https://wa.me/?text=${encoded}`;
+    const waUrl = `https://wa.me/50259980504?text=${encoded}`;
 
     if (onExecuteTool) onExecuteTool('open_whatsapp', { url: waUrl, message });
 
@@ -409,45 +438,71 @@ function executeLocalTool(toolName, args, catalog, cart, onExecuteTool) {
   return { type: 'unknown' };
 }
 
-// Fallback when API key is pending
+// Ultra-fast and rich local intelligence fallback engine
 function handleLocalIntelligentFallback(userMessage, knowledge, catalog, cart) {
-  const q = userMessage.toLowerCase();
+  const q = (userMessage || '').toLowerCase().trim();
+  const posters = catalog.posters || [];
 
-  // Price queries
-  if (q.includes('precio') || q.includes('cuanto cuesta') || q.includes('tamaño') || q.includes('medida')) {
-    const sizes = knowledge.standardSizes.map(s => `• *${s.name} (${s.dimensions})*: Q${s.price.toFixed(2)} (${s.bestFor})`).join('\n');
+  // 1. Single letter or very short greeting
+  if (!q || q.length <= 2 || q === 'hola' || q === 'buenas' || q === 'hey' || q === 'jarvis') {
     return {
-      text: `📊 *MATRIZ OFICIAL DE TAMAÑOS Y PRECIOS (GTQ):*\n\n${sizes}\n\n✨ _Todos los cuadros rígidos en madera MDF 5.5mm incluyen cinta industrial de montaje rápido Tessa._ ¿Desea que le recomiende una medida según su pared, señor?`,
-      poweredBy: 'Base de Conocimiento Local J.A.R.V.I.S.'
+      text: `👋 Saludos, soy **J.A.R.V.I.S.**, el asistente táctico de Deco Vintage Guate.\n\nPuedo ayudarle a:\n• 🔍 **Buscar cuadros:** Escriba temas como *Autos, Anime, Marvel, Star Wars, Cine, Música*.\n• 📐 **Medidas y Precios:** Conozca los 6 tamaños en MDF 5.5mm (desde Q25.00).\n• 🎨 **Cuadros Personalizados:** Cotice cualquier medida especial con sus propias fotos.\n• 📦 **Gestionar su Pedido:** Dejarlo listo para coordinar el 50% de anticipo por WhatsApp.`,
+      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
     };
   }
 
-  // Material & Quality
-  if (q.includes('material') || q.includes('calidad') || q.includes('mdf') || q.includes('hp') || q.includes('tessa')) {
+  // 2. Pricing & Sizes
+  if (q.includes('precio') || q.includes('cuanto') || q.includes('costo') || q.includes('medida') || q.includes('tamaño') || q.includes('vale')) {
+    const sizesText = (knowledge.standardSizes || []).map(s => `• **${s.name} (${s.dimensions})**: Q ${s.price.toFixed(2)} — _${s.bestFor}_`).join('\n');
     return {
-      text: `🛡️ *ESPECIFICACIONES DE MATERIALES & MANUFACTURA:*\n\n1. **Madera MDF 5.5mm:** Máxima rigidez y estabilidad estructural.\n2. **Tintas HP Látex HD:** Definición fotográfica ecológica sin olores, resistente a rayones y protección UV contra decoloración.\n3. **Cinta Industrial Tessa:** Incluida en el dorso para instalación instantánea sin taladros ni clavos.\n4. **Opciones adicionales:** PVC Espumado 5mm (impermeable) o Solo Vinil (50% valor).`,
-      poweredBy: 'Base de Conocimiento Local J.A.R.V.I.S.'
+      text: `📊 **TABLA OFICIAL DE TAMAÑOS Y PRECIOS (MDF 5.5mm RÍGIDO):**\n\n${sizesText}\n\n✨ *Incluye cinta industrial Tessa en el dorso para colgar al instante sin clavos.* ¿Desea que le recomiende una obra para su espacio?`,
+      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
     };
   }
 
-  // Search catalog
-  const found = (catalog.posters || []).filter(p => 
-    q.includes(p.title.toLowerCase()) || 
-    (p.franchise && q.includes(p.franchise.toLowerCase())) ||
-    (p.category && q.includes(p.category.toLowerCase()))
-  ).slice(0, 3);
+  // 3. Materials & Quality
+  if (q.includes('material') || q.includes('mdf') || q.includes('calidad') || q.includes('tessa') || q.includes('pegamento') || q.includes('impresion') || q.includes('pvc')) {
+    return {
+      text: `🛡️ **ESPECIFICACIONES TÉCNICAS DE FABRICACIÓN:**\n\n1. **Base de Madera MDF 5.5mm:** Rígida, sólida y con acabado pulido.\n2. **Tintas HP Látex HD:** Definición fotográfica ecológica sin olores, resistente al agua y con protección UV anti-decoloración.\n3. **Cinta Tessa Industrial:** Doble contacto de alta adherencia colocada en el dorso.\n4. **Opciones Especiales:** También fabricamos en PVC espumado 5mm (100% impermeable) o solo vinil adhesivo (50% del valor).`,
+      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
+    };
+  }
+
+  // 4. Shipping & Delivery
+  if (q.includes('envio') || q.includes('entrega') || q.includes('departamento') || q.includes('guatemala') || q.includes('tiempo')) {
+    return {
+      text: `🚚 **COBERTURA & POLÍTICAS DE ENTREGA:**\n\n• **Cobertura:** Llegamos a todos los 22 departamentos de Guatemala.\n• **Tiempo de Entrega:** 2 a 4 días hábiles desde la confirmación.\n• **Política de Pago:** 50% de anticipo para iniciar manufactura y 50% saldo contra entrega o previo a envío.\n• **Contacto directo:** WhatsApp 5998-0504.`,
+      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
+    };
+  }
+
+  // 5. Semantic Catalog Search (Category, franchise, keyword, or character)
+  const searchTerms = q.split(' ').filter(w => w.length > 2);
+  const found = posters.filter(p => {
+    const title = (p.title || '').toLowerCase();
+    const desc = (p.description || '').toLowerCase();
+    const franchise = (p.franchise || '').toLowerCase();
+    const cat = (p.category || '').toLowerCase();
+    const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
+    const fullText = `${title} ${desc} ${franchise} ${cat} ${tags}`;
+
+    if (fullText.includes(q)) return true;
+    return searchTerms.some(term => fullText.includes(term));
+  }).slice(0, 4);
 
   if (found.length > 0) {
     return {
-      text: `🎯 He localizado estas obras en nuestro catálogo en vivo que coinciden con su búsqueda. Puede verlas o agregarlas directamente a su pedido:`,
+      text: `🎯 He localizado estas obras destacadas que coinciden con su consulta en nuestro catálogo oficial:`,
       actions: [{ type: 'catalog_matches', count: found.length, posters: found }],
-      poweredBy: 'Base de Conocimiento Local J.A.R.V.I.S.'
+      poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
     };
   }
 
-  // Default helpful response
+  // 6. General fallback
+  const sampleBestSellers = posters.filter(p => p.isBestSeller).slice(0, 3);
   return {
-    text: `Sistemas en línea. Puedo asesorarle en tamaños oficiales (desde Q25.00), cotizar cuadros personalizados, recomendarle pósters según su espacio o preparar su pedido con el 50% de anticipo para el vendedor en WhatsApp. ¿Qué temática o medida desea consultar, señor?`,
-    poweredBy: 'Base de Conocimiento Local J.A.R.V.I.S.'
+    text: `Sistemas en línea. No encontré una coincidencia exacta para "${userMessage}", pero puedo mostrarle nuestras obras más vendidas o asistirle con cualquier medida personalizada:`,
+    actions: sampleBestSellers.length > 0 ? [{ type: 'catalog_matches', count: sampleBestSellers.length, posters: sampleBestSellers }] : [],
+    poweredBy: 'IA J.A.R.V.I.S. (Respuestas Rápidas)'
   };
 }
