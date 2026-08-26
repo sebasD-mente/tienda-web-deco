@@ -373,6 +373,9 @@ export default function App() {
         onClose={handleCloseJarvis}
         onQuickWhatsApp={handleQuickWhatsApp}
         cart={cart}
+        onAddToCart={handleAddToCart}
+        onOpenProductModal={handleOpenPosterModal}
+        onNavigate={handleNavigate}
       />
 
       {/* Floating Jarvis Arc Reactor Trigger Button (When closed) */}

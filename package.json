@@ -10,6 +10,7 @@
     "optimize:images": "node scripts/optimize-images.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "canvas-confetti": "^1.9.4",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",

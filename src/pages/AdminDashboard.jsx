@@ -3,7 +3,7 @@ import {
   Plus, Edit3, Trash2, Upload, Download, RotateCcw, Check, 
   Search, ArrowLeft, Star, Tag, Layers, Sliders, Shield,
   CheckCircle2, AlertCircle, Eye, Image as ImageIcon, LogOut,
-  Package, Database, X, Sparkles
+  Package, Database, X, Sparkles, Bot, Key, MessageSquare
 } from 'lucide-react';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 import { 
@@ -21,14 +21,21 @@ import {
   importCatalogFromJSON 
 } from '../utils/catalogStorage';
 import { optimizeImageFile } from '../utils/imageOptimizer';
+import { getGeminiApiKey, saveGeminiApiKey } from '../utils/jarvisBrain';
+import { getStoreKnowledge, saveStoreKnowledge, addOwnerDirective, removeOwnerDirective } from '../data/storeKnowledge';
 
 export default function AdminDashboard({ onNavigate, onLogout }) {
-  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'create' | 'categories' | 'franchises' | 'backup'
+  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'create' | 'franchises' | 'categories' | 'jarvis' | 'backup'
   const [posters, setPosters] = useState([]);
   const [categories, setCategories] = useState([]);
   const [franchises, setFranchises] = useState([]);
   const [searchFilter, setSearchFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  
+  // J.A.R.V.I.S. AI & Knowledge Base State
+  const [geminiKeyInput, setGeminiKeyInput] = useState(getGeminiApiKey());
+  const [knowledgeData, setKnowledgeData] = useState(getStoreKnowledge());
+  const [newDirectiveText, setNewDirectiveText] = useState('');
   
   // Notification toast
   const [toast, setToast] = useState(null);
@@ -364,6 +371,26 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
     }
   };
 
+  // J.A.R.V.I.S. Handlers
+  const handleSaveApiKey = () => {
+    saveGeminiApiKey(geminiKeyInput);
+    showToast('¡Clave de Google Gemini API guardada con éxito!', 'success');
+  };
+
+  const handleAddDirective = () => {
+    if (!newDirectiveText.trim()) return;
+    const updated = addOwnerDirective(newDirectiveText.trim());
+    setKnowledgeData(prev => ({ ...prev, ownerDirectives: updated }));
+    setNewDirectiveText('');
+    showToast('¡Nueva directiva agregada a J.A.R.V.I.S.!', 'success');
+  };
+
+  const handleRemoveDirective = (idx) => {
+    const updated = removeOwnerDirective(idx);
+    setKnowledgeData(prev => ({ ...prev, ownerDirectives: updated }));
+    showToast('Directiva eliminada de J.A.R.V.I.S.', 'info');
+  };
+
   return (
     <div style={{ paddingTop: '115px', background: '#05070d', minHeight: '100vh', color: '#f0f6fc' }}>
       
@@ -609,7 +636,42 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
               </span>
             </button>
 
-            {/* 5. Copias / Backup */}
+            {/* 5. IA J.A.R.V.I.S. & Base de Conocimiento */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('jarvis')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 16px',
+                borderRadius: '10px',
+                background: activeTab === 'jarvis' ? 'var(--grad-cyan)' : 'rgba(255, 255, 255, 0.04)',
+                border: activeTab === 'jarvis' ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.08)',
+                color: activeTab === 'jarvis' ? '#040609' : '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.2s ease',
+                boxShadow: activeTab === 'jarvis' ? '0 0 16px rgba(0, 242, 254, 0.4)' : 'none'
+              }}
+            >
+              <Bot size={15} />
+              <span>IA J.A.R.V.I.S.</span>
+              <span style={{
+                background: activeTab === 'jarvis' ? '#040609' : (geminiKeyInput ? 'rgba(0, 245, 160, 0.25)' : 'rgba(0, 242, 254, 0.2)'),
+                color: activeTab === 'jarvis' ? '#00f2fe' : (geminiKeyInput ? '#00f5a0' : '#ffffff'),
+                padding: '1px 7px',
+                borderRadius: '10px',
+                fontSize: '0.72rem',
+                fontWeight: 900
+              }}>
+                {geminiKeyInput ? 'GEMINI' : 'LOCAL'}
+              </span>
+            </button>
+
+            {/* 6. Copias / Backup */}
             <button
               type="button"
               onClick={() => setActiveTab('backup')}
@@ -1929,7 +1991,225 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
           )}
 
           {/* ======================================================== */}
-          {/* TAB 5: COPIAS / BACKUP & RESTORE                         */}
+          {/* TAB 5: IA J.A.R.V.I.S. & BASE DE CONOCIMIENTO            */}
+          {/* ======================================================== */}
+          {activeTab === 'jarvis' && (
+            <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* 1. API Key Config Card */}
+              <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '10px',
+                      background: 'rgba(0, 242, 254, 0.12)',
+                      border: '1px solid rgba(0, 242, 254, 0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Bot size={22} color="var(--accent-cyan)" />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                        Conexión de IA J.A.R.V.I.S. (Google Gemini)
+                      </h3>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+                        Conecta tu clave de Google Gemini API para activar razonamiento autónomo y funciones de ventas en vivo.
+                      </p>
+                    </div>
+                  </div>
+
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: geminiKeyInput ? 'rgba(0, 245, 160, 0.12)' : 'rgba(234, 179, 8, 0.12)',
+                    border: geminiKeyInput ? '1px solid rgba(0, 245, 160, 0.35)' : '1px solid rgba(234, 179, 8, 0.35)',
+                    color: geminiKeyInput ? '#00f5a0' : '#eab308',
+                    padding: '4px 12px',
+                    borderRadius: 'var(--radius-full)',
+                    fontSize: '0.74rem',
+                    fontWeight: 800
+                  }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: geminiKeyInput ? '#00f5a0' : '#eab308' }} />
+                    {geminiKeyInput ? 'MOTOR GEMINI 1.5 FLASH CONECTADO' : 'MODO LOCAL DE RESERVA (SIN API KEY)'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
+                    <input
+                      type="password"
+                      placeholder="Pega aquí tu clave Gemini API (ej: AIzaSy...)"
+                      value={geminiKeyInput}
+                      onChange={(e) => setGeminiKeyInput(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px 11px 38px',
+                        borderRadius: '10px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(0, 242, 254, 0.3)',
+                        color: '#ffffff',
+                        fontSize: '0.88rem',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <Key size={16} color="var(--accent-cyan)" style={{ position: 'absolute', left: '12px', top: '13px' }} />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveApiKey}
+                    className="btn-cyan"
+                    style={{ padding: '11px 20px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                  >
+                    <Check size={16} />
+                    <span>Guardar Clave</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Directivas del Dueño (Knowledge Base Viva) */}
+              <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <Sparkles size={22} color="var(--accent-cyan)" />
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                    Directivas y Reglas de Negocio en Vivo
+                  </h3>
+                </div>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '18px', lineHeight: '1.4' }}>
+                  J.A.R.V.I.S. lee estas directivas en tiempo real antes de responder a los clientes. Puedes agregar promociones temporales, condiciones especiales de entrega o instrucciones de atención.
+                </p>
+
+                {/* Add New Directive Form */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    placeholder="Ej: Este mes tenemos envío gratis en compras mayores a Q250..."
+                    value={newDirectiveText}
+                    onChange={(e) => setNewDirectiveText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddDirective(); }}
+                    style={{
+                      flex: 1,
+                      minWidth: '260px',
+                      padding: '11px 14px',
+                      borderRadius: '10px',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#ffffff',
+                      fontSize: '0.88rem',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddDirective}
+                    className="btn-cyan"
+                    style={{ padding: '11px 18px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                  >
+                    <Plus size={16} />
+                    <span>Agregar Directiva</span>
+                  </button>
+                </div>
+
+                {/* List of Directives */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {(knowledgeData.ownerDirectives || []).map((dir, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        padding: '12px 16px',
+                        borderRadius: '10px',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(0, 242, 254, 0.15)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: '#e6edf3', lineHeight: '1.4' }}>
+                        <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>#{idx + 1}</span>
+                        <span>{dir}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDirective(idx)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          padding: '6px',
+                          borderRadius: '6px',
+                          opacity: 0.7,
+                          flexShrink: 0
+                        }}
+                        title="Eliminar directiva"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. Enciclopedia de Especificaciones Comerciales */}
+              <div className="glass-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 14px 0' }}>
+                  Enciclopedia Base Asimilada por J.A.R.V.I.S.
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px' }}>
+                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.88rem', marginBottom: '6px' }}>
+                      📐 Tabla de 6 Tamaños Oficiales
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                      <li>Mini (14x21 cm) ➔ Q25.00</li>
+                      <li>Pequeño (21x27 cm) ➔ Q35.00</li>
+                      <li>Portada Álbum (30x30 cm) ➔ Q55.00</li>
+                      <li>Mediano (30x45 cm) ➔ Q65.00 (Más Vendido)</li>
+                      <li>Grande (45x60 cm) ➔ Q125.00</li>
+                      <li>Gigante (60x100 cm) ➔ Q210.00</li>
+                    </ul>
+                  </div>
+
+                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px' }}>
+                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.88rem', marginBottom: '6px' }}>
+                      🛡️ Manufactura y Montaje
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                      <li>Madera MDF 5.5mm sólida y rígida.</li>
+                      <li>Tintas HP Látex HD ecológicas sin olor.</li>
+                      <li>Cinta industrial Tessa incluida en dorso.</li>
+                      <li>Opción PVC 5mm (impermeable) y Vinil.</li>
+                    </ul>
+                  </div>
+
+                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px' }}>
+                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.88rem', marginBottom: '6px' }}>
+                      💳 Políticas y Tiempos
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                      <li>50% de anticipo para iniciar producción.</li>
+                      <li>50% saldo contra entrega / previo a envío.</li>
+                      <li>2 a 4 días hábiles de entrega nacional.</li>
+                      <li>Cobertura en los 22 departamentos.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* TAB 6: COPIAS / BACKUP & RESTORE                         */}
           {/* ======================================================== */}
           {activeTab === 'backup' && (
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
