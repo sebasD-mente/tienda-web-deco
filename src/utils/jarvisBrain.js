@@ -319,6 +319,18 @@ INSTRUCCIONES DE ACCIÓN:
       }
     }
 
+    // If no catalog tool was called, but user query or Gemini response references catalog items, auto-attach scored matches
+    if (!executedActions.some(a => a.type === 'catalog_matches')) {
+      const autoMatches = searchCatalogScored(`${cleanInput} ${replyText}`, catalog.posters, 4);
+      if (autoMatches.length > 0) {
+        executedActions.push({
+          type: 'catalog_matches',
+          count: autoMatches.length,
+          posters: autoMatches
+        });
+      }
+    }
+
     return {
       text: replyText,
       actions: executedActions,
