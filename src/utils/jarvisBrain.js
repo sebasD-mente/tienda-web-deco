@@ -213,11 +213,6 @@ INSTRUCCIONES DE ACCIÓN:
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: systemInstruction,
-      tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-    });
 
     // Format history for Gemini
     const contents = [];
@@ -233,13 +228,41 @@ INSTRUCCIONES DE ACCIÓN:
       parts: [{ text: userMessage }]
     });
 
-    const result = await model.generateContent({
-      contents: contents,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 650
+    const candidateModels = [
+      'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-1.5-flash'
+    ];
+    let result = null;
+    let successfulModel = 'Google Gemini 3.6 Flash';
+
+    for (const modelName of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemInstruction,
+          tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+        });
+
+        result = await model.generateContent({
+          contents: contents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 650
+          }
+        });
+        successfulModel = modelName;
+        break;
+      } catch (err) {
+        console.warn(`Model ${modelName} failed, trying next candidate...`, err.message);
       }
-    });
+    }
+
+    if (!result) {
+      throw new Error('Todos los modelos de Gemini reportaron restricción en esta clave.');
+    }
 
     const response = result.response;
     const functionCalls = response.functionCalls();
@@ -259,13 +282,30 @@ INSTRUCCIONES DE ACCIÓN:
       }
     }
 
-    const replyText = response.text() || 'Protocolos ejecutados. ¿Desea que continuemos con la coordinación de su pedido, señor?';
+    let replyText = '';
+    try {
+      replyText = response.text();
+    } catch (e) {
+      replyText = '';
+    }
+
+    if (!replyText || replyText.trim().length === 0) {
+      if (executedActions.some(a => a.type === 'catalog_matches')) {
+        replyText = '🎯 He localizado estas opciones en nuestro catálogo oficial según su solicitud. Puede verlas o agregarlas directamente a su pedido:';
+      } else if (executedActions.some(a => a.type === 'custom_quote')) {
+        replyText = '📐 He calculado los parámetros de fabricación a la medida para su cuadro:';
+      } else if (executedActions.some(a => a.type === 'whatsapp_order')) {
+        replyText = '📦 Su pedido ha sido estructurado con el 50% de anticipo. Presione el botón a continuación para despacharlo directamente con nuestro asesor por WhatsApp:';
+      } else {
+        replyText = 'Protocolos ejecutados a la perfección. ¿En qué más puedo asistirle con su pedido, señor?';
+      }
+    }
 
     return {
       text: replyText,
       actions: executedActions,
       toolResults: toolResults,
-      poweredBy: 'Google Gemini 1.5 Flash'
+      poweredBy: `Google Gemini (${successfulModel})`
     };
 
   } catch (error) {
