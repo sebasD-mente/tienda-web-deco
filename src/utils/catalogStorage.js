@@ -3,7 +3,7 @@ import {
   CATEGORIES as BASE_CATEGORIES,
   INITIAL_FRANCHISES as BASE_FRANCHISES
 } from '../data/catalogData.js';
-import { db, doc, setDoc, onSnapshot } from './firebase.js';
+import { db, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from './firebase.js';
 
 const DEFAULT_POSTERS = BASE_POSTERS;
 const DEFAULT_CATEGORIES = BASE_CATEGORIES;
@@ -13,20 +13,52 @@ const POSTERS_STORAGE_KEY = 'deco_vintage_catalog_posters_v2';
 const CATEGORIES_STORAGE_KEY = 'deco_vintage_catalog_categories_v2';
 const FRANCHISES_STORAGE_KEY = 'deco_vintage_catalog_franchises_v2';
 
-// 1. Initialize Real-Time Cloud Firestore Listener with Offline Fail-Safe
+const isLocalServer = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+// 1. Initialize Real-Time Cloud Firestore Listeners (Collection Architecture)
 if (typeof window !== 'undefined') {
   try {
-    const catalogDocRef = doc(db, 'deco_store', 'catalog');
-    
-    onSnapshot(catalogDocRef, (snap) => {
+    const postersCollectionRef = collection(db, 'deco_posters');
+    const metadataDocRef = doc(db, 'deco_store', 'metadata');
+
+    // A. Listen to Posters Collection (Each poster is an individual document < 100 KB)
+    onSnapshot(postersCollectionRef, (snapshot) => {
+      if (!snapshot.empty) {
+        const cloudPosters = [];
+        snapshot.forEach((docSnap) => {
+          cloudPosters.push(docSnap.data());
+        });
+
+        if (cloudPosters.length > 0) {
+          try {
+            localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(cloudPosters));
+          } catch (e) {
+            console.warn('[Deco Storage] LocalStorage cache notice:', e);
+          }
+          window.dispatchEvent(new Event('deco-catalog-updated'));
+          console.log(`[Deco Cloud Firestore] Real-time collection sync: ${cloudPosters.length} posters active.`);
+        }
+      } else {
+        // Auto-seed initial catalog to Cloud Firestore collection if empty
+        const currentPosters = getStoredPosters();
+        const seedList = currentPosters.length > 0 ? currentPosters : DEFAULT_POSTERS;
+        
+        seedList.forEach((poster) => {
+          setDoc(doc(db, 'deco_posters', poster.id), poster, { merge: true }).catch(() => {});
+        });
+        console.log(`[Deco Cloud Firestore] Initial seeding of ${seedList.length} posters to cloud collection.`);
+      }
+    }, (err) => {
+      console.debug('[Deco Storage] Posters listener fallback:', err.message);
+    });
+
+    // B. Listen to Categories & Franchises Metadata
+    onSnapshot(metadataDocRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         let changed = false;
 
-        if (Array.isArray(data.posters) && data.posters.length > 0) {
-          localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(data.posters));
-          changed = true;
-        }
         if (Array.isArray(data.categories) && data.categories.length > 0) {
           localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
           changed = true;
@@ -38,31 +70,23 @@ if (typeof window !== 'undefined') {
 
         if (changed) {
           window.dispatchEvent(new Event('deco-catalog-updated'));
-          console.log(`[Deco Cloud Firestore] Real-time cloud sync updated: ${data.posters?.length || 0} posters.`);
         }
       } else {
-        // Auto-seed initial catalog to Cloud Firestore on first run
-        const currentPosters = getStoredPosters();
-        const currentCategories = getStoredCategories();
-        const currentFranchises = getStoredFranchises();
-        
-        setDoc(catalogDocRef, {
-          posters: currentPosters.length > 0 ? currentPosters : DEFAULT_POSTERS,
-          categories: currentCategories.length > 0 ? currentCategories : DEFAULT_CATEGORIES,
-          franchises: currentFranchises.length > 0 ? currentFranchises : DEFAULT_FRANCHISES,
+        // Seed initial metadata
+        setDoc(metadataDocRef, {
+          categories: getStoredCategories(),
+          franchises: getStoredFranchises(),
           updatedAt: new Date().toISOString()
         }, { merge: true }).catch(() => {});
       }
     }, (err) => {
-      console.debug('[Deco Storage] Firestore listener running in offline fallback mode:', err.message);
+      console.debug('[Deco Storage] Metadata listener fallback:', err.message);
     });
+
   } catch (e) {
     console.debug('[Deco Storage] Firestore init fallback:', e.message);
   }
 }
-
-const isLocalServer = typeof window !== 'undefined' && 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 // Synchronize with Physical SSD Disk on startup (Dev mode only)
 export async function syncCatalogWithDisk() {
@@ -96,7 +120,6 @@ export async function syncCatalogWithDisk() {
   return null;
 }
 
-// Auto-run disk synchronization on load in dev environment
 if (typeof window !== 'undefined' && isLocalServer) {
   syncCatalogWithDisk();
 }
@@ -156,114 +179,7 @@ export function getStoredFranchises() {
 }
 
 /**
- * Persists cloud and local database with instant UI updates
- */
-async function syncToCloudAndDisk(posters, categories, franchises) {
-  // 1. Cloud Firestore Real-Time Write
-  try {
-    const catalogDocRef = doc(db, 'deco_store', 'catalog');
-    const currentPosters = posters || getStoredPosters();
-    const currentCategories = categories || getStoredCategories();
-    const currentFranchises = franchises || getStoredFranchises();
-
-    setDoc(catalogDocRef, {
-      posters: currentPosters,
-      categories: currentCategories,
-      franchises: currentFranchises,
-      updatedAt: new Date().toISOString()
-    }, { merge: true }).catch((err) => {
-      console.debug('[Deco Firestore] Cloud write status:', err.message);
-    });
-  } catch (cloudErr) {
-    console.debug('[Deco Firestore] Cloud sync queued:', cloudErr.message);
-  }
-
-  // 2. Physical Local Disk Write (ONLY when running on local Vite dev server)
-  if (isLocalServer) {
-    try {
-      if (typeof fetch !== 'undefined') {
-        await fetch('/api/catalog/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            posters: posters || getStoredPosters(), 
-            categories: categories || getStoredCategories(), 
-            franchises: franchises || getStoredFranchises() 
-          })
-        });
-      }
-    } catch (apiErr) {
-      // Dev only
-    }
-  }
-}
-
-/**
- * Persists posters array both to cloud database and local storage
- */
-export async function saveAllPosters(posters) {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(posters));
-      } catch (quotaErr) {
-        console.warn('[Deco Storage] LocalStorage quota note, syncing to Firestore directly:', quotaErr);
-      }
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('deco-catalog-updated'));
-    }
-
-    await syncToCloudAndDisk(posters, null, null);
-    return true;
-  } catch (e) {
-    console.error('Error saving posters:', e);
-    return false;
-  }
-}
-
-/**
- * Persists categories array both to cloud database and local storage
- */
-export async function saveAllCategories(categories) {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('deco-catalog-updated'));
-    }
-
-    await syncToCloudAndDisk(null, categories, null);
-    return true;
-  } catch (e) {
-    console.error('Error saving categories:', e);
-    return false;
-  }
-}
-
-/**
- * Persists franchises array both to cloud database and local storage
- */
-export async function saveAllFranchises(franchises) {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(FRANCHISES_STORAGE_KEY, JSON.stringify(franchises));
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('deco-catalog-updated'));
-    }
-
-    await syncToCloudAndDisk(null, null, franchises);
-    return true;
-  } catch (e) {
-    console.error('Error saving franchises:', e);
-    return false;
-  }
-}
-
-/**
- * Uploads an image base64 dataUrl to the physical disk server or cloud
+ * Uploads an image base64 dataUrl to the physical disk server (dev mode only)
  */
 export async function uploadImageFileToDisk(dataUrl, fileName = 'poster', posterId = '') {
   if (!dataUrl || !dataUrl.startsWith('data:image/')) {
@@ -295,17 +211,18 @@ export async function uploadImageFileToDisk(dataUrl, fileName = 'poster', poster
 }
 
 /**
- * Creates or updates a poster, automatically persisting to Firestore in real time
+ * Creates or updates a poster, automatically persisting individual document to Firestore
  */
 export async function saveOrUpdatePoster(posterData) {
   let finalPoster = { ...posterData };
 
-  if (finalPoster.image && finalPoster.image.startsWith('data:image/')) {
+  if (isLocalServer && finalPoster.image && finalPoster.image.startsWith('data:image/')) {
     const uploaded = await uploadImageFileToDisk(finalPoster.image, finalPoster.title, finalPoster.id);
     finalPoster.image = uploaded.image;
     finalPoster.thumb = uploaded.thumb;
   }
 
+  // 1. Update local cache immediately
   const current = getStoredPosters();
   const index = current.findIndex(p => p.id === finalPoster.id);
 
@@ -317,24 +234,122 @@ export async function saveOrUpdatePoster(posterData) {
     updated = [finalPoster, ...current];
   }
 
-  await saveAllPosters(updated);
+  try {
+    localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (quotaErr) {
+    console.warn('[Deco Storage] LocalStorage quota notice:', quotaErr);
+  }
+  window.dispatchEvent(new Event('deco-catalog-updated'));
+
+  // 2. Persist individual poster document to Firestore (~40 KB)
+  try {
+    const posterDocRef = doc(db, 'deco_posters', finalPoster.id);
+    await setDoc(posterDocRef, finalPoster, { merge: true });
+    console.log(`[Deco Cloud Firestore] Poster "${finalPoster.title}" saved to cloud.`);
+  } catch (cloudErr) {
+    console.error('[Deco Cloud Firestore] Error saving poster to cloud:', cloudErr);
+  }
+
+  // 3. Physical Local Disk Write (dev mode only)
+  if (isLocalServer) {
+    try {
+      await fetch('/api/catalog/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          posters: updated, 
+          categories: getStoredCategories(), 
+          franchises: getStoredFranchises() 
+        })
+      });
+    } catch (apiErr) {}
+  }
+
   return updated;
 }
 
+/**
+ * Toggles featured status for a poster
+ */
 export async function togglePosterFeatured(posterId) {
   const current = getStoredPosters();
-  const updated = current.map(p => p.id === posterId ? { ...p, isFeatured: !p.isFeatured } : p);
-  await saveAllPosters(updated);
-  return updated;
+  const poster = current.find(p => p.id === posterId);
+  if (!poster) return current;
+
+  const updatedPoster = { ...poster, isFeatured: !poster.isFeatured };
+  return await saveOrUpdatePoster(updatedPoster);
 }
 
+/**
+ * Deletes a poster by ID from both local storage and Cloud Firestore
+ */
 export async function deletePosterById(posterId) {
   const current = getStoredPosters();
   const updated = current.filter(p => p.id !== posterId);
-  await saveAllPosters(updated);
+
+  try {
+    localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {}
+  window.dispatchEvent(new Event('deco-catalog-updated'));
+
+  // Delete from Cloud Firestore collection
+  try {
+    const posterDocRef = doc(db, 'deco_posters', posterId);
+    await deleteDoc(posterDocRef);
+    console.log(`[Deco Cloud Firestore] Poster "${posterId}" deleted from cloud.`);
+  } catch (cloudErr) {
+    console.error('[Deco Cloud Firestore] Error deleting poster from cloud:', cloudErr);
+  }
+
+  if (isLocalServer) {
+    try {
+      await fetch('/api/catalog/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          posters: updated, 
+          categories: getStoredCategories(), 
+          franchises: getStoredFranchises() 
+        })
+      });
+    } catch (apiErr) {}
+  }
+
   return updated;
 }
 
+/**
+ * Persists all posters in batch
+ */
+export async function saveAllPosters(posters) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(posters));
+      } catch (quotaErr) {
+        console.warn('[Deco Storage] LocalStorage quota notice:', quotaErr);
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('deco-catalog-updated'));
+    }
+
+    // Persist each poster to Firestore collection
+    for (const poster of posters) {
+      const posterDocRef = doc(db, 'deco_posters', poster.id);
+      setDoc(posterDocRef, poster, { merge: true }).catch(() => {});
+    }
+
+    return true;
+  } catch (e) {
+    console.error('Error saving posters batch:', e);
+    return false;
+  }
+}
+
+/**
+ * Adds a new category and syncs to metadata document
+ */
 export async function addNewCategory(newCat) {
   const current = getStoredCategories();
   if (current.some(c => c.id === newCat.id)) {
@@ -345,6 +360,9 @@ export async function addNewCategory(newCat) {
   return updated;
 }
 
+/**
+ * Deletes a category by ID
+ */
 export async function deleteCategoryById(categoryId) {
   const current = getStoredCategories();
   const updated = current.filter(c => c.id !== categoryId);
@@ -352,6 +370,51 @@ export async function deleteCategoryById(categoryId) {
   return updated;
 }
 
+/**
+ * Persists categories array both to cloud database and local storage
+ */
+export async function saveAllCategories(categories) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('deco-catalog-updated'));
+    }
+
+    const metadataDocRef = doc(db, 'deco_store', 'metadata');
+    await setDoc(metadataDocRef, { categories, updatedAt: new Date().toISOString() }, { merge: true });
+    return true;
+  } catch (e) {
+    console.error('Error saving categories:', e);
+    return false;
+  }
+}
+
+/**
+ * Persists franchises array both to cloud database and local storage
+ */
+export async function saveAllFranchises(franchises) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(FRANCHISES_STORAGE_KEY, JSON.stringify(franchises));
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('deco-catalog-updated'));
+    }
+
+    const metadataDocRef = doc(db, 'deco_store', 'metadata');
+    await setDoc(metadataDocRef, { franchises, updatedAt: new Date().toISOString() }, { merge: true });
+    return true;
+  } catch (e) {
+    console.error('Error saving franchises:', e);
+    return false;
+  }
+}
+
+/**
+ * Restores initial factory default data
+ */
 export async function resetCatalogToDefault() {
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem(POSTERS_STORAGE_KEY);

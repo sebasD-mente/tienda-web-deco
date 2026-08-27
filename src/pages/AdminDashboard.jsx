@@ -141,6 +141,15 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
 
   useEffect(() => {
     loadData();
+
+    const handleCatalogUpdated = () => {
+      setPosters(getStoredPosters());
+      setCategories(getStoredCategories());
+      setFranchises(getStoredFranchises());
+    };
+
+    window.addEventListener('deco-catalog-updated', handleCatalogUpdated);
+    return () => window.removeEventListener('deco-catalog-updated', handleCatalogUpdated);
   }, []);
 
   // Update selected sizes when sizeMode changes
@@ -707,16 +716,6 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
               >
                 <ArrowLeft size={15} />
                 <span>Tienda</span>
-              </button>
-
-              <button
-                onClick={exportCatalogAsJSON}
-                className="btn-cyan"
-                style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                title="Descargar copia de seguridad en JSON"
-              >
-                <Download size={15} />
-                <span>Backup JSON</span>
               </button>
 
               {onLogout && (
