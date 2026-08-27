@@ -105,6 +105,7 @@ function rateLimitAI(req, res, next) {
 
 // Serve static images directly from VPS disk with caching
 app.use('/posters/uploads', express.static(UPLOADS_DIR, { maxAge: '30d' }));
+app.use('/posters', express.static(path.resolve(__dirname, 'public/posters'), { maxAge: '30d' }));
 app.use('/franchises', express.static(FRANCHISES_DIR, { maxAge: '30d' }));
 app.use('/jarvis/references', express.static(JARVIS_REFS, { maxAge: '30d' }));
 

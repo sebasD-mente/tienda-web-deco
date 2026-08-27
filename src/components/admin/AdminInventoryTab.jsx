@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { 
   Search, Plus, X, Package, Star, Edit3, Trash2, Eye 
 } from 'lucide-react';
+import OptimizedImage from '../OptimizedImage';
 
 export default function AdminInventoryTab({
   posters = [],
@@ -206,11 +207,12 @@ export default function AdminInventoryTab({
                     border: '1px solid rgba(0, 242, 254, 0.3)',
                     background: '#04070e'
                   }}>
-                    <img
+                    <OptimizedImage
                       src={poster.thumb || poster.image}
                       alt={poster.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      loading="lazy"
+                      fallbackSrc="/posters/wallpaper.jpg"
+                      objectFit="cover"
+                      style={{ width: '100%', height: '100%' }}
                     />
                   </div>
 
@@ -362,11 +364,12 @@ export default function AdminInventoryTab({
                             border: '1px solid rgba(0, 242, 254, 0.25)',
                             background: '#05070f'
                           }}>
-                            <img
+                            <OptimizedImage
                               src={poster.thumb || poster.image}
                               alt={poster.title}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              loading="lazy"
+                              fallbackSrc="/posters/wallpaper.jpg"
+                              objectFit="cover"
+                              style={{ width: '100%', height: '100%' }}
                             />
                           </div>
                         </td>
