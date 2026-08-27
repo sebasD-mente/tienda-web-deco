@@ -507,6 +507,12 @@ app.get('/api/health', (req, res) => {
 app.use(express.static(path.resolve(__dirname, 'public'), { maxAge: '30d' }));
 if (fs.existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR, { maxAge: '1y', immutable: true }));
+
+  // Never return index.html for missing .js / .css / .webp assets (prevents MIME type errors)
+  app.use('/assets', (req, res) => {
+    res.status(404).send('Asset not found');
+  });
+
   app.use((req, res) => {
     res.sendFile(path.resolve(DIST_DIR, 'index.html'));
   });

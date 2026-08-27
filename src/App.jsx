@@ -12,13 +12,31 @@ import { Bot, Loader2 } from 'lucide-react';
 import { getStoredPosters, getStoredCategories, getStoredFranchises } from './utils/catalogStorage';
 import { generateWhatsAppLink } from './config/constants';
 
-// Code-Splitting: Lazy load heavy secondary pages to keep initial bundle lightweight
-const CatalogPage = lazy(() => import('./pages/CatalogPage'));
-const CategoryGalleryPage = lazy(() => import('./pages/CategoryGalleryPage'));
-const FranchiseGalleryPage = lazy(() => import('./pages/FranchiseGalleryPage'));
-const AboutPostersPage = lazy(() => import('./pages/AboutPostersPage'));
-const CustomPostersPage = lazy(() => import('./pages/CustomPostersPage'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+// Code-Splitting: Lazy load with automatic retry on new deployment chunk changes
+function lazyWithRetry(componentImport) {
+  return lazy(async () => {
+    const pageHasBeenReloaded = window.sessionStorage.getItem('deco_chunk_reloaded');
+    try {
+      const component = await componentImport();
+      window.sessionStorage.removeItem('deco_chunk_reloaded');
+      return component;
+    } catch (error) {
+      if (!pageHasBeenReloaded) {
+        window.sessionStorage.setItem('deco_chunk_reloaded', 'true');
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    }
+  });
+}
+
+const CatalogPage = lazyWithRetry(() => import('./pages/CatalogPage'));
+const CategoryGalleryPage = lazyWithRetry(() => import('./pages/CategoryGalleryPage'));
+const FranchiseGalleryPage = lazyWithRetry(() => import('./pages/FranchiseGalleryPage'));
+const AboutPostersPage = lazyWithRetry(() => import('./pages/AboutPostersPage'));
+const CustomPostersPage = lazyWithRetry(() => import('./pages/CustomPostersPage'));
+const AdminDashboard = lazyWithRetry(() => import('./pages/AdminDashboard'));
 
 // Sleek Deco Vintage / Stark OS Page Loader Fallback
 function PageLoader() {
