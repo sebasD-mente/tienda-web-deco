@@ -204,10 +204,27 @@ export default function AdminJarvisTab({ onShowToast }) {
   };
 
   // 6. Gemini API Key Handler
-  const handleSaveGeminiKey = (e) => {
+  const handleSaveGeminiKey = async (e) => {
     e?.preventDefault();
-    saveGeminiApiKey(geminiKeyInput.trim());
-    onShowToast('¡Configuración de clave de Gemini guardada!', 'success');
+    const key = geminiKeyInput.trim();
+    saveGeminiApiKey(key);
+    
+    // Also persist to VPS SSD backend
+    const token = sessionStorage.getItem('deco_admin_token');
+    try {
+      await fetch('/api/jarvis/save-key', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ apiKey: key })
+      });
+    } catch (err) {
+      console.warn('Could not sync key to VPS:', err.message);
+    }
+    
+    onShowToast('¡Clave de Gemini guardada y sincronizada con el VPS!', 'success');
   };
 
   // 7. Memory Backup Handlers

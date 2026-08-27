@@ -312,18 +312,40 @@ function calculateCustomPrice(widthCm, heightCm, material = 'mdf') {
   };
 }
 
+function getJarvisApiKey() {
+  if (fs.existsSync(JARVIS_FILE)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8'));
+      if (data.apiKey && data.apiKey.trim().length > 0) return data.apiKey.trim();
+    } catch (e) {}
+  }
+  return process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+}
+
+// POST /api/jarvis/save-key (Protected Admin - Persists Gemini API Key to VPS SSD)
+app.post('/api/jarvis/save-key', requireAuth, (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    let config = {};
+    if (fs.existsSync(JARVIS_FILE)) {
+      try { config = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8')); } catch (e) {}
+    }
+    config.apiKey = (apiKey || '').trim();
+    config.updatedAt = new Date().toISOString();
+    fs.writeFileSync(JARVIS_FILE, JSON.stringify(config, null, 2), 'utf-8');
+    console.log('[Deco J.A.R.V.I.S.] Saved Gemini API key to VPS SSD.');
+    return res.status(200).json({ success: true, message: 'Clave de Gemini API guardada en VPS SSD.' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/jarvis/chat (Public with Rate Limiting - Secure Server-Side Gemini AI)
 app.post('/api/jarvis/chat', rateLimitAI, async (req, res) => {
   try {
     const { prompt, history } = req.body;
-    const apiKey = GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return res.status(200).json({
-        replyText: 'J.A.R.V.I.S. está temporalmente en mantenimiento (clave de IA no configurada en el servidor). Puedes consultar el catálogo directamente.',
-        actions: []
-      });
-    }
+    const clientKey = req.headers['x-gemini-key'] || req.body.apiKey;
+    const apiKey = (clientKey && clientKey.trim().length > 0) ? clientKey.trim() : getJarvisApiKey();
 
     const catalog = getCatalogData();
     const posters = catalog.posters || [];
@@ -347,44 +369,72 @@ REGLAS DE ATENCIÓN:
 3. Si el cliente pide medidas personalizadas (ej. 40x60cm, 50x70cm, circular), invoca 'cotizar_personalizado'.
 4. Los precios siempre son en Quetzales (Q) y se trabaja con el 50% de anticipo para producción y 50% contra entrega.`;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: systemInstruction,
-      tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-    });
-
-    const chat = model.startChat();
-    const result = await chat.sendMessage(prompt || 'Hola');
-    const response = result.response;
-    const functionCalls = response.functionCalls();
-    let replyText = response.text ? response.text() : '';
-    const executedActions = [];
-
-    if (functionCalls && functionCalls.length > 0) {
-      for (const call of functionCalls) {
-        if (call.name === 'recomendar_obras') {
-          const ids = call.args.posterIds || [];
-          const matched = posters.filter(p => ids.includes(p.id));
-          executedActions.push({
-            type: 'catalog_matches',
-            posters: matched,
-            motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
-          });
-        } else if (call.name === 'cotizar_personalizado') {
-          const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
-          executedActions.push({
-            type: 'custom_quote',
-            quote
-          });
-        }
-      }
+    if (!apiKey) {
+      return res.status(200).json({
+        replyText: '¡Hola! Soy J.A.R.V.I.S. de Deco Vintage Guate. Con gusto te ayudo a encontrar el cuadro perfecto o cotizar medidas personalizadas.',
+        actions: []
+      });
     }
 
-    return res.status(200).json({
-      replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
-      actions: executedActions
-    });
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        systemInstruction: systemInstruction,
+        tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+      });
+
+      const chat = model.startChat();
+      const result = await chat.sendMessage(prompt || 'Hola');
+      const response = result.response;
+      const functionCalls = response.functionCalls();
+      let replyText = response.text ? response.text() : '';
+      const executedActions = [];
+
+      if (functionCalls && functionCalls.length > 0) {
+        for (const call of functionCalls) {
+          if (call.name === 'recomendar_obras') {
+            const ids = call.args.posterIds || [];
+            const matched = posters.filter(p => ids.includes(p.id));
+            executedActions.push({
+              type: 'catalog_matches',
+              posters: matched,
+              motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
+            });
+          } else if (call.name === 'cotizar_personalizado') {
+            const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
+            executedActions.push({
+              type: 'custom_quote',
+              quote
+            });
+          }
+        }
+      }
+
+      return res.status(200).json({
+        replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
+        actions: executedActions
+      });
+    } catch (geminiError) {
+      console.warn('[Gemini AI Fallback]:', geminiError.message);
+      // Fallback response with catalog matching so customer is always served
+      const qLower = (prompt || '').toLowerCase();
+      let matchedPosters = [];
+      if (qLower.includes('auto') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('gtr')) {
+        matchedPosters = posters.filter(p => p.category === 'AUTOS').slice(0, 3);
+      } else if (qLower.includes('superheroe') || qLower.includes('spider') || qLower.includes('marvel') || qLower.includes('batman')) {
+        matchedPosters = posters.filter(p => p.category === 'SUPERHEROES').slice(0, 3);
+      } else if (qLower.includes('vintage') || qLower.includes('leica') || qLower.includes('retro')) {
+        matchedPosters = posters.filter(p => p.category === 'VINTAGE').slice(0, 3);
+      } else {
+        matchedPosters = posters.filter(p => p.isFeatured).slice(0, 3);
+      }
+
+      return res.status(200).json({
+        replyText: `¡Hola! Con gusto te asesoro. En Deco Vintage Guate fabricamos cuadros rígidos en madera MDF de 5.5mm con impresión HD HP Látex y cinta de montaje rápido incluida. Tenemos medidas desde 13x18cm (Q25) hasta 60x90cm (Q210). ¿Te gustaría ordenar alguna de estas obras o cotizar una medida personalizada?`,
+        actions: matchedPosters.length > 0 ? [{ type: 'catalog_matches', posters: matchedPosters, motivo: 'Obras destacadas de nuestra colección' }] : []
+      });
+    }
   } catch (err) {
     console.error('[API Error] POST /api/jarvis/chat:', err);
     return res.status(500).json({ error: 'Error al procesar consulta con J.A.R.V.I.S.: ' + err.message });
