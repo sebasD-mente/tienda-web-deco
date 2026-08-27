@@ -26,8 +26,9 @@ export default function AdminCreatePosterTab({
   const [rating, setRating] = useState(5.0);
   const [reviewsCount, setReviewsCount] = useState(30);
 
-  // Size selection
-  const [selectedSizeIds, setSelectedSizeIds] = useState(['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE']);
+  // Size selection (Default 5 standard rectangular sizes)
+  const STANDARD_5_SIZES = ['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE'];
+  const [selectedSizeIds, setSelectedSizeIds] = useState(STANDARD_5_SIZES);
 
   // Image State
   const [imageFull, setImageFull] = useState('');
@@ -56,7 +57,7 @@ export default function AdminCreatePosterTab({
       if (Array.isArray(editingPoster.sizes) && editingPoster.sizes.length > 0) {
         setSelectedSizeIds(editingPoster.sizes.map(s => s.id));
       } else {
-        setSelectedSizeIds(['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE']);
+        setSelectedSizeIds(STANDARD_5_SIZES);
       }
     } else {
       resetForm();
@@ -75,7 +76,7 @@ export default function AdminCreatePosterTab({
     setImageFull('');
     setImageThumb('');
     setImageMeta(null);
-    setSelectedSizeIds(['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE']);
+    setSelectedSizeIds(STANDARD_5_SIZES);
   };
 
   const toggleSizeId = (id) => {
@@ -406,46 +407,112 @@ export default function AdminCreatePosterTab({
           </div>
 
           {/* 6. Sizes Matrix */}
-          <div style={{ marginBottom: '22px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
               <label style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
                 6. Tamaños Disponibles ({selectedSizeIds.length} seleccionados):
               </label>
-              <button
-                type="button"
-                onClick={() => setSelectedSizeIds(['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE'])}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  background: selectedSizeIds.length === 6 ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                  border: selectedSizeIds.length === 6 ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                  color: selectedSizeIds.length === 6 ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                  fontSize: '0.74rem',
-                  fontWeight: 800,
-                  cursor: 'pointer'
-                }}
-              >
-                ✓ Marcar los 6 Tamaños
-              </button>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSizeIds(['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE'])}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                    color: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                    fontSize: '0.76rem',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✓ Marcar los 5 Tamaños Estándar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSizeIds(['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE'])}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: selectedSizeIds.length === 6 ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: selectedSizeIds.length === 6 ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                    color: selectedSizeIds.length === 6 ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                    fontSize: '0.76rem',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Marcar Todos (6)
+                </button>
+              </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
-              {OFFICIAL_SIZES.map(s => {
+            {/* Group 1: 5 Standard Rectangular Sizes */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: '10px',
+              marginBottom: '16px'
+            }}>
+              {OFFICIAL_SIZES.filter(s => s.id !== 'PORTADA_ALBUM').map(s => {
                 const isChecked = selectedSizeIds.includes(s.id);
                 return (
                   <div
                     key={s.id}
                     onClick={() => toggleSizeId(s.id)}
                     style={{
-                      padding: '10px 12px',
-                      borderRadius: '8px',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
                       background: isChecked ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.02)',
                       border: isChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
                       cursor: 'pointer',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      fontSize: '0.82rem',
+                      fontSize: '0.84rem',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span style={{ color: isChecked ? '#fff' : 'var(--text-muted)', fontWeight: isChecked ? 700 : 400 }}>
+                      {isChecked ? '☑ ' : '☐ '} {s.name} ({s.dimensions})
+                    </span>
+                    <span style={{ color: isChecked ? '#00f2fe' : 'var(--text-muted)', fontWeight: 800 }}>
+                      Q{s.price.toFixed(0)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Group 2: Special Square 30x30 Album Cover Size */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px dashed rgba(0, 242, 254, 0.25)',
+              borderRadius: '12px',
+              padding: '14px 16px'
+            }}>
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🎵</span>
+                <strong>Formato Cuadrado (Exclusivo para Portadas de Álbum / Vinilos Musicales):</strong>
+              </div>
+              {OFFICIAL_SIZES.filter(s => s.id === 'PORTADA_ALBUM').map(s => {
+                const isChecked = selectedSizeIds.includes(s.id);
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => toggleSizeId(s.id)}
+                    style={{
+                      maxWidth: '320px',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      background: isChecked ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                      border: isChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '0.84rem',
                       transition: 'all 0.15s ease'
                     }}
                   >
@@ -534,44 +601,6 @@ export default function AdminCreatePosterTab({
           </div>
 
         </form>
-      </div>
-
-      {/* Live Preview of Poster Card */}
-      <div style={{ maxWidth: '340px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-          <Eye size={15} />
-          <span>Previsualización en Vivo de la Tarjeta</span>
-        </div>
-
-        <div className="product-card" style={{ cursor: 'default', margin: '0 auto' }}>
-          <div style={{ position: 'relative', width: '100%', height: '280px', overflow: 'hidden', background: '#020408' }}>
-            {imageThumb || imageFull ? (
-              <img src={imageThumb || imageFull} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                <ImageIcon size={36} style={{ marginBottom: '8px', opacity: 0.4 }} />
-                <span style={{ fontSize: '0.75rem' }}>Sube una imagen para ver la tarjeta</span>
-              </div>
-            )}
-            <span className="badge-cyan" style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 2 }}>
-              {selectedSizeIds.length === 6 ? '6 Tamaños' : `${selectedSizeIds.length} Tamaños`}
-            </span>
-          </div>
-
-          <div style={{ padding: '14px', textAlign: 'left' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '3px' }}>
-              {category}
-            </div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#ffffff', marginBottom: '10px', lineHeight: '1.3' }}>
-              {title || 'Título de Ejemplo'}
-            </h4>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
-                Desde Q25.00
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

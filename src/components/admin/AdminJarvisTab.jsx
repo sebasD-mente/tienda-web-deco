@@ -307,19 +307,18 @@ export default function AdminJarvisTab({ onShowToast }) {
                 background: geminiKeyInput ? '#00f5a0' : '#eab308',
                 boxShadow: geminiKeyInput ? '0 0 10px #00f5a0' : 'none'
               }} />
-              {geminiKeyInput ? 'GEMINI 2.5 FLASH PROXY ACTIVO' : 'MODO LOCAL ASISTIDO'}
+              {geminiKeyInput ? 'J.A.R.V.I.S. ONLINE (IA ACTIVA)' : 'J.A.R.V.I.S. MODO CATÁLOGO'}
             </span>
           </div>
         </div>
 
-        {/* Sub-Navigation Tabs */}
+        {/* Sub-Navigation Tabs with Responsive Wrap & Clean Spacing */}
         <div style={{
           marginTop: '20px',
           display: 'flex',
-          gap: '6px',
-          overflowX: 'auto',
-          paddingBottom: '4px',
-          scrollbarWidth: 'none'
+          flexWrap: 'wrap',
+          gap: '10px',
+          paddingTop: '6px'
         }}>
           {[
             { id: 'greeting', label: '💬 Saludo Inicial', icon: MessageSquare },
@@ -327,7 +326,7 @@ export default function AdminJarvisTab({ onShowToast }) {
             { id: 'docs', label: '📚 Documentos', icon: FileText, count: (knowledgeData.customDocuments || []).length },
             { id: 'images', label: '🖼️ Imágenes Ref', icon: ImageIcon, count: (knowledgeData.referenceImages || []).length },
             { id: 'directives', label: '⚡ Directivas del Dueño', icon: Sparkles, count: (knowledgeData.ownerDirectives || []).length },
-            { id: 'apikey', label: '🔌 Conexión API', icon: Key }
+            { id: 'apikey', label: '🔌 Conexión Clave API', icon: Key }
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = jarvisSubTab === tab.id;
@@ -339,28 +338,27 @@ export default function AdminJarvisTab({ onShowToast }) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 11px',
-                  borderRadius: '8px',
-                  background: isActive ? 'var(--grad-cyan)' : 'rgba(255, 255, 255, 0.04)',
-                  border: isActive ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.08)',
+                  gap: '8px',
+                  padding: '9px 15px',
+                  borderRadius: '10px',
+                  background: isActive ? 'var(--grad-cyan)' : 'rgba(255, 255, 255, 0.05)',
+                  border: isActive ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.12)',
                   color: isActive ? '#040609' : '#ffffff',
                   fontWeight: 800,
-                  fontSize: '0.78rem',
+                  fontSize: '0.82rem',
                   cursor: 'pointer',
-                  flexShrink: 0,
                   transition: 'all 0.15s ease'
                 }}
               >
-                <Icon size={14} />
+                <Icon size={15} />
                 <span>{tab.label}</span>
                 {tab.count !== undefined && (
                   <span style={{
                     background: isActive ? '#040609' : 'rgba(0, 242, 254, 0.2)',
                     color: isActive ? '#00f2fe' : '#ffffff',
-                    padding: '1px 5px',
+                    padding: '2px 7px',
                     borderRadius: '8px',
-                    fontSize: '0.68rem',
+                    fontSize: '0.7rem',
                     fontWeight: 900
                   }}>
                     {tab.count}
