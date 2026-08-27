@@ -217,132 +217,54 @@ export default function AdminSettingsTab({ onShowToast, onReloadCatalog }) {
         </form>
       </div>
 
-      {/* 2. VPS HOSTINGER & STORAGE STATUS */}
-      <div className="glass-card" style={{
-        padding: '24px 28px',
-        border: '1px solid rgba(0, 242, 254, 0.25)',
-        background: 'linear-gradient(135deg, rgba(6, 12, 24, 0.95) 0%, rgba(4, 7, 14, 0.98) 100%)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
-              background: 'rgba(0, 242, 254, 0.15)',
-              border: '1px solid rgba(0, 242, 254, 0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--accent-cyan)'
-            }}>
-              <Server size={22} />
-            </div>
-            <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
-                Servidor VPS Hostinger & Almacenamiento SSD
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
-                Arquitectura dedicada de alto rendimiento (100 GB SSD, IP 145.223.120.56).
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleManualSync}
-            disabled={isSyncingServer}
-            className="btn-secondary"
-            style={{ padding: '8px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <RefreshCw size={14} className={isSyncingServer ? 'animate-spin' : ''} />
-            <span>{isSyncingServer ? 'Sincronizando...' : 'Sincronizar con VPS'}</span>
-          </button>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '14px',
-          marginTop: '16px'
-        }}>
-          <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '14px 16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '4px' }}>
-              <HardDrive size={14} />
-              <span>Capacidad de Almacenamiento</span>
-            </div>
-            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>100 GB SSD Dedicado</div>
-            <div style={{ fontSize: '0.72rem', color: '#00f5a0' }}>Sin límites de cuota mensuales</div>
-          </div>
-
-          <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '14px 16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '4px' }}>
-              <ShieldCheck size={14} />
-              <span>Optimización de Imágenes</span>
-            </div>
-            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>Sharp Engine WebP</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)' }}>1400px Full / 480px Thumbnails</div>
-          </div>
-
-          <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '14px 16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '4px' }}>
-              <CheckCircle2 size={14} />
-              <span>Estado del Servidor</span>
-            </div>
-            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#00f5a0' }}>Operativo y Conectado</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Último chequeo: {serverStatus.checkedAt}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. BACKUP, EXPORT & FACTORY RESET */}
+      {/* 2. BACKUP & EXPORT */}
       <div className="glass-card" style={{
         padding: '24px 28px',
         border: '1px solid rgba(255, 255, 255, 0.1)',
         background: 'linear-gradient(135deg, rgba(8, 12, 20, 0.95) 0%, rgba(4, 6, 12, 0.98) 100%)'
       }}>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#ffffff', margin: '0 0 6px 0' }}>
-          Respaldos y Mantenimiento del Catálogo
+          Copias de Seguridad del Catálogo (VPS SSD)
         </h3>
         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 18px 0' }}>
-          Descarga o restaura copias completas de la base de datos de obras, categorías y franquicias.
+          Todo tu catálogo se guarda de forma automática en el disco SSD de 100 GB. Desde aquí puedes descargar una copia de seguridad a tu computadora o restaurar una copia previa.
         </p>
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '14px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '16px'
         }}>
           {/* Export */}
-          <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-            <Download size={22} color="var(--accent-cyan)" style={{ marginBottom: '8px' }} />
-            <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.9rem', margin: '0 0 4px 0' }}>Exportar Backup JSON</h4>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.74rem', marginBottom: '12px', lineHeight: 1.35 }}>
-              Descarga un archivo con todas las obras y configuraciones.
+          <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '18px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+            <Download size={24} color="var(--accent-cyan)" style={{ marginBottom: '10px' }} />
+            <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', margin: '0 0 6px 0' }}>Descargar Copia de Seguridad</h4>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.76rem', marginBottom: '14px', lineHeight: 1.4 }}>
+              Descarga un archivo JSON con todas las obras, categorías y configuraciones del servidor a tu computadora.
             </p>
             <button
               type="button"
               onClick={exportCatalogAsJSON}
               className="btn-cyan"
-              style={{ width: '100%', justifyContent: 'center', padding: '8px 12px', fontSize: '0.8rem' }}
+              style={{ width: '100%', justifyContent: 'center', padding: '10px 14px', fontSize: '0.85rem' }}
             >
-              Descargar Archivo JSON
+              Descargar Archivo JSON (.json)
             </button>
           </div>
 
           {/* Import */}
-          <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-            <Upload size={22} color="var(--accent-cyan)" style={{ marginBottom: '8px' }} />
-            <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.9rem', margin: '0 0 4px 0' }}>Restaurar Backup JSON</h4>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.74rem', marginBottom: '12px', lineHeight: 1.35 }}>
-              Carga un archivo de respaldo para restaurar el catálogo.
+          <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '18px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+            <Upload size={24} color="var(--accent-cyan)" style={{ marginBottom: '10px' }} />
+            <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', margin: '0 0 6px 0' }}>Restaurar Copia de Seguridad</h4>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.76rem', marginBottom: '14px', lineHeight: 1.4 }}>
+              Carga un archivo de respaldo JSON para actualizar o restaurar el catálogo completo en el servidor VPS.
             </p>
             <label className="btn-secondary" style={{
               width: '100%',
               display: 'flex',
               justifyContent: 'center',
-              padding: '8px 12px',
-              fontSize: '0.8rem',
+              padding: '10px 14px',
+              fontSize: '0.85rem',
               cursor: 'pointer',
               boxSizing: 'border-box'
             }}>
@@ -354,30 +276,6 @@ export default function AdminSettingsTab({ onShowToast, onReloadCatalog }) {
                 style={{ display: 'none' }}
               />
             </label>
-          </div>
-
-          {/* Factory Reset */}
-          <div style={{ background: 'rgba(239, 68, 68, 0.04)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
-            <RotateCcw size={22} color="#ef4444" style={{ marginBottom: '8px' }} />
-            <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.9rem', margin: '0 0 4px 0' }}>Restablecer Catálogo</h4>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.74rem', marginBottom: '12px', lineHeight: 1.35 }}>
-              Restaura los pósters y colecciones originales de fábrica.
-            </p>
-            <button
-              type="button"
-              onClick={handleFactoryReset}
-              className="btn-secondary"
-              style={{
-                width: '100%',
-                justifyContent: 'center',
-                padding: '8px 12px',
-                fontSize: '0.8rem',
-                color: '#ef4444',
-                borderColor: 'rgba(239, 68, 68, 0.4)'
-              }}
-            >
-              Restablecer Valores
-            </button>
           </div>
         </div>
       </div>
