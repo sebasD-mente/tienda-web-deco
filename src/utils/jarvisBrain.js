@@ -38,6 +38,9 @@ export function saveGeminiApiKey(apiKey) {
     } else {
       localStorage.setItem(API_KEY_STORAGE_KEY, apiKey.trim());
     }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('deco-gemini-key-updated', { detail: apiKey }));
+    }
     return true;
   } catch (e) {
     console.error('Failed to save API key:', e);
