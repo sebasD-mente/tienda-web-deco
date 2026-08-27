@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, ShoppingBag, X, Menu, ArrowRight, Sparkles, Tag, Layers, ExternalLink, Home, LayoutGrid, Sliders, Bot, ChevronRight, MessageSquare } from 'lucide-react';
+import { Search, ShoppingBag, X, Menu, ArrowRight, Sparkles, Tag, Layers, ExternalLink, Home, LayoutGrid, Sliders, ChevronRight, MessageSquare } from 'lucide-react';
 import { searchPosters } from '../utils/searchEngine';
+import ArcReactor from './ArcReactor';
 
 const POPULAR_SEARCHES = [
   'Porsche', 'Spider-Man', 'Skyline GTR', 'Avengers', 
@@ -600,9 +601,10 @@ export default function Navbar({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#00f2fe'
+                      color: '#00f2fe',
+                      padding: 0
                     }}>
-                      <Bot size={20} />
+                      <ArcReactor size={28} />
                     </div>
                     <div>
                       <div style={{ fontWeight: 900, fontSize: '0.92rem', color: '#00f2fe', letterSpacing: '0.04em' }}>

@@ -3,9 +3,10 @@ import {
   Plus, Edit3, Trash2, Upload, Download, RotateCcw, Check, 
   Search, ArrowLeft, Star, Tag, Layers, Sliders, Shield,
   CheckCircle2, AlertCircle, Eye, Image as ImageIcon, LogOut,
-  Package, Database, X, Sparkles, Bot, Key, MessageSquare,
+  Package, Database, X, Sparkles, Key, MessageSquare,
   FileText, HelpCircle, Play, Zap, Save, RefreshCw, ExternalLink
 } from 'lucide-react';
+import ArcReactor from '../components/ArcReactor';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 import { 
   getStoredPosters, 
@@ -39,18 +40,24 @@ import {
 } from '../data/storeKnowledge';
 
 export default function AdminDashboard({ onNavigate, onLogout }) {
-  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'create' | 'franchises' | 'categories' | 'jarvis' | 'backup'
+  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'create' | 'franchises' | 'categories' | 'jarvis'
   const [posters, setPosters] = useState([]);
   const [categories, setCategories] = useState([]);
   const [franchises, setFranchises] = useState([]);
   const [searchFilter, setSearchFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  
+  // Default to the first alphabetical category to ensure ultra-fast initial load
+  const [categoryFilter, setCategoryFilter] = useState(() => {
+    const cats = getStoredCategories().filter(c => c.id !== 'TODOS');
+    const sorted = [...cats].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return sorted[0]?.id || 'AUTOS';
+  });
   
   // J.A.R.V.I.S. AI & Knowledge Base State
   const [geminiKeyInput, setGeminiKeyInput] = useState(getGeminiApiKey());
   const [knowledgeData, setKnowledgeData] = useState(() => getStoreKnowledge());
   const [newDirectiveText, setNewDirectiveText] = useState('');
-  const [jarvisSubTab, setJarvisSubTab] = useState('greeting'); // 'greeting' | 'prompts' | 'docs' | 'images' | 'directives' | 'apikey' | 'backup'
+  const [jarvisSubTab, setJarvisSubTab] = useState('greeting'); // 'greeting' | 'prompts' | 'docs' | 'images' | 'directives' | 'apikey'
   const [greetingInput, setGreetingInput] = useState(() => getStoreKnowledge().initialGreeting || '');
   
   // Quick Prompts State
@@ -116,9 +123,20 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
   };
 
   const loadData = () => {
-    setPosters(getStoredPosters());
-    setCategories(getStoredCategories());
-    setFranchises(getStoredFranchises());
+    const loadedPosters = getStoredPosters();
+    const loadedCategories = getStoredCategories();
+    const loadedFranchises = getStoredFranchises();
+    
+    setPosters(loadedPosters);
+    setCategories(loadedCategories);
+    setFranchises(loadedFranchises);
+
+    // Auto-select first alphabetical category if current filter is empty or 'ALL'
+    const validCats = loadedCategories.filter(c => c.id !== 'TODOS');
+    const sorted = [...validCats].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    if (sorted.length > 0 && (!categoryFilter || categoryFilter === 'ALL')) {
+      setCategoryFilter(sorted[0].id);
+    }
   };
 
   useEffect(() => {
@@ -859,7 +877,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
                 boxShadow: activeTab === 'jarvis' ? '0 0 16px rgba(0, 242, 254, 0.4)' : 'none'
               }}
             >
-              <Bot size={15} />
+              <ArcReactor size={18} />
               <span>IA J.A.R.V.I.S.</span>
               <span style={{
                 background: activeTab === 'jarvis' ? '#040609' : (geminiKeyInput ? 'rgba(0, 245, 160, 0.25)' : 'rgba(0, 242, 254, 0.2)'),
@@ -871,31 +889,6 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
               }}>
                 {geminiKeyInput ? 'GEMINI' : 'LOCAL'}
               </span>
-            </button>
-
-            {/* 6. Copias / Backup */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('backup')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '9px 16px',
-                borderRadius: '10px',
-                background: activeTab === 'backup' ? 'var(--grad-cyan)' : 'rgba(255, 255, 255, 0.04)',
-                border: activeTab === 'backup' ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.08)',
-                color: activeTab === 'backup' ? '#040609' : '#ffffff',
-                fontWeight: 800,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                flexShrink: 0,
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'backup' ? '0 0 16px rgba(0, 242, 254, 0.4)' : 'none'
-              }}
-            >
-              <Database size={15} />
-              <span>Copias / Backup</span>
             </button>
           </div>
         </div>
@@ -2216,9 +2209,10 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '0 0 20px rgba(0, 242, 254, 0.4)'
+                      boxShadow: '0 0 20px rgba(0, 242, 254, 0.4)',
+                      padding: 0
                     }}>
-                      <Bot size={30} color="var(--accent-cyan)" />
+                      <ArcReactor size={38} />
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -2260,21 +2254,20 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
 
                 {/* Sub-Navigation Tabs */}
                 <div style={{
-                  marginTop: '22px',
+                  marginTop: '20px',
                   display: 'flex',
-                  gap: '8px',
+                  gap: '6px',
                   overflowX: 'auto',
                   paddingBottom: '4px',
                   scrollbarWidth: 'none'
                 }}>
                   {[
                     { id: 'greeting', label: '💬 Saludo Inicial', icon: MessageSquare },
-                    { id: 'prompts', label: '🔘 Botones y Atajos', icon: Zap },
-                    { id: 'docs', label: '📚 Documentos y Manuales', icon: FileText, count: (knowledgeData.customDocuments || []).length },
-                    { id: 'images', label: '🖼️ Imágenes de Referencia', icon: ImageIcon, count: (knowledgeData.referenceImages || []).length },
+                    { id: 'prompts', label: '🔘 Botones Rápidos', icon: Zap },
+                    { id: 'docs', label: '📚 Documentos', icon: FileText, count: (knowledgeData.customDocuments || []).length },
+                    { id: 'images', label: '🖼️ Imágenes Ref', icon: ImageIcon, count: (knowledgeData.referenceImages || []).length },
                     { id: 'directives', label: '⚡ Directivas del Dueño', icon: Sparkles, count: (knowledgeData.ownerDirectives || []).length },
-                    { id: 'apikey', label: '🔌 Conexión Gemini API', icon: Key },
-                    { id: 'backup', label: '💾 Respaldo JSON', icon: Database }
+                    { id: 'apikey', label: '🔌 Conexión API', icon: Key }
                   ].map(tab => {
                     const Icon = tab.icon;
                     const isActive = jarvisSubTab === tab.id;
@@ -2286,29 +2279,30 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px 14px',
+                          gap: '6px',
+                          padding: '7px 11px',
                           borderRadius: '8px',
                           background: isActive ? 'var(--grad-cyan)' : 'rgba(255, 255, 255, 0.04)',
                           border: isActive ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.08)',
                           color: isActive ? '#040609' : '#ffffff',
                           fontWeight: 800,
-                          fontSize: '0.78rem',
+                          fontSize: '0.74rem',
                           cursor: 'pointer',
                           whiteSpace: 'nowrap',
+                          flexShrink: 0,
                           transition: 'all 0.2s ease',
                           boxShadow: isActive ? '0 0 14px rgba(0, 242, 254, 0.35)' : 'none'
                         }}
                       >
-                        <Icon size={14} />
+                        <Icon size={13} />
                         <span>{tab.label}</span>
                         {typeof tab.count === 'number' && (
                           <span style={{
                             background: isActive ? '#040609' : 'rgba(0, 242, 254, 0.2)',
                             color: isActive ? '#00f2fe' : '#ffffff',
-                            padding: '1px 6px',
+                            padding: '1px 5px',
                             borderRadius: '10px',
-                            fontSize: '0.7rem',
+                            fontSize: '0.68rem',
                             fontWeight: 900
                           }}>
                             {tab.count}
@@ -2333,7 +2327,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
                     Este es el primer mensaje que J.A.R.V.I.S. emite en cuanto el cliente abre el chat. Puedes adaptarlo para eventos especiales, ofertas del mes o campañas comerciales.
                   </p>
 
-                  <div style={{ marginBottom: '18px' }}>
+                  <div style={{ marginBottom: '20px' }}>
                     <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '8px', textTransform: 'uppercase' }}>
                       Texto del Saludo Inicial:
                     </label>
@@ -2356,45 +2350,6 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
                         resize: 'vertical'
                       }}
                     />
-                  </div>
-
-                  {/* Live Bubble Preview */}
-                  <div style={{
-                    padding: '16px',
-                    borderRadius: '12px',
-                    background: 'rgba(0, 242, 254, 0.04)',
-                    border: '1px dashed rgba(0, 242, 254, 0.3)',
-                    marginBottom: '20px'
-                  }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                      👁️ Vista Previa en el Chat del Cliente:
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                      <div style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        background: 'rgba(0, 242, 254, 0.2)',
-                        border: '1px solid var(--accent-cyan)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        <Bot size={15} color="var(--accent-cyan)" />
-                      </div>
-                      <div style={{
-                        background: 'rgba(6, 10, 20, 0.9)',
-                        border: '1px solid rgba(0, 242, 254, 0.25)',
-                        padding: '12px 16px',
-                        borderRadius: '0 12px 12px 12px',
-                        fontSize: '0.85rem',
-                        color: '#e6edf3',
-                        lineHeight: '1.45'
-                      }}>
-                        {greetingInput || 'Escribe un saludo arriba para previsualizarlo...'}
-                      </div>
-                    </div>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -3188,95 +3143,6 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
                 </div>
               )}
 
-            </div>
-          )}
-
-          {/* ======================================================== */}
-          {/* TAB 6: COPIAS / BACKUP & RESTORE                         */}
-          {/* ======================================================== */}
-          {activeTab === 'backup' && (
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <div className="glass-card" style={{ padding: 'clamp(20px, 5vw, 36px)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <Database size={24} color="var(--accent-cyan)" />
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#fff', margin: 0 }}>
-                    Copia de Seguridad & Gestión de Datos
-                  </h3>
-                </div>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '24px', lineHeight: '1.5' }}>
-                  Exporta todo tu catálogo con imágenes y configuraciones en un archivo JSON para tener un respaldo seguro o restaurarlo.
-                </p>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                  
-                  {/* Export */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '18px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-                    <Download size={26} color="var(--accent-cyan)" style={{ marginBottom: '8px' }} />
-                    <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', margin: '0 0 6px 0' }}>Descargar Respaldo</h4>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', marginBottom: '14px', lineHeight: '1.4' }}>
-                      Genera un archivo <code>.json</code> con todas las obras, colecciones y categorías.
-                    </p>
-                    <button onClick={exportCatalogAsJSON} className="btn-cyan" style={{ width: '100%', justifyContent: 'center', padding: '9px', fontSize: '0.82rem' }}>
-                      Descargar JSON
-                    </button>
-                  </div>
-
-                  {/* Import */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '18px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-                    <Upload size={26} color="var(--accent-cyan)" style={{ marginBottom: '8px' }} />
-                    <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', margin: '0 0 6px 0' }}>Restaurar Respaldo</h4>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', marginBottom: '14px', lineHeight: '1.4' }}>
-                      Carga un archivo <code>.json</code> previamente exportado para recuperar el catálogo.
-                    </p>
-                    <input
-                      type="file"
-                      ref={importInputRef}
-                      onChange={handleImportJSON}
-                      accept=".json"
-                      style={{ display: 'none' }}
-                    />
-                    <button
-                      onClick={() => importInputRef.current?.click()}
-                      className="btn-secondary"
-                      style={{ width: '100%', justifyContent: 'center', padding: '9px', fontSize: '0.82rem' }}
-                    >
-                      Subir Archivo JSON
-                    </button>
-                  </div>
-
-                  {/* Reset */}
-                  <div style={{ background: 'rgba(239, 68, 68, 0.03)', padding: '18px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    <RotateCcw size={26} color="#ef4444" style={{ marginBottom: '8px' }} />
-                    <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', margin: '0 0 6px 0' }}>Restablecer Inicial</h4>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', marginBottom: '14px', lineHeight: '1.4' }}>
-                      Restaura el catálogo a los datos originales de fábrica.
-                    </p>
-                    <button
-                      onClick={() => {
-                        if (window.confirm('¿Seguro que deseas restablecer el catálogo a los valores iniciales de fábrica? Se perderán las modificaciones personalizadas.')) {
-                          resetCatalogToDefault();
-                          loadData();
-                          showToast('Catálogo restablecido a valores iniciales.', 'info');
-                        }
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '9px',
-                        borderRadius: 'var(--radius-full)',
-                        background: 'rgba(239, 68, 68, 0.15)',
-                        border: '1px solid #ef4444',
-                        color: '#ef4444',
-                        fontWeight: 800,
-                        fontSize: '0.82rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Restablecer
-                    </button>
-                  </div>
-
-                </div>
-              </div>
             </div>
           )}
 
