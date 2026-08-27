@@ -10,6 +10,7 @@ import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
 import { Bot, Loader2 } from 'lucide-react';
 import { getStoredPosters, getStoredCategories, getStoredFranchises } from './utils/catalogStorage';
+import { generateWhatsAppLink } from './config/constants';
 
 // Code-Splitting: Lazy load heavy secondary pages to keep initial bundle lightweight
 const CatalogPage = lazy(() => import('./pages/CatalogPage'));
@@ -262,7 +263,8 @@ export default function App() {
       `📐 *Tamaño:* ${item.size.name} (${item.size.dimensions})\n` +
       `💰 *Precio:* Q${item.price.toFixed(2)}\n\n` +
       `¿Tienen disponibilidad para coordinar la entrega?`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    const waUrl = generateWhatsAppLink(message);
+    window.open(waUrl, '_blank');
   };
 
   return (

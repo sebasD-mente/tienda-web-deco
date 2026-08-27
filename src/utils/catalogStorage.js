@@ -1,7 +1,8 @@
 import {
   CATALOG_POSTERS as BASE_POSTERS,
   CATEGORIES as BASE_CATEGORIES,
-  INITIAL_FRANCHISES as BASE_FRANCHISES
+  INITIAL_FRANCHISES as BASE_FRANCHISES,
+  STORE_SETTINGS as BASE_SETTINGS
 } from '../data/catalogData.js';
 import { 
   idbGetAllPosters, 
@@ -11,19 +12,24 @@ import {
   idbSetMetadata, 
   idbGetMetadata 
 } from './idbStorage.js';
+import { apiGetCatalog, apiSaveCatalog } from './apiClient.js';
+import { saveStoreWhatsAppPhone } from '../config/constants.js';
 
 const DEFAULT_POSTERS = BASE_POSTERS;
 const DEFAULT_CATEGORIES = BASE_CATEGORIES;
 const DEFAULT_FRANCHISES = BASE_FRANCHISES;
+const DEFAULT_SETTINGS = BASE_SETTINGS || { whatsappPhone: '50238375078' };
 
 const POSTERS_STORAGE_KEY = 'deco_vintage_catalog_posters_v2';
 const CATEGORIES_STORAGE_KEY = 'deco_vintage_catalog_categories_v2';
 const FRANCHISES_STORAGE_KEY = 'deco_vintage_catalog_franchises_v2';
+const SETTINGS_STORAGE_KEY = 'deco_vintage_catalog_settings_v2';
 
 // 1. Reactive In-Memory Cache (Ultra-Fast Synchronous Access)
 let memoryPosters = null;
 let memoryCategories = null;
 let memoryFranchises = null;
+let memorySettings = null;
 
 // Helper to safely read from localStorage
 function readLocalStorage(key) {
@@ -43,60 +49,83 @@ function writeLocalStorage(key, val) {
       localStorage.setItem(key, JSON.stringify(val));
     }
   } catch (quotaErr) {
-    // Quota exceeded is normal for big image catalogs; IndexedDB handles the true storage
+    // Quota exceeded is normal for big catalogs; IndexedDB handles the true storage
   }
 }
 
-// 2. Initialize and Hydrate from IndexedDB on startup
+// 2. Initialize and Hydrate from IndexedDB, and Sync with Server
 export async function initializeStorageEngine() {
   if (typeof window === 'undefined') return;
 
   try {
-    // A. Hydrate Posters
+    // A. Quick local hydration from IndexedDB / LocalStorage
     const idbPosters = await idbGetAllPosters();
     if (Array.isArray(idbPosters) && idbPosters.length > 0) {
       memoryPosters = idbPosters;
     } else {
-      // Check if localStorage has existing posters to migrate
       const lsPosters = readLocalStorage(POSTERS_STORAGE_KEY);
-      if (Array.isArray(lsPosters) && lsPosters.length > 0) {
-        memoryPosters = lsPosters;
-      } else {
-        memoryPosters = [...DEFAULT_POSTERS];
-      }
-      // Persist to IndexedDB
+      memoryPosters = Array.isArray(lsPosters) && lsPosters.length > 0 ? lsPosters : [...DEFAULT_POSTERS];
       await idbSaveAllPosters(memoryPosters);
     }
     writeLocalStorage(POSTERS_STORAGE_KEY, memoryPosters);
 
-    // B. Hydrate Categories
     const idbCats = await idbGetMetadata('categories');
-    if (Array.isArray(idbCats) && idbCats.length > 0) {
-      memoryCategories = idbCats;
-    } else {
-      const lsCats = readLocalStorage(CATEGORIES_STORAGE_KEY);
-      memoryCategories = Array.isArray(lsCats) && lsCats.length > 0 ? lsCats : [...DEFAULT_CATEGORIES];
-      await idbSetMetadata('categories', memoryCategories);
-    }
-    writeLocalStorage(CATEGORIES_STORAGE_KEY, memoryCategories);
+    memoryCategories = Array.isArray(idbCats) && idbCats.length > 0 ? idbCats : [...DEFAULT_CATEGORIES];
 
-    // C. Hydrate Franchises
     const idbFranchises = await idbGetMetadata('franchises');
-    if (Array.isArray(idbFranchises) && idbFranchises.length > 0) {
-      memoryFranchises = idbFranchises;
-    } else {
-      const lsFranchises = readLocalStorage(FRANCHISES_STORAGE_KEY);
-      memoryFranchises = Array.isArray(lsFranchises) && lsFranchises.length > 0 ? lsFranchises : [...DEFAULT_FRANCHISES];
-      await idbSetMetadata('franchises', memoryFranchises);
-    }
-    writeLocalStorage(FRANCHISES_STORAGE_KEY, memoryFranchises);
+    memoryFranchises = Array.isArray(idbFranchises) && idbFranchises.length > 0 ? idbFranchises : [...DEFAULT_FRANCHISES];
 
-    // Notify UI that full database is ready
+    const idbSettings = await idbGetMetadata('settings');
+    memorySettings = idbSettings || { ...DEFAULT_SETTINGS };
+    if (memorySettings.whatsappPhone) {
+      saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
+    }
+
     window.dispatchEvent(new Event('deco-catalog-updated'));
-    console.log(`[Deco Storage] Engine initialized. ${memoryPosters.length} posters loaded in memory & IndexedDB.`);
+
+    // B. Sync with Live Server in Background (VPS Hostinger 100 GB SSD)
+    syncCatalogFromServer();
+
   } catch (err) {
     console.error('[Deco Storage] Error initializing database:', err);
   }
+}
+
+/**
+ * Fetches the master catalog from the VPS server and updates local cache
+ */
+export async function syncCatalogFromServer() {
+  try {
+    const serverCatalog = await apiGetCatalog();
+    if (serverCatalog && Array.isArray(serverCatalog.posters) && serverCatalog.posters.length > 0) {
+      memoryPosters = serverCatalog.posters;
+      memoryCategories = serverCatalog.categories || memoryCategories || DEFAULT_CATEGORIES;
+      memoryFranchises = serverCatalog.franchises || memoryFranchises || DEFAULT_FRANCHISES;
+      memorySettings = serverCatalog.settings || memorySettings || DEFAULT_SETTINGS;
+
+      // Update IndexedDB & LocalStorage
+      await idbSaveAllPosters(memoryPosters);
+      await idbSetMetadata('categories', memoryCategories);
+      await idbSetMetadata('franchises', memoryFranchises);
+      await idbSetMetadata('settings', memorySettings);
+
+      writeLocalStorage(POSTERS_STORAGE_KEY, memoryPosters);
+      writeLocalStorage(CATEGORIES_STORAGE_KEY, memoryCategories);
+      writeLocalStorage(FRANCHISES_STORAGE_KEY, memoryFranchises);
+      writeLocalStorage(SETTINGS_STORAGE_KEY, memorySettings);
+
+      if (memorySettings.whatsappPhone) {
+        saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
+      }
+
+      window.dispatchEvent(new Event('deco-catalog-updated'));
+      console.log(`[Deco Storage] Synced live catalog from VPS server: ${memoryPosters.length} posters.`);
+      return true;
+    }
+  } catch (syncErr) {
+    console.debug('[Deco Storage] Server sync offline or unavailable:', syncErr.message);
+  }
+  return false;
 }
 
 // Auto-run initialization immediately in browser
@@ -150,7 +179,22 @@ export function getStoredFranchises() {
 }
 
 /**
- * Creates or updates a poster with GUARANTEED persistence in IndexedDB and in-memory cache
+ * Returns store settings (including WhatsApp phone)
+ */
+export function getStoredSettings() {
+  if (memorySettings && typeof memorySettings === 'object') {
+    return memorySettings;
+  }
+  const ls = readLocalStorage(SETTINGS_STORAGE_KEY);
+  if (ls && typeof ls === 'object') {
+    memorySettings = ls;
+    return ls;
+  }
+  return DEFAULT_SETTINGS;
+}
+
+/**
+ * Creates or updates a poster with persistence in VPS Server, IndexedDB and in-memory cache
  */
 export async function saveOrUpdatePoster(posterData) {
   const finalPoster = { ...posterData };
@@ -168,7 +212,7 @@ export async function saveOrUpdatePoster(posterData) {
   // 1. Update In-Memory Cache Instantly
   memoryPosters = updated;
 
-  // 2. Persist to IndexedDB (Capacity 500MB+)
+  // 2. Persist to IndexedDB
   await idbSavePoster(finalPoster);
 
   // 3. Update LocalStorage cache
@@ -179,7 +223,19 @@ export async function saveOrUpdatePoster(posterData) {
     window.dispatchEvent(new Event('deco-catalog-updated'));
   }
 
-  console.log(`[Deco Storage] Poster "${finalPoster.title}" saved successfully. Total posters: ${updated.length}`);
+  // 5. Asynchronously push entire catalog to VPS SSD Server
+  try {
+    await apiSaveCatalog({
+      posters: updated,
+      categories: getStoredCategories(),
+      franchises: getStoredFranchises(),
+      settings: getStoredSettings()
+    });
+    console.log(`[Deco Storage] Poster "${finalPoster.title}" saved & synced to VPS server.`);
+  } catch (apiErr) {
+    console.warn('[Deco Storage] Saved locally; server sync deferred:', apiErr.message);
+  }
+
   return updated;
 }
 
@@ -216,6 +272,18 @@ export async function deletePosterById(posterId) {
     window.dispatchEvent(new Event('deco-catalog-updated'));
   }
 
+  // 5. Sync deletion with VPS server
+  try {
+    await apiSaveCatalog({
+      posters: updated,
+      categories: getStoredCategories(),
+      franchises: getStoredFranchises(),
+      settings: getStoredSettings()
+    });
+  } catch (apiErr) {
+    console.warn('[Deco Storage] Deleted locally; server sync deferred:', apiErr.message);
+  }
+
   console.log(`[Deco Storage] Poster "${posterId}" deleted. Total posters: ${updated.length}`);
   return updated;
 }
@@ -231,6 +299,16 @@ export async function saveAllPosters(posters) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('deco-catalog-updated'));
   }
+
+  try {
+    await apiSaveCatalog({
+      posters,
+      categories: getStoredCategories(),
+      franchises: getStoredFranchises(),
+      settings: getStoredSettings()
+    });
+  } catch (e) {}
+
   return true;
 }
 
@@ -268,6 +346,16 @@ export async function saveAllCategories(categories) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('deco-catalog-updated'));
   }
+
+  try {
+    await apiSaveCatalog({
+      posters: getStoredPosters(),
+      categories,
+      franchises: getStoredFranchises(),
+      settings: getStoredSettings()
+    });
+  } catch (e) {}
+
   return true;
 }
 
@@ -282,7 +370,45 @@ export async function saveAllFranchises(franchises) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('deco-catalog-updated'));
   }
+
+  try {
+    await apiSaveCatalog({
+      posters: getStoredPosters(),
+      categories: getStoredCategories(),
+      franchises,
+      settings: getStoredSettings()
+    });
+  } catch (e) {}
+
   return true;
+}
+
+/**
+ * Saves store settings (like WhatsApp phone)
+ */
+export async function saveStoreSettings(settings) {
+  memorySettings = { ...getStoredSettings(), ...settings, updatedAt: new Date().toISOString() };
+  await idbSetMetadata('settings', memorySettings);
+  writeLocalStorage(SETTINGS_STORAGE_KEY, memorySettings);
+
+  if (memorySettings.whatsappPhone) {
+    saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('deco-catalog-updated'));
+  }
+
+  try {
+    await apiSaveCatalog({
+      posters: getStoredPosters(),
+      categories: getStoredCategories(),
+      franchises: getStoredFranchises(),
+      settings: memorySettings
+    });
+  } catch (e) {}
+
+  return memorySettings;
 }
 
 /**
@@ -292,22 +418,36 @@ export async function resetCatalogToDefault() {
   memoryPosters = [...DEFAULT_POSTERS];
   memoryCategories = [...DEFAULT_CATEGORIES];
   memoryFranchises = [...DEFAULT_FRANCHISES];
+  memorySettings = { ...DEFAULT_SETTINGS };
 
   await idbSaveAllPosters(memoryPosters);
   await idbSetMetadata('categories', memoryCategories);
   await idbSetMetadata('franchises', memoryFranchises);
+  await idbSetMetadata('settings', memorySettings);
 
   writeLocalStorage(POSTERS_STORAGE_KEY, memoryPosters);
   writeLocalStorage(CATEGORIES_STORAGE_KEY, memoryCategories);
   writeLocalStorage(FRANCHISES_STORAGE_KEY, memoryFranchises);
+  writeLocalStorage(SETTINGS_STORAGE_KEY, memorySettings);
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('deco-catalog-updated'));
   }
+
+  try {
+    await apiSaveCatalog({
+      posters: memoryPosters,
+      categories: memoryCategories,
+      franchises: memoryFranchises,
+      settings: memorySettings
+    });
+  } catch (e) {}
+
   return {
     posters: memoryPosters,
     categories: memoryCategories,
-    franchises: memoryFranchises
+    franchises: memoryFranchises,
+    settings: memorySettings
   };
 }
 
@@ -317,7 +457,8 @@ export async function resetCatalogToDefault() {
 export function exportCatalogAsJSON() {
   const data = {
     exportedAt: new Date().toISOString(),
-    version: '2.0.0',
+    version: '2.5.0',
+    settings: getStoredSettings(),
     categories: getStoredCategories(),
     franchises: getStoredFranchises(),
     posters: getStoredPosters()
@@ -349,6 +490,9 @@ export async function importCatalogFromJSON(jsonString) {
     }
     if (data.franchises && Array.isArray(data.franchises)) {
       await saveAllFranchises(data.franchises);
+    }
+    if (data.settings && typeof data.settings === 'object') {
+      await saveStoreSettings(data.settings);
     }
     return { success: true, count: data.posters?.length || 0 };
   } catch (err) {

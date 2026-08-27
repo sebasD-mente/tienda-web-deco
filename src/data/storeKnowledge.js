@@ -185,39 +185,31 @@ export function getStoreKnowledge() {
   return DEFAULT_STORE_KNOWLEDGE;
 }
 
-import { db, doc, onSnapshot, setDoc } from '../utils/firebase.js';
-
-// Real-time Cloud Firestore Listener for JARVIS Memory
-if (typeof window !== 'undefined') {
-  try {
-    const jarvisDocRef = doc(db, 'deco_store', 'jarvis_memory');
-    onSnapshot(jarvisDocRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data && typeof data === 'object') {
-          localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(data));
-          window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: data }));
-          console.log('[Deco JARVIS] Real-time cloud knowledge updated.');
-        }
-      }
-    }, (err) => {
-      console.debug('[Deco JARVIS] Cloud knowledge listener offline fallback:', err.message);
-    });
-  } catch (e) {
-    console.debug('[Deco JARVIS] Cloud knowledge init fallback:', e.message);
-  }
-}
-
 import { idbSetMetadata, idbGetMetadata } from '../utils/idbStorage.js';
+import { getAuthToken } from '../utils/apiClient.js';
 
-// Auto-hydrate from IndexedDB on startup
+// Auto-hydrate from IndexedDB on startup and sync with VPS SSD
 if (typeof window !== 'undefined') {
+  // A. Hydrate local memory from IndexedDB
   idbGetMetadata('jarvis_knowledge').then((saved) => {
     if (saved && typeof saved === 'object') {
       localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(saved));
       window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: saved }));
     }
   }).catch(() => {});
+
+  // B. Sync master knowledge from VPS Express Server
+  fetch('/api/jarvis')
+    .then(r => r.ok ? r.json() : null)
+    .then(serverData => {
+      if (serverData && typeof serverData === 'object' && Object.keys(serverData).length > 0) {
+        localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(serverData));
+        idbSetMetadata('jarvis_knowledge', serverData).catch(() => {});
+        window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: serverData }));
+        console.log('[Deco JARVIS] Synced training memory from VPS Server.');
+      }
+    })
+    .catch(err => console.debug('[Deco JARVIS] Server sync offline fallback:', err.message));
 }
 
 export function saveStoreKnowledge(knowledge) {
@@ -229,11 +221,21 @@ export function saveStoreKnowledge(knowledge) {
       // Async write to IndexedDB
       idbSetMetadata('jarvis_knowledge', knowledge).catch(() => {});
 
+      // Asynchronously sync to VPS SSD server
+      const token = getAuthToken();
+      fetch('/api/jarvis/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(knowledge)
+      }).catch(e => console.debug('[Deco JARVIS] VPS save deferred:', e.message));
+
       return true;
     }
   } catch (e) {
-    console.error('[storeKnowledge] Failed to save knowledge to localStorage:', e);
-    // Even if localStorage fails due to quota, write to IndexedDB
+    console.error('[storeKnowledge] Failed to save knowledge:', e);
     idbSetMetadata('jarvis_knowledge', knowledge).catch(() => {});
     return true;
   }

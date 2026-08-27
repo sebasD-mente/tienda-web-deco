@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Custom Vite plugin to handle disk persistence and physical image optimization
 function catalogApiPlugin() {
@@ -51,7 +55,7 @@ function catalogApiPlugin() {
               res.end(raw);
             } else {
               res.statusCode = 200;
-              res.end(JSON.stringify({ categories: [], posters: [] }));
+              res.end(JSON.stringify({ categories: [], posters: [], settings: { whatsappPhone: '50238375078' } }));
             }
           } catch (err) {
             res.statusCode = 500;
@@ -60,22 +64,51 @@ function catalogApiPlugin() {
           return;
         }
 
-        // 2. POST /api/catalog/save (Physical SSD persistence)
+        // 2. POST /api/auth/login
+        if (url === '/api/auth/login' && req.method === 'POST') {
+          res.setHeader('Content-Type', 'application/json');
+          try {
+            const { username, password } = await readBody(req);
+            if (username === 'SebasDmente' && password === '4214294880101') {
+              res.statusCode = 200;
+              res.end(JSON.stringify({ success: true, token: 'deco_dev_session_token', user: { username } }));
+            } else {
+              res.statusCode = 401;
+              res.end(JSON.stringify({ success: false, error: 'Credenciales inválidas.' }));
+            }
+          } catch (err) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        // 3. POST /api/catalog/save (Physical SSD persistence)
         if (url === '/api/catalog/save' && req.method === 'POST') {
           res.setHeader('Content-Type', 'application/json');
           try {
             const payload = await readBody(req);
-            const { categories, posters, franchises } = payload;
+            const { categories, posters, franchises, settings } = payload;
             if (Array.isArray(posters)) {
+              let currentData = {};
+              if (fs.existsSync(catalogStorePath)) {
+                try { currentData = JSON.parse(fs.readFileSync(catalogStorePath, 'utf-8')); } catch (e) {}
+              }
+
               const dataToSave = {
                 updatedAt: new Date().toISOString(),
-                categories: categories || [],
-                franchises: franchises || [],
-                posters: posters || []
+                categories: categories || currentData.categories || [],
+                franchises: franchises || currentData.franchises || [],
+                posters: posters || [],
+                settings: {
+                  ...(currentData.settings || {}),
+                  ...(settings || {}),
+                  updatedAt: new Date().toISOString()
+                }
               };
               fs.writeFileSync(catalogStorePath, JSON.stringify(dataToSave, null, 2), 'utf-8');
               
-              // Also sync catalogData.js for seamless static exports
+              // Also sync catalogData.js
               try {
                 const catalogDataPath = path.resolve(dataDir, 'catalogData.js');
                 const esmContent = `// Official 6 Sizes and Pricing Matrix (in Quetzales)
@@ -88,7 +121,7 @@ export const OFFICIAL_SIZES = [
   { id: 'GIGANTE', name: 'Gigante', dimensions: '60 x 100 cm', widthCm: 60, heightCm: 100, price: 210.00, badge: 'Impacto visual monumental' }
 ];
 
-export const CATEGORIES = ${JSON.stringify(categories || [], null, 2)};
+export const CATEGORIES = ${JSON.stringify(dataToSave.categories, null, 2)};
 
 export const ROOM_ENVIRONMENTS = [
   { id: 'LIVING', name: 'Sala de Estar', wallColor: '#1a1f2c', bgGradient: 'radial-gradient(circle at center, #242c3d 0%, #121620 100%)' },
@@ -97,9 +130,11 @@ export const ROOM_ENVIRONMENTS = [
   { id: 'BEDROOM', name: 'Habitación', wallColor: '#161922', bgGradient: 'radial-gradient(circle at center, #222938 0%, #0d1017 100%)' }
 ];
 
-export const CATALOG_POSTERS = ${JSON.stringify(posters || [], null, 2)};
+export const CATALOG_POSTERS = ${JSON.stringify(dataToSave.posters, null, 2)};
 
-export const INITIAL_FRANCHISES = ${JSON.stringify(franchises || [], null, 2)};
+export const INITIAL_FRANCHISES = ${JSON.stringify(dataToSave.franchises, null, 2)};
+
+export const STORE_SETTINGS = ${JSON.stringify(dataToSave.settings, null, 2)};
 `;
                 fs.writeFileSync(catalogDataPath, esmContent, 'utf-8');
               } catch (syncErr) {
@@ -121,7 +156,7 @@ export const INITIAL_FRANCHISES = ${JSON.stringify(franchises || [], null, 2)};
           return;
         }
 
-        // 3. POST /api/catalog/upload (Saves real physical .webp files)
+        // 4. POST /api/catalog/upload (Saves real physical .webp files)
         if (url === '/api/catalog/upload' && req.method === 'POST') {
           res.setHeader('Content-Type', 'application/json');
           try {
@@ -140,24 +175,24 @@ export const INITIAL_FRANCHISES = ${JSON.stringify(franchises || [], null, 2)};
             const fullDestPath = path.resolve(publicUploadsFull, baseFileName);
             const thumbDestPath = path.resolve(publicUploadsThumb, baseFileName);
 
-            // 1. High-Res Full Version (max 1400px, 88% quality)
+            // 1. High-Res Full Version (max 1400px, 86% quality)
             await sharp(buffer)
               .resize(1400, 1400, { fit: 'inside', withoutEnlargement: true })
-              .webp({ quality: 88 })
+              .webp({ quality: 86 })
               .toFile(fullDestPath);
 
-            // 2. Thumbnail Version (max 480px, 80% quality)
+            // 2. Thumbnail Version (max 480px, 78% quality)
             await sharp(buffer)
               .resize(480, 480, { fit: 'inside', withoutEnlargement: true })
-              .webp({ quality: 80 })
+              .webp({ quality: 78 })
               .toFile(thumbDestPath);
 
             console.log(`[Deco Image Engine] Generated physical WebP files on disk: ${baseFileName}`);
             res.statusCode = 200;
             res.end(JSON.stringify({
               success: true,
-              imageFull: `/posters/uploads/full/${baseFileName}`,
-              imageThumb: `/posters/uploads/thumb/${baseFileName}`
+              image: `/posters/uploads/full/${baseFileName}`,
+              thumb: `/posters/uploads/thumb/${baseFileName}`
             }));
           } catch (err) {
             console.error('[Deco Storage Error] Failed to process image upload:', err);
@@ -167,7 +202,31 @@ export const INITIAL_FRANCHISES = ${JSON.stringify(franchises || [], null, 2)};
           return;
         }
 
-        // 4. GET /api/jarvis (Load Jarvis training memory)
+        // 5. POST /api/settings/save
+        if (url === '/api/settings/save' && req.method === 'POST') {
+          res.setHeader('Content-Type', 'application/json');
+          try {
+            const { whatsappPhone } = await readBody(req);
+            let current = {};
+            if (fs.existsSync(catalogStorePath)) {
+              current = JSON.parse(fs.readFileSync(catalogStorePath, 'utf-8'));
+            }
+            current.settings = {
+              ...(current.settings || {}),
+              whatsappPhone: (whatsappPhone || '50238375078').replace(/[^0-9]/g, ''),
+              updatedAt: new Date().toISOString()
+            };
+            fs.writeFileSync(catalogStorePath, JSON.stringify(current, null, 2), 'utf-8');
+            res.statusCode = 200;
+            res.end(JSON.stringify({ success: true, settings: current.settings }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        // 6. GET /api/jarvis (Load Jarvis training memory)
         if (url === '/api/jarvis' && req.method === 'GET') {
           res.setHeader('Content-Type', 'application/json');
           try {
@@ -186,7 +245,7 @@ export const INITIAL_FRANCHISES = ${JSON.stringify(franchises || [], null, 2)};
           return;
         }
 
-        // 5. POST /api/jarvis/save (Persist Jarvis memory to SSD)
+        // 7. POST /api/jarvis/save (Persist Jarvis memory to SSD)
         if (url === '/api/jarvis/save' && req.method === 'POST') {
           res.setHeader('Content-Type', 'application/json');
           try {
@@ -196,45 +255,9 @@ export const INITIAL_FRANCHISES = ${JSON.stringify(franchises || [], null, 2)};
               ...payload
             };
             fs.writeFileSync(jarvisConfigPath, JSON.stringify(dataToSave, null, 2), 'utf-8');
-            console.log('[Deco Jarvis] Persisted Jarvis training memory to SSD.');
             res.statusCode = 200;
             res.end(JSON.stringify({ success: true }));
           } catch (err) {
-            console.error('[Deco Jarvis Error] Failed to persist Jarvis memory:', err);
-            res.statusCode = 500;
-            res.end(JSON.stringify({ success: false, error: err.message }));
-          }
-          return;
-        }
-
-        // 6. POST /api/jarvis/upload (Upload reference images for Jarvis)
-        if (url === '/api/jarvis/upload' && req.method === 'POST') {
-          res.setHeader('Content-Type', 'application/json');
-          try {
-            const { dataUrl, title } = await readBody(req);
-            if (!dataUrl) {
-              res.statusCode = 400;
-              res.end(JSON.stringify({ success: false, error: 'Missing dataUrl' }));
-              return;
-            }
-            const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
-            const buffer = Buffer.from(base64Data, 'base64');
-            const cleanTitle = (title || 'ref-' + Date.now()).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const fileName = `${cleanTitle}-${Date.now().toString().slice(-4)}.webp`;
-            const destPath = path.resolve(publicJarvisRefs, fileName);
-
-            await sharp(buffer)
-              .resize(1000, 1000, { fit: 'inside', withoutEnlargement: true })
-              .webp({ quality: 85 })
-              .toFile(destPath);
-
-            res.statusCode = 200;
-            res.end(JSON.stringify({
-              success: true,
-              url: `/jarvis/references/${fileName}`
-            }));
-          } catch (err) {
-            console.error('[Deco Jarvis Error] Failed to process reference image:', err);
             res.statusCode = 500;
             res.end(JSON.stringify({ success: false, error: err.message }));
           }
@@ -262,9 +285,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'lucide-react'],
-          gemini: ['@google/generative-ai'],
-          firebase: ['firebase/app', 'firebase/firestore']
+          vendor: ['react', 'react-dom', 'lucide-react']
         }
       }
     }

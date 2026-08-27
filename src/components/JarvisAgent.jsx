@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Eye
 } from 'lucide-react';
+import { generateWhatsAppLink } from '../config/constants';
 import ArcReactor from './ArcReactor';
 import { askJarvis } from '../utils/jarvisBrain';
 import { getStoreKnowledge } from '../data/storeKnowledge';
@@ -673,7 +674,7 @@ export default function JarvisAgent({
                               <div><strong>50% Anticipo:</strong> <span style={{ color: '#00f2fe', fontWeight: 800 }}>Q {q.advance}.00</span></div>
                             </div>
                             <a
-                              href={`https://wa.me/50259980504?text=${waQuoteText}`}
+                              href={generateWhatsAppLink(`Hola Deco Vintage Guate, J.A.R.V.I.S. me ha cotizado un cuadro personalizado:\n• Medida: ${q.width}x${q.height} cm (${q.area} cm²)\n• Material: ${q.material}\n• Precio Total: Q ${q.price}.00\n• 50% de Anticipo: Q ${q.advance}.00\n\n*Deseo enviar mi imagen para iniciar fabricación.*`)}
                               target="_blank"
                               rel="noreferrer"
                               style={{

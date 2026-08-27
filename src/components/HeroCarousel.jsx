@@ -56,7 +56,7 @@ export default function HeroCarousel({ onSelectPoster, onSelectCategory, onSelec
       {/* 1. Hero Comic Banner Section (Exact User Fondo Hero Illustration) */}
       <div style={{
         position: 'relative',
-        backgroundImage: 'url("/assets/fondo-hero.png")',
+        backgroundImage: 'url("/assets/fondo-hero.webp")',
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',

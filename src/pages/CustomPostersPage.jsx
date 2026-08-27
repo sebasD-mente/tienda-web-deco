@@ -18,8 +18,9 @@ import {
   Maximize2,
   FileCheck,
   Droplets,
-  AlertCircle
+  HelpCircle
 } from 'lucide-react';
+import { generateWhatsAppLink } from '../config/constants';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 
 export default function CustomPostersPage({ onNavigate }) {
@@ -160,7 +161,8 @@ export default function CustomPostersPage({ onNavigate }) {
       (customNote ? `📝 *Detalle/Idea:* ${customNote}\n\n` : `\n`) +
       `Adjunto mi imagen a continuación para validación de resolución y confirmación de pedido. ¿Me pueden asesorar?`;
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    const waUrl = generateWhatsAppLink(message);
+    window.open(waUrl, '_blank');
   };
 
   return (

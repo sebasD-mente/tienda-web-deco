@@ -5,6 +5,7 @@ import {
   Clock, CreditCard, Sparkles, Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { generateWhatsAppLink } from '../config/constants';
 
 export default function CartDrawer({ 
   isOpen, 
@@ -85,8 +86,8 @@ export default function CartDrawer({
       // Ignore if confetti fails
     }
 
-    const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    const waUrl = generateWhatsAppLink(message);
+    window.open(waUrl, '_blank');
   };
 
   return (

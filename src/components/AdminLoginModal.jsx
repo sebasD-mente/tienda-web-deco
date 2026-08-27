@@ -1,30 +1,39 @@
 import React, { useState } from 'react';
-import { Lock, X, KeyRound, User, ArrowRight, AlertCircle } from 'lucide-react';
-
-const ADMIN_USER = 'SebasDmente';
-const ADMIN_PASS = '4214294880101';
+import { Lock, X, KeyRound, User, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { apiAdminLogin } from '../utils/apiClient';
 
 export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       setError('Por favor complete ambos campos.');
       return;
     }
 
-    if (username.trim() === ADMIN_USER && password.trim() === ADMIN_PASS) {
-      setError('');
-      setUsername('');
-      setPassword('');
-      onSuccess();
-    } else {
-      setError('Usuario o clave incorrectos.');
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const res = await apiAdminLogin(username.trim(), password.trim());
+      if (res && res.success) {
+        setUsername('');
+        setPassword('');
+        setError('');
+        onSuccess();
+      } else {
+        setError(res.error || 'Usuario o clave incorrectos.');
+      }
+    } catch (err) {
+      setError('Error al comunicarse con el servidor.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -83,6 +92,9 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
           <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', margin: '0 0 4px 0' }}>
             Acceso Administrador
           </h2>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+            Panel de Control Central Deco Vintage
+          </p>
         </div>
 
         {/* Error Message */}
@@ -129,6 +141,7 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
                 placeholder="Nombre de usuario"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -161,6 +174,7 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
                 placeholder="Clave de acceso"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -177,16 +191,27 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
           <button
             type="submit"
             className="btn-cyan"
+            disabled={isLoading}
             style={{
               width: '100%',
               justifyContent: 'center',
               padding: '12px',
               marginTop: '8px',
-              fontSize: '0.95rem'
+              fontSize: '0.95rem',
+              opacity: isLoading ? 0.7 : 1
             }}
           >
-            <span>Ingresar</span>
-            <ArrowRight size={16} />
+            {isLoading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Verificando...</span>
+              </>
+            ) : (
+              <>
+                <span>Ingresar</span>
+                <ArrowRight size={16} />
+              </>
+            )}
           </button>
         </form>
 
