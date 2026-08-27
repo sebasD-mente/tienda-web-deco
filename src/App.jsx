@@ -1,21 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import Navbar from './components/Navbar';
 import HeroCarousel from './components/HeroCarousel';
 import CategoryShelf from './components/CategoryShelf';
-import CatalogPage from './pages/CatalogPage';
-import CategoryGalleryPage from './pages/CategoryGalleryPage';
-import FranchiseGalleryPage from './pages/FranchiseGalleryPage';
-import AboutPostersPage from './pages/AboutPostersPage';
-import CustomPostersPage from './pages/CustomPostersPage';
-import AdminDashboard from './pages/AdminDashboard';
 import AdminLoginModal from './components/AdminLoginModal';
 import ProductModal from './components/ProductModal';
 import JarvisAgent from './components/JarvisAgent';
 import ArcReactor from './components/ArcReactor';
 import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
-import { Bot } from 'lucide-react';
+import { Bot, Loader2 } from 'lucide-react';
 import { getStoredPosters, getStoredCategories, getStoredFranchises } from './utils/catalogStorage';
+
+// Code-Splitting: Lazy load heavy secondary pages to keep initial bundle lightweight
+const CatalogPage = lazy(() => import('./pages/CatalogPage'));
+const CategoryGalleryPage = lazy(() => import('./pages/CategoryGalleryPage'));
+const FranchiseGalleryPage = lazy(() => import('./pages/FranchiseGalleryPage'));
+const AboutPostersPage = lazy(() => import('./pages/AboutPostersPage'));
+const CustomPostersPage = lazy(() => import('./pages/CustomPostersPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+
+// Sleek Deco Vintage / Stark OS Page Loader Fallback
+function PageLoader() {
+  return (
+    <div style={{
+      minHeight: '60vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '16px',
+      color: 'var(--accent-cyan, #00f0ff)'
+    }}>
+      <Loader2 size={38} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+      <span style={{ fontSize: '0.85rem', letterSpacing: '0.1em', opacity: 0.8, textTransform: 'uppercase' }}>
+        Cargando experiencia...
+      </span>
+    </div>
+  );
+}
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'catalog' | 'category' | 'franchise' | 'about' | 'custom' | 'admin'
@@ -265,88 +287,90 @@ export default function App() {
         onNavigate={handleNavigate}
       />
 
-      {/* Main Multi-Page Body */}
+      {/* Main Multi-Page Body with Suspense for Instant Load */}
       <main>
-        {/* 1. HOME PAGE: 5 Selected Carousels (Franchises, Best Sellers, and 3 Random Daily Spotlight Categories) */}
-        {currentPage === 'home' && (
-          <>
-            <HeroCarousel
-              onSelectPoster={handleOpenPosterModal}
-              onSelectCategory={handleSelectCategory}
-              onSelectFranchise={handleSelectFranchise}
-              onNavigate={handleNavigate}
-              posters={posters}
-              franchises={franchises}
-            />
+        <Suspense fallback={<PageLoader />}>
+          {/* 1. HOME PAGE: 5 Selected Carousels (Franchises, Best Sellers, and 3 Random Daily Spotlight Categories) */}
+          {currentPage === 'home' && (
+            <>
+              <HeroCarousel
+                onSelectPoster={handleOpenPosterModal}
+                onSelectCategory={handleSelectCategory}
+                onSelectFranchise={handleSelectFranchise}
+                onNavigate={handleNavigate}
+                posters={posters}
+                franchises={franchises}
+              />
 
-            <CategoryShelf
-              onSelectPoster={handleOpenPosterModal}
-              onSelectCategory={handleSelectCategory}
-              onNavigate={handleNavigate}
-              searchQuery={searchQuery}
-              posters={posters}
+              <CategoryShelf
+                onSelectPoster={handleOpenPosterModal}
+                onSelectCategory={handleSelectCategory}
+                onNavigate={handleNavigate}
+                searchQuery={searchQuery}
+                posters={posters}
+                categories={categories}
+              />
+            </>
+          )}
+
+          {/* 2. FULL CATALOG PAGE: Showcases all collections with direct category gallery entry buttons */}
+          {currentPage === 'catalog' && (
+            <CatalogPage
               categories={categories}
+              posters={posters}
+              onSelectPoster={handleOpenPosterModal}
+              onSelectCategory={handleSelectCategory}
+              onNavigate={handleNavigate}
             />
-          </>
-        )}
+          )}
 
-        {/* 2. FULL CATALOG PAGE: Showcases all collections with direct category gallery entry buttons */}
-        {currentPage === 'catalog' && (
-          <CatalogPage
-            categories={categories}
-            posters={posters}
-            onSelectPoster={handleOpenPosterModal}
-            onSelectCategory={handleSelectCategory}
-            onNavigate={handleNavigate}
-          />
-        )}
+          {/* 3. CATEGORY GALLERY PAGE: Dedicated grid gallery for the chosen category */}
+          {currentPage === 'category' && (
+            <CategoryGalleryPage
+              categoryId={selectedCategoryId}
+              categories={categories}
+              posters={posters}
+              onSelectPoster={handleOpenPosterModal}
+              onNavigate={handleNavigate}
+              onSelectCategory={handleSelectCategory}
+            />
+          )}
 
-        {/* 3. CATEGORY GALLERY PAGE: Dedicated grid gallery for the chosen category */}
-        {currentPage === 'category' && (
-          <CategoryGalleryPage
-            categoryId={selectedCategoryId}
-            categories={categories}
-            posters={posters}
-            onSelectPoster={handleOpenPosterModal}
-            onNavigate={handleNavigate}
-            onSelectCategory={handleSelectCategory}
-          />
-        )}
+          {/* 4. FRANCHISE GALLERY PAGE: Dedicated grid gallery for the chosen franchise */}
+          {currentPage === 'franchise' && (
+            <FranchiseGalleryPage
+              franchiseId={selectedFranchiseId}
+              franchises={franchises}
+              categories={categories}
+              posters={posters}
+              onSelectPoster={handleOpenPosterModal}
+              onNavigate={handleNavigate}
+              onSelectFranchise={handleSelectFranchise}
+              onSelectCategory={handleSelectCategory}
+            />
+          )}
 
-        {/* 4. FRANCHISE GALLERY PAGE: Dedicated grid gallery for the chosen franchise */}
-        {currentPage === 'franchise' && (
-          <FranchiseGalleryPage
-            franchiseId={selectedFranchiseId}
-            franchises={franchises}
-            categories={categories}
-            posters={posters}
-            onSelectPoster={handleOpenPosterModal}
-            onNavigate={handleNavigate}
-            onSelectFranchise={handleSelectFranchise}
-            onSelectCategory={handleSelectCategory}
-          />
-        )}
+          {/* 5. ABOUT POSTERS PAGE */}
+          {currentPage === 'about' && (
+            <AboutPostersPage onNavigate={handleNavigate} />
+          )}
 
-        {/* 5. ABOUT POSTERS PAGE */}
-        {currentPage === 'about' && (
-          <AboutPostersPage onNavigate={handleNavigate} />
-        )}
+          {/* 6. CUSTOM POSTERS PAGE */}
+          {currentPage === 'custom' && (
+            <CustomPostersPage onNavigate={handleNavigate} />
+          )}
 
-        {/* 5. CUSTOM POSTERS PAGE */}
-        {currentPage === 'custom' && (
-          <CustomPostersPage onNavigate={handleNavigate} />
-        )}
-
-        {/* 6. ADMIN DASHBOARD (Protected) */}
-        {currentPage === 'admin' && (
-          isAdminAuthenticated ? (
-            <AdminDashboard onNavigate={handleNavigate} onLogout={handleAdminLogout} />
-          ) : (
-            <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-              Acceso protegido. Por favor inicie sesión.
-            </div>
-          )
-        )}
+          {/* 7. ADMIN DASHBOARD (Protected) */}
+          {currentPage === 'admin' && (
+            isAdminAuthenticated ? (
+              <AdminDashboard onNavigate={handleNavigate} onLogout={handleAdminLogout} />
+            ) : (
+              <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                Acceso protegido. Por favor inicie sesión.
+              </div>
+            )
+          )}
+        </Suspense>
       </main>
 
       {/* Global Footer with Page Navigation */}

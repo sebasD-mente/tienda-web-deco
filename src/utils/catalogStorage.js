@@ -3,6 +3,7 @@ import {
   CATEGORIES as BASE_CATEGORIES,
   INITIAL_FRANCHISES as BASE_FRANCHISES
 } from '../data/catalogData.js';
+import { db, doc, setDoc, onSnapshot } from './firebase.js';
 
 const DEFAULT_POSTERS = BASE_POSTERS;
 const DEFAULT_CATEGORIES = BASE_CATEGORIES;
@@ -11,6 +12,54 @@ const DEFAULT_FRANCHISES = BASE_FRANCHISES;
 const POSTERS_STORAGE_KEY = 'deco_vintage_catalog_posters_v2';
 const CATEGORIES_STORAGE_KEY = 'deco_vintage_catalog_categories_v2';
 const FRANCHISES_STORAGE_KEY = 'deco_vintage_catalog_franchises_v2';
+
+// 1. Initialize Real-Time Cloud Firestore Listener with Offline Fail-Safe
+if (typeof window !== 'undefined') {
+  try {
+    const catalogDocRef = doc(db, 'deco_store', 'catalog');
+    
+    onSnapshot(catalogDocRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        let changed = false;
+
+        if (Array.isArray(data.posters) && data.posters.length > 0) {
+          localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(data.posters));
+          changed = true;
+        }
+        if (Array.isArray(data.categories) && data.categories.length > 0) {
+          localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
+          changed = true;
+        }
+        if (Array.isArray(data.franchises) && data.franchises.length > 0) {
+          localStorage.setItem(FRANCHISES_STORAGE_KEY, JSON.stringify(data.franchises));
+          changed = true;
+        }
+
+        if (changed) {
+          window.dispatchEvent(new Event('deco-catalog-updated'));
+          console.log(`[Deco Cloud Firestore] Real-time cloud sync updated: ${data.posters?.length || 0} posters.`);
+        }
+      } else {
+        // Auto-seed initial catalog to Cloud Firestore on first run
+        const currentPosters = getStoredPosters();
+        const currentCategories = getStoredCategories();
+        const currentFranchises = getStoredFranchises();
+        
+        setDoc(catalogDocRef, {
+          posters: currentPosters.length > 0 ? currentPosters : DEFAULT_POSTERS,
+          categories: currentCategories.length > 0 ? currentCategories : DEFAULT_CATEGORIES,
+          franchises: currentFranchises.length > 0 ? currentFranchises : DEFAULT_FRANCHISES,
+          updatedAt: new Date().toISOString()
+        }, { merge: true }).catch(() => {});
+      }
+    }, (err) => {
+      console.debug('[Deco Storage] Firestore listener running in offline fallback mode:', err.message);
+    });
+  } catch (e) {
+    console.debug('[Deco Storage] Firestore init fallback:', e.message);
+  }
+}
 
 // Synchronize with Physical SSD Disk on startup (Dev mode)
 export async function syncCatalogWithDisk() {
@@ -39,7 +88,7 @@ export async function syncCatalogWithDisk() {
       }
     }
   } catch (err) {
-    console.debug('[Deco Storage] Running in bundled static mode:', err.message);
+    console.debug('[Deco Storage] Running in cloud static mode:', err.message);
   }
   return null;
 }
@@ -104,7 +153,44 @@ export function getStoredFranchises() {
 }
 
 /**
- * Persists posters array both to local storage and physical disk on SSD
+ * Persists cloud and local database with instant UI updates
+ */
+async function syncToCloudAndDisk(posters, categories, franchises) {
+  // 1. Cloud Firestore Real-Time Write
+  try {
+    const catalogDocRef = doc(db, 'deco_store', 'catalog');
+    setDoc(catalogDocRef, {
+      posters: posters || getStoredPosters(),
+      categories: categories || getStoredCategories(),
+      franchises: franchises || getStoredFranchises(),
+      updatedAt: new Date().toISOString()
+    }, { merge: true }).catch((err) => {
+      console.debug('[Deco Firestore] Cloud write background queued/offline:', err.message);
+    });
+  } catch (cloudErr) {
+    console.debug('[Deco Firestore] Cloud sync queued:', cloudErr.message);
+  }
+
+  // 2. Physical Local Disk Write (When running on Vite dev server)
+  try {
+    if (typeof fetch !== 'undefined') {
+      await fetch('/api/catalog/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          posters: posters || getStoredPosters(), 
+          categories: categories || getStoredCategories(), 
+          franchises: franchises || getStoredFranchises() 
+        })
+      });
+    }
+  } catch (apiErr) {
+    // Normal in production static hosting
+  }
+}
+
+/**
+ * Persists posters array both to cloud database and local storage
  */
 export async function saveAllPosters(posters) {
   try {
@@ -115,20 +201,7 @@ export async function saveAllPosters(posters) {
       window.dispatchEvent(new Event('deco-catalog-updated'));
     }
 
-    try {
-      const categories = getStoredCategories();
-      const franchises = getStoredFranchises();
-      if (typeof fetch !== 'undefined') {
-        await fetch('/api/catalog/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ posters, categories, franchises })
-        });
-      }
-    } catch (apiErr) {
-      console.warn('[Deco Storage] Physical disk save failed or running static:', apiErr);
-    }
-
+    await syncToCloudAndDisk(posters, null, null);
     return true;
   } catch (e) {
     console.error('Error saving posters:', e);
@@ -137,7 +210,7 @@ export async function saveAllPosters(posters) {
 }
 
 /**
- * Persists categories array both to local storage and physical disk on SSD
+ * Persists categories array both to cloud database and local storage
  */
 export async function saveAllCategories(categories) {
   try {
@@ -148,20 +221,7 @@ export async function saveAllCategories(categories) {
       window.dispatchEvent(new Event('deco-catalog-updated'));
     }
 
-    try {
-      const posters = getStoredPosters();
-      const franchises = getStoredFranchises();
-      if (typeof fetch !== 'undefined') {
-        await fetch('/api/catalog/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ posters, categories, franchises })
-        });
-      }
-    } catch (apiErr) {
-      console.warn('[Deco Storage] Physical disk save failed or running static:', apiErr);
-    }
-
+    await syncToCloudAndDisk(null, categories, null);
     return true;
   } catch (e) {
     console.error('Error saving categories:', e);
@@ -170,7 +230,7 @@ export async function saveAllCategories(categories) {
 }
 
 /**
- * Persists franchises array both to local storage and physical disk on SSD
+ * Persists franchises array both to cloud database and local storage
  */
 export async function saveAllFranchises(franchises) {
   try {
@@ -181,20 +241,7 @@ export async function saveAllFranchises(franchises) {
       window.dispatchEvent(new Event('deco-catalog-updated'));
     }
 
-    try {
-      const posters = getStoredPosters();
-      const categories = getStoredCategories();
-      if (typeof fetch !== 'undefined') {
-        await fetch('/api/catalog/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ posters, categories, franchises })
-        });
-      }
-    } catch (apiErr) {
-      console.warn('[Deco Storage] Physical disk save failed or running static:', apiErr);
-    }
-
+    await syncToCloudAndDisk(null, null, franchises);
     return true;
   } catch (e) {
     console.error('Error saving franchises:', e);
@@ -203,7 +250,7 @@ export async function saveAllFranchises(franchises) {
 }
 
 /**
- * Uploads an image base64 dataUrl to the physical disk server
+ * Uploads an image base64 dataUrl to the physical disk server or cloud
  */
 export async function uploadImageFileToDisk(dataUrl, fileName = 'poster', posterId = '') {
   if (!dataUrl || !dataUrl.startsWith('data:image/')) {
@@ -226,14 +273,14 @@ export async function uploadImageFileToDisk(dataUrl, fileName = 'poster', poster
       }
     }
   } catch (err) {
-    console.warn('[Deco Storage] Image upload to disk fallback:', err);
+    console.debug('[Deco Storage] Image upload fallback to direct dataUrl:', err);
   }
 
   return { image: dataUrl, thumb: dataUrl };
 }
 
 /**
- * Creates or updates a poster, automatically persisting images to disk
+ * Creates or updates a poster, automatically persisting to Firestore in real time
  */
 export async function saveOrUpdatePoster(posterData) {
   let finalPoster = { ...posterData };

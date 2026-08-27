@@ -263,7 +263,8 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'lucide-react'],
-          gemini: ['@google/generative-ai']
+          gemini: ['@google/generative-ai'],
+          firebase: ['firebase/app', 'firebase/firestore']
         }
       }
     }

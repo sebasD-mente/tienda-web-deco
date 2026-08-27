@@ -185,11 +185,41 @@ export function getStoreKnowledge() {
   return DEFAULT_STORE_KNOWLEDGE;
 }
 
+import { db, doc, onSnapshot, setDoc } from '../utils/firebase.js';
+
+// Real-time Cloud Firestore Listener for JARVIS Memory
+if (typeof window !== 'undefined') {
+  try {
+    const jarvisDocRef = doc(db, 'deco_store', 'jarvis_memory');
+    onSnapshot(jarvisDocRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data && typeof data === 'object') {
+          localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(data));
+          window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: data }));
+          console.log('[Deco JARVIS] Real-time cloud knowledge updated.');
+        }
+      }
+    }, (err) => {
+      console.debug('[Deco JARVIS] Cloud knowledge listener offline fallback:', err.message);
+    });
+  } catch (e) {
+    console.debug('[Deco JARVIS] Cloud knowledge init fallback:', e.message);
+  }
+}
+
 export function saveStoreKnowledge(knowledge) {
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(knowledge));
       window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: knowledge }));
+      
+      // Async write to Cloud Firestore
+      try {
+        const jarvisDocRef = doc(db, 'deco_store', 'jarvis_memory');
+        setDoc(jarvisDocRef, { ...knowledge, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+      } catch (err) {}
+
       return true;
     }
   } catch (e) {
