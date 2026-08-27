@@ -53,21 +53,47 @@ function writeLocalStorage(key, val) {
   }
 }
 
-// 2. Initialize and Hydrate from IndexedDB, and Sync with Server
+// 2. Initialize Storage Engine: 100% Server-First Architecture (VPS Hostinger 100 GB SSD)
 export async function initializeStorageEngine() {
   if (typeof window === 'undefined') return;
 
   try {
-    // A. Quick local hydration from IndexedDB / LocalStorage
+    // 1. Fetch live master catalog directly from VPS server first
+    const serverCatalog = await apiGetCatalog();
+    if (serverCatalog && Array.isArray(serverCatalog.posters) && serverCatalog.posters.length > 0) {
+      memoryPosters = serverCatalog.posters;
+      memoryCategories = serverCatalog.categories || DEFAULT_CATEGORIES;
+      memoryFranchises = serverCatalog.franchises || DEFAULT_FRANCHISES;
+      memorySettings = serverCatalog.settings || DEFAULT_SETTINGS;
+
+      // Update local storage backup
+      await idbSaveAllPosters(memoryPosters);
+      await idbSetMetadata('categories', memoryCategories);
+      await idbSetMetadata('franchises', memoryFranchises);
+      await idbSetMetadata('settings', memorySettings);
+
+      writeLocalStorage(POSTERS_STORAGE_KEY, memoryPosters);
+      writeLocalStorage(CATEGORIES_STORAGE_KEY, memoryCategories);
+      writeLocalStorage(FRANCHISES_STORAGE_KEY, memoryFranchises);
+      writeLocalStorage(SETTINGS_STORAGE_KEY, memorySettings);
+
+      if (memorySettings.whatsappPhone) {
+        saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
+      }
+
+      window.dispatchEvent(new Event('deco-catalog-updated'));
+      console.log(`[Deco Storage] Master catalog loaded directly from VPS: ${memoryPosters.length} posters.`);
+      return;
+    }
+
+    // 2. Offline fallback ONLY if VPS is unreachable
     const idbPosters = await idbGetAllPosters();
     if (Array.isArray(idbPosters) && idbPosters.length > 0) {
       memoryPosters = idbPosters;
     } else {
       const lsPosters = readLocalStorage(POSTERS_STORAGE_KEY);
       memoryPosters = Array.isArray(lsPosters) && lsPosters.length > 0 ? lsPosters : [...DEFAULT_POSTERS];
-      await idbSaveAllPosters(memoryPosters);
     }
-    writeLocalStorage(POSTERS_STORAGE_KEY, memoryPosters);
 
     const idbCats = await idbGetMetadata('categories');
     memoryCategories = Array.isArray(idbCats) && idbCats.length > 0 ? idbCats : [...DEFAULT_CATEGORIES];
@@ -77,17 +103,10 @@ export async function initializeStorageEngine() {
 
     const idbSettings = await idbGetMetadata('settings');
     memorySettings = idbSettings || { ...DEFAULT_SETTINGS };
-    if (memorySettings.whatsappPhone) {
-      saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
-    }
 
     window.dispatchEvent(new Event('deco-catalog-updated'));
-
-    // B. Sync with Live Server in Background (VPS Hostinger 100 GB SSD)
-    syncCatalogFromServer();
-
   } catch (err) {
-    console.error('[Deco Storage] Error initializing database:', err);
+    console.error('[Deco Storage] Error loading catalog from VPS:', err);
   }
 }
 
