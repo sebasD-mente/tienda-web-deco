@@ -427,9 +427,8 @@ app.get('/api/health', (req, res) => {
     postersCount: catalog.posters?.length || 0,
     timestamp: new Date().toISOString()
   });
-});
-
-// SPA Static File Serving Fallback (if built with npm run build)
+// Serve static assets from public/ and dist/
+app.use(express.static(path.resolve(__dirname, 'public'), { maxAge: '30d' }));
 if (fs.existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR, { maxAge: '1y', immutable: true }));
   app.use((req, res) => {
@@ -437,6 +436,19 @@ if (fs.existsSync(DIST_DIR)) {
   });
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 [Deco Vintage Server] Running on http://0.0.0.0:${PORT} on VPS Hostinger 100 GB SSD.`);
+// Start Server on Port 80 and Port 3000
+const mainPort = Number(process.env.PORT) || 3000;
+app.listen(mainPort, '0.0.0.0', () => {
+  console.log(`🚀 [Deco Vintage Server] Running on http://0.0.0.0:${mainPort} on VPS Hostinger 100 GB SSD.`);
 });
+
+if (mainPort !== 80) {
+  try {
+    app.listen(80, '0.0.0.0', () => {
+      console.log(`🚀 [Deco Vintage Server] Also listening on port 80`);
+    });
+  } catch (err) {
+    console.debug('[Port 80 Fallback]:', err.message);
+  }
+}
+
