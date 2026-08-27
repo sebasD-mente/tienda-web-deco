@@ -427,6 +427,8 @@ app.get('/api/health', (req, res) => {
     postersCount: catalog.posters?.length || 0,
     timestamp: new Date().toISOString()
   });
+});
+
 // Serve static assets from public/ and dist/
 app.use(express.static(path.resolve(__dirname, 'public'), { maxAge: '30d' }));
 if (fs.existsSync(DIST_DIR)) {
@@ -436,8 +438,7 @@ if (fs.existsSync(DIST_DIR)) {
   });
 }
 
-// Start Server on Port 3000
-const PORT = Number(process.env.PORT) || 3000;
+// Start Server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 [Deco Vintage Server] Running on http://0.0.0.0:${PORT} on VPS Hostinger 100 GB SSD.`);
 });
