@@ -367,7 +367,7 @@ function calculateCustomPrice(widthCm, heightCm, material = 'mdf') {
   };
 }
 
-const OFFICIAL_GEMINI_KEY = Buffer.from('QVEuQWI4Uk42Sms4MXI4Z2RlWUVjYmUzQ2sxVHF0dXpzTUxMeS16REhkbEZ4NTRva1owc3c=', 'base64').toString('utf-8');
+const OFFICIAL_GEMINI_KEY = 'AIzaSyD0nwfJgzkpJ4VFSLIa5h9RPAC-9ioA3RA';
 
 function getJarvisApiKey() {
   if (fs.existsSync(JARVIS_FILE)) {
@@ -486,7 +486,7 @@ ${catalogSummary}
 5. Escribe siempre en un tono natural, fluido, limpio y elegante, evitando formatos robóticos.`;
 
     const configuredKey = getJarvisApiKey();
-    const keysToTry = [...new Set([clientKey, configuredKey, OFFICIAL_GEMINI_KEY].filter(k => !!k && k.trim().length > 10))];
+    const keysToTry = [...new Set([OFFICIAL_GEMINI_KEY, configuredKey, clientKey].filter(k => !!k && k.trim().length > 10 && k.startsWith('AIzaSy')))];
 
     if (keysToTry.length === 0) {
       return res.status(200).json({
