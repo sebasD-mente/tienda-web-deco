@@ -242,7 +242,7 @@ export async function saveOrUpdatePoster(posterData) {
     window.dispatchEvent(new Event('deco-catalog-updated'));
   }
 
-  // 5. Asynchronously push entire catalog to VPS SSD Server
+  // 5. Persist directly to VPS SSD Server
   try {
     await apiSaveCatalog({
       posters: updated,
@@ -250,9 +250,10 @@ export async function saveOrUpdatePoster(posterData) {
       franchises: getStoredFranchises(),
       settings: getStoredSettings()
     });
-    console.log(`[Deco Storage] Poster "${finalPoster.title}" saved & synced to VPS server.`);
+    console.log(`[Deco Storage] Poster "${finalPoster.title}" saved to VPS server.`);
   } catch (apiErr) {
-    console.warn('[Deco Storage] Saved locally; server sync deferred:', apiErr.message);
+    console.error('[Deco Storage] Error saving to VPS server:', apiErr);
+    throw apiErr;
   }
 
   return updated;
@@ -299,11 +300,12 @@ export async function deletePosterById(posterId) {
       franchises: getStoredFranchises(),
       settings: getStoredSettings()
     });
+    console.log(`[Deco Storage] Poster "${posterId}" deleted from VPS server.`);
   } catch (apiErr) {
-    console.warn('[Deco Storage] Deleted locally; server sync deferred:', apiErr.message);
+    console.error('[Deco Storage] Error deleting from VPS server:', apiErr);
+    throw apiErr;
   }
 
-  console.log(`[Deco Storage] Poster "${posterId}" deleted. Total posters: ${updated.length}`);
   return updated;
 }
 

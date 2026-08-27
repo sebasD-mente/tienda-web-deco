@@ -46,13 +46,28 @@ const DIST_DIR = path.resolve(__dirname, 'dist');
   }
 });
 
-// Simple In-Memory Token Store for Session Verification
-const activeTokens = new Set();
+// Stateless HMAC Token System (Survives server restarts and container reloads)
+const AUTH_SECRET = process.env.ADMIN_SECRET || 'deco_vintage_guate_secret_2026_master_key';
 
 function generateAuthToken() {
-  const token = 'deco_sess_' + crypto.randomBytes(24).toString('hex');
-  activeTokens.add(token);
-  return token;
+  const payload = JSON.stringify({ user: ADMIN_USER, exp: Date.now() + 30 * 24 * 60 * 60 * 1000 }); // Valid for 30 days
+  const b64 = Buffer.from(payload).toString('base64url');
+  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('base64url');
+  return `${b64}.${sig}`;
+}
+
+function verifyAuthToken(token) {
+  if (!token || !token.includes('.')) return false;
+  const [b64, sig] = token.split('.');
+  const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('base64url');
+  if (sig !== expectedSig) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(b64, 'base64url').toString('utf8'));
+    if (payload.exp && Date.now() > payload.exp) return false;
+    return payload && payload.user === ADMIN_USER;
+  } catch (e) {
+    return false;
+  }
 }
 
 // Authentication Middleware
@@ -60,7 +75,7 @@ function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace(/^Bearer\s+/, '').trim();
   
-  if (token && activeTokens.has(token)) {
+  if (token && verifyAuthToken(token)) {
     return next();
   }
   return res.status(401).json({ success: false, error: 'Acceso no autorizado. Inicie sesión nuevamente.' });

@@ -54,24 +54,37 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
 
   // Poster Actions
   const handleSavePoster = async (posterData) => {
-    await saveOrUpdatePoster(posterData);
-    loadData();
-    setEditingPoster(null);
-    setActiveTab('inventory');
+    try {
+      await saveOrUpdatePoster(posterData);
+      loadData();
+      setEditingPoster(null);
+      setActiveTab('inventory');
+      showToast(`¡Obra "${posterData.title}" guardada en el servidor!`, 'success');
+    } catch (err) {
+      showToast(`Error al guardar en el servidor: ${err.message}`, 'error');
+    }
   };
 
   const handleDeletePoster = async (posterId, posterTitle) => {
     const confirm1 = window.confirm(`¿Estás seguro de que deseas eliminar la obra "${posterTitle}"?`);
     if (!confirm1) return;
-    await deletePosterById(posterId);
-    loadData();
-    showToast(`Obra "${posterTitle}" eliminada.`, 'info');
+    try {
+      await deletePosterById(posterId);
+      loadData();
+      showToast(`Obra "${posterTitle}" eliminada del servidor.`, 'info');
+    } catch (err) {
+      showToast(`Error al eliminar de servidor: ${err.message}`, 'error');
+    }
   };
 
   const handleToggleFeatured = async (posterId, posterTitle) => {
-    await togglePosterFeatured(posterId);
-    loadData();
-    showToast(`Estado Best Seller de "${posterTitle}" actualizado.`, 'success');
+    try {
+      await togglePosterFeatured(posterId);
+      loadData();
+      showToast(`Estado Best Seller de "${posterTitle}" actualizado.`, 'success');
+    } catch (err) {
+      showToast(`Error al actualizar estado: ${err.message}`, 'error');
+    }
   };
 
   const handleEditPoster = (poster) => {
@@ -81,28 +94,48 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
 
   // Category Actions
   const handleCreateCategory = async (catObj) => {
-    await addNewCategory(catObj);
-    loadData();
+    try {
+      await addNewCategory(catObj);
+      loadData();
+      showToast(`Categoría "${catObj.name}" creada.`, 'success');
+    } catch (err) {
+      showToast(`Error al crear categoría: ${err.message}`, 'error');
+    }
   };
 
   const handleDeleteCategory = async (catId) => {
-    await deleteCategoryById(catId);
-    loadData();
+    try {
+      await deleteCategoryById(catId);
+      loadData();
+      showToast('Categoría eliminada.', 'info');
+    } catch (err) {
+      showToast(`Error al eliminar categoría: ${err.message}`, 'error');
+    }
   };
 
   // Franchise Actions
   const handleCreateFranchise = async (franchiseObj) => {
-    const current = getStoredFranchises();
-    const updated = [...current, franchiseObj];
-    await saveAllFranchises(updated);
-    loadData();
+    try {
+      const current = getStoredFranchises();
+      const updated = [...current, franchiseObj];
+      await saveAllFranchises(updated);
+      loadData();
+      showToast(`Franquicia "${franchiseObj.name}" creada.`, 'success');
+    } catch (err) {
+      showToast(`Error al crear franquicia: ${err.message}`, 'error');
+    }
   };
 
   const handleDeleteFranchise = async (franchiseId) => {
-    const current = getStoredFranchises();
-    const updated = current.filter(f => f.id !== franchiseId);
-    await saveAllFranchises(updated);
-    loadData();
+    try {
+      const current = getStoredFranchises();
+      const updated = current.filter(f => f.id !== franchiseId);
+      await saveAllFranchises(updated);
+      loadData();
+      showToast('Franquicia eliminada.', 'info');
+    } catch (err) {
+      showToast(`Error al eliminar franquicia: ${err.message}`, 'error');
+    }
   };
 
   return (

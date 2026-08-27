@@ -7,6 +7,10 @@ const TOKEN_KEY = 'deco_admin_auth_token_v1';
 
 export function getAuthToken() {
   try {
+    if (typeof localStorage !== 'undefined') {
+      const tok = localStorage.getItem(TOKEN_KEY);
+      if (tok) return tok;
+    }
     if (typeof sessionStorage !== 'undefined') {
       return sessionStorage.getItem(TOKEN_KEY) || '';
     }
@@ -16,6 +20,13 @@ export function getAuthToken() {
 
 export function setAuthToken(token) {
   try {
+    if (typeof localStorage !== 'undefined') {
+      if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(TOKEN_KEY);
+      }
+    }
     if (typeof sessionStorage !== 'undefined') {
       if (token) {
         sessionStorage.setItem(TOKEN_KEY, token);
