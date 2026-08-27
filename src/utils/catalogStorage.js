@@ -61,9 +61,12 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// Synchronize with Physical SSD Disk on startup (Dev mode)
+const isLocalServer = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+// Synchronize with Physical SSD Disk on startup (Dev mode only)
 export async function syncCatalogWithDisk() {
-  if (typeof window === 'undefined' || typeof fetch === 'undefined') return null;
+  if (!isLocalServer || typeof fetch === 'undefined') return null;
   try {
     const res = await fetch('/api/catalog');
     if (res.ok) {
@@ -93,8 +96,8 @@ export async function syncCatalogWithDisk() {
   return null;
 }
 
-// Auto-run disk synchronization or initial cache migration on load
-if (typeof window !== 'undefined') {
+// Auto-run disk synchronization on load in dev environment
+if (typeof window !== 'undefined' && isLocalServer) {
   syncCatalogWithDisk();
 }
 
@@ -104,7 +107,7 @@ export function getStoredPosters() {
       const saved = localStorage.getItem(POSTERS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= DEFAULT_POSTERS.length) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       }
@@ -122,7 +125,7 @@ export function getStoredCategories() {
       const saved = localStorage.getItem(CATEGORIES_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= DEFAULT_CATEGORIES.length) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       }
@@ -140,7 +143,7 @@ export function getStoredFranchises() {
       const saved = localStorage.getItem(FRANCHISES_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= DEFAULT_FRANCHISES.length) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       }
@@ -159,33 +162,39 @@ async function syncToCloudAndDisk(posters, categories, franchises) {
   // 1. Cloud Firestore Real-Time Write
   try {
     const catalogDocRef = doc(db, 'deco_store', 'catalog');
+    const currentPosters = posters || getStoredPosters();
+    const currentCategories = categories || getStoredCategories();
+    const currentFranchises = franchises || getStoredFranchises();
+
     setDoc(catalogDocRef, {
-      posters: posters || getStoredPosters(),
-      categories: categories || getStoredCategories(),
-      franchises: franchises || getStoredFranchises(),
+      posters: currentPosters,
+      categories: currentCategories,
+      franchises: currentFranchises,
       updatedAt: new Date().toISOString()
     }, { merge: true }).catch((err) => {
-      console.debug('[Deco Firestore] Cloud write background queued/offline:', err.message);
+      console.debug('[Deco Firestore] Cloud write status:', err.message);
     });
   } catch (cloudErr) {
     console.debug('[Deco Firestore] Cloud sync queued:', cloudErr.message);
   }
 
-  // 2. Physical Local Disk Write (When running on Vite dev server)
-  try {
-    if (typeof fetch !== 'undefined') {
-      await fetch('/api/catalog/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          posters: posters || getStoredPosters(), 
-          categories: categories || getStoredCategories(), 
-          franchises: franchises || getStoredFranchises() 
-        })
-      });
+  // 2. Physical Local Disk Write (ONLY when running on local Vite dev server)
+  if (isLocalServer) {
+    try {
+      if (typeof fetch !== 'undefined') {
+        await fetch('/api/catalog/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            posters: posters || getStoredPosters(), 
+            categories: categories || getStoredCategories(), 
+            franchises: franchises || getStoredFranchises() 
+          })
+        });
+      }
+    } catch (apiErr) {
+      // Dev only
     }
-  } catch (apiErr) {
-    // Normal in production static hosting
   }
 }
 
@@ -195,7 +204,11 @@ async function syncToCloudAndDisk(posters, categories, franchises) {
 export async function saveAllPosters(posters) {
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(posters));
+      try {
+        localStorage.setItem(POSTERS_STORAGE_KEY, JSON.stringify(posters));
+      } catch (quotaErr) {
+        console.warn('[Deco Storage] LocalStorage quota note, syncing to Firestore directly:', quotaErr);
+      }
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('deco-catalog-updated'));
@@ -257,23 +270,25 @@ export async function uploadImageFileToDisk(dataUrl, fileName = 'poster', poster
     return { image: dataUrl, thumb: dataUrl };
   }
 
-  try {
-    if (typeof fetch !== 'undefined') {
-      const res = await fetch('/api/catalog/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataUrl, fileName, posterId })
-      });
+  if (isLocalServer) {
+    try {
+      if (typeof fetch !== 'undefined') {
+        const res = await fetch('/api/catalog/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl, fileName, posterId })
+        });
 
-      if (res.ok) {
-        const result = await res.json();
-        if (result.success && result.image) {
-          return { image: result.image, thumb: result.thumb || result.image };
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && result.image) {
+            return { image: result.image, thumb: result.thumb || result.image };
+          }
         }
       }
+    } catch (err) {
+      console.debug('[Deco Storage] Image upload fallback to direct dataUrl:', err);
     }
-  } catch (err) {
-    console.debug('[Deco Storage] Image upload fallback to direct dataUrl:', err);
   }
 
   return { image: dataUrl, thumb: dataUrl };

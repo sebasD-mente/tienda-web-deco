@@ -220,7 +220,9 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
     setEditingId(null);
     setTitle('');
     setSubtitle('');
-    setCategory(categories[0]?.id || 'AUTOS');
+    const validCats = categories.filter(c => c.id !== 'TODOS');
+    const sorted = [...validCats].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    setCategory(sorted[0]?.id || 'AUTOS');
     setFranchiseId('');
     setDescription('');
     setTagsInput('');
@@ -232,6 +234,9 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
     setImageMeta(null);
     setSizeMode('ALL_SIZES');
     setSelectedSizeIds(['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE']);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const [isSaving, setIsSaving] = useState(false);
@@ -285,12 +290,27 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
         description: description.trim() || `Impresión fotográfica de alta definición sobre base sólida de MDF 5.5mm. Incluye cinta Tesa de montaje rápido.`
       };
 
-      await saveOrUpdatePoster(posterData);
+      const updatedList = await saveOrUpdatePoster(posterData);
+      if (Array.isArray(updatedList)) {
+        setPosters(updatedList);
+      }
       loadData();
-      showToast(editingId ? '💾 ¡Póster guardado con éxito!' : '💾 ¡Nueva obra agregada con éxito!', 'success');
-      resetForm();
-      setActiveTab('inventory');
-      window.scrollTo(0, 0);
+
+      // Ensure inventory category filter matches the saved poster's category
+      setCategoryFilter(posterData.category);
+
+      if (editingId) {
+        showToast(`💾 ¡Póster "${posterData.title}" actualizado con éxito!`, 'success');
+        resetForm();
+        setActiveTab('inventory');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        showToast(`✨ ¡Obra "${posterData.title}" guardada con éxito! Formulario listo para la siguiente.`, 'success');
+        resetForm();
+        // Stay in 'create' tab so the user can easily continue creating multiple posters
+        setActiveTab('create');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (err) {
       console.error('Error saving poster:', err);
       showToast('Error al guardar la obra: ' + err.message, 'error');

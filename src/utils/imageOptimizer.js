@@ -16,11 +16,11 @@ export async function optimizeImageFile(file, options = {}) {
           const originalWidth = img.naturalWidth || img.width;
           const originalHeight = img.naturalHeight || img.height;
 
-          // 1. Generate Full Version (Max 1400px on largest side, high quality 0.88)
-          const fullResult = resizeToWebP(img, 1400, 0.88);
+          // 1. Generate Full Version (Max 1000px on largest side, quality 0.82)
+          const fullResult = resizeToWebP(img, 1000, 0.82);
 
-          // 2. Generate Thumb Version (Max 480px on largest side, quality 0.80)
-          const thumbResult = resizeToWebP(img, 480, 0.80);
+          // 2. Generate Thumb Version (Max 380px on largest side, quality 0.75)
+          const thumbResult = resizeToWebP(img, 380, 0.75);
 
           resolve({
             fullDataUrl: fullResult.dataUrl,
