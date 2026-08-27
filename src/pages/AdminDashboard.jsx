@@ -3084,6 +3084,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
                             boxSizing: 'border-box'
                           }}
                         >
+                          <option value="Eventos">Eventos, Ferias y Convenciones</option>
                           <option value="Políticas">Políticas y Garantías</option>
                           <option value="Logística">Logística y Envíos</option>
                           <option value="Instalación">Instalación y Montaje</option>
