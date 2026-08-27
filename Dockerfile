@@ -1,20 +1,32 @@
-# Multi-stage build for ultra-fast production performance
+# Production Dockerfile for Deco Vintage Guate (Dokploy / VPS Hostinger)
 FROM node:20-alpine AS build
 
 WORKDIR /app
 
+# Install dependencies and build frontend
 COPY package*.json ./
 RUN npm install
 
 COPY . .
 RUN npm run build
 
-# Nginx Alpine Production Server
-FROM nginx:alpine
+# Production Runtime
+FROM node:20-alpine
 
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-EXPOSE 80
+COPY package*.json ./
+RUN npm install --omit=dev
 
-CMD ["nginx", "-g", "daemon off;"]
+# Copy compiled frontend, assets, persistent data and server
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/public ./public
+COPY --from=build /app/data ./data
+COPY server.js ./
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV NODE_ENV=production
+
+CMD ["node", "server.js"]
