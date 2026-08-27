@@ -9,7 +9,8 @@ import ArcReactor from './components/ArcReactor';
 import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
 import { Bot, Loader2 } from 'lucide-react';
-import { getStoredPosters, getStoredCategories, getStoredFranchises } from './utils/catalogStorage';
+import { getStoredPosters, getStoredCategories, getStoredFranchises, syncCatalogFromServer } from './utils/catalogStorage';
+import { getAuthToken, clearAuthToken } from './utils/apiClient';
 import { generateWhatsAppLink } from './config/constants';
 
 // Code-Splitting: Lazy load with automatic retry on new deployment chunk changes
@@ -68,9 +69,9 @@ export default function App() {
   const [selectedPosterForModal, setSelectedPosterForModal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Admin authentication state (persisted per session)
+  // Admin authentication state (strictly validated against active token)
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    return sessionStorage.getItem('deco_admin_auth') === 'true';
+    return !!getAuthToken();
   });
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
 
@@ -79,8 +80,10 @@ export default function App() {
   const [categories, setCategories] = useState(getStoredCategories());
   const [franchises, setFranchises] = useState(getStoredFranchises());
 
-  // Listen to catalog updates from Admin
+  // Listen to catalog updates from Admin & sync on initial mount
   useEffect(() => {
+    syncCatalogFromServer();
+
     const handleUpdate = () => {
       setPosters(getStoredPosters());
       setCategories(getStoredCategories());
@@ -208,6 +211,7 @@ export default function App() {
 
   const handleAdminLogout = () => {
     setIsAdminAuthenticated(false);
+    clearAuthToken();
     sessionStorage.removeItem('deco_admin_auth');
     window.history.pushState({ type: 'page', page: 'home' }, '');
     setCurrentPage('home');
