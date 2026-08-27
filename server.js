@@ -466,71 +466,83 @@ ${catalogSummary}
 4. Si el cliente pide cotizar medidas personalizadas especiales (ej: 50x70cm, 80x120cm), invoca 'cotizar_personalizado'.
 5. Escribe siempre en un tono natural, fluido, limpio y elegante, evitando formatos robóticos.`;
 
-    if (!apiKey) {
+    const clientKey = req.headers['x-gemini-key'] || req.body?.apiKey || '';
+    const configuredKey = getJarvisApiKey();
+    const keysToTry = [...new Set([clientKey, configuredKey, OFFICIAL_GEMINI_KEY].filter(k => !!k && k.trim().length > 10))];
+
+    if (keysToTry.length === 0) {
       return res.status(200).json({
         replyText: 'El asistente de inteligencia artificial J.A.R.V.I.S. no se encuentra disponible en este momento. Por favor contáctanos directamente a nuestro WhatsApp oficial.',
         actions: []
       });
     }
 
-    const CANDIDATE_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-3.6-flash'];
+    const CANDIDATE_MODELS = [
+      'gemini-3.5-flash-lite',
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash'
+    ];
     let lastError = null;
 
-    for (const modelName of CANDIDATE_MODELS) {
-      try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: systemInstruction,
-          tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-        });
+    for (const keyToUse of keysToTry) {
+      for (const modelName of CANDIDATE_MODELS) {
+        try {
+          const genAI = new GoogleGenerativeAI(keyToUse);
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: systemInstruction,
+            tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+          });
 
-        // Format conversation history for Gemini if available
-        const chatHistory = [];
-        if (Array.isArray(history) && history.length > 0) {
-          for (const msg of history.slice(-6)) {
-            const role = msg.sender === 'user' ? 'user' : 'model';
-            const text = msg.text || '';
-            if (text.trim().length > 0) {
-              chatHistory.push({ role, parts: [{ text }] });
+          // Format conversation history for Gemini if available
+          const chatHistory = [];
+          if (Array.isArray(history) && history.length > 0) {
+            for (const msg of history.slice(-6)) {
+              const role = msg.sender === 'user' ? 'user' : 'model';
+              const text = msg.text || '';
+              if (text.trim().length > 0) {
+                chatHistory.push({ role, parts: [{ text }] });
+              }
             }
           }
-        }
 
-        const chat = model.startChat({ history: chatHistory });
-        const result = await chat.sendMessage(prompt || 'Hola');
-        const response = result.response;
-        const functionCalls = response.functionCalls();
-        let replyText = response.text ? response.text() : '';
-        const executedActions = [];
+          const chat = model.startChat({ history: chatHistory });
+          const result = await chat.sendMessage(prompt || 'Hola');
+          const response = result.response;
+          const functionCalls = response.functionCalls();
+          let replyText = response.text ? response.text() : '';
+          const executedActions = [];
 
-        if (functionCalls && functionCalls.length > 0) {
-          for (const call of functionCalls) {
-            if (call.name === 'recomendar_obras') {
-              const ids = call.args.posterIds || [];
-              const matched = posters.filter(p => ids.includes(p.id));
-              executedActions.push({
-                type: 'catalog_matches',
-                posters: matched,
-                motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
-              });
-            } else if (call.name === 'cotizar_personalizado') {
-              const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
-              executedActions.push({
-                type: 'custom_quote',
-                quote
-              });
+          if (functionCalls && functionCalls.length > 0) {
+            for (const call of functionCalls) {
+              if (call.name === 'recomendar_obras') {
+                const ids = call.args.posterIds || [];
+                const matched = posters.filter(p => ids.includes(p.id));
+                executedActions.push({
+                  type: 'catalog_matches',
+                  posters: matched,
+                  motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
+                });
+              } else if (call.name === 'cotizar_personalizado') {
+                const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
+                executedActions.push({
+                  type: 'custom_quote',
+                  quote
+                });
+              }
             }
           }
-        }
 
-        return res.status(200).json({
-          replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
-          actions: executedActions
-        });
-      } catch (modelErr) {
-        lastError = modelErr;
-        console.warn(`[Gemini Model ${modelName} Failed]:`, modelErr.message);
+          return res.status(200).json({
+            replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
+            actions: executedActions
+          });
+        } catch (modelErr) {
+          lastError = modelErr;
+          console.warn(`[Gemini Model ${modelName} with Key ...${keyToUse.slice(-6)} Failed]:`, modelErr.message);
+        }
       }
     }
 
