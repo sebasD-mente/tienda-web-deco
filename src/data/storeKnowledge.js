@@ -208,23 +208,34 @@ if (typeof window !== 'undefined') {
   }
 }
 
+import { idbSetMetadata, idbGetMetadata } from '../utils/idbStorage.js';
+
+// Auto-hydrate from IndexedDB on startup
+if (typeof window !== 'undefined') {
+  idbGetMetadata('jarvis_knowledge').then((saved) => {
+    if (saved && typeof saved === 'object') {
+      localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(saved));
+      window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: saved }));
+    }
+  }).catch(() => {});
+}
+
 export function saveStoreKnowledge(knowledge) {
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(knowledge));
       window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: knowledge }));
       
-      // Async write to Cloud Firestore
-      try {
-        const jarvisDocRef = doc(db, 'deco_store', 'jarvis_memory');
-        setDoc(jarvisDocRef, { ...knowledge, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
-      } catch (err) {}
+      // Async write to IndexedDB
+      idbSetMetadata('jarvis_knowledge', knowledge).catch(() => {});
 
       return true;
     }
   } catch (e) {
     console.error('[storeKnowledge] Failed to save knowledge to localStorage:', e);
-    return false;
+    // Even if localStorage fails due to quota, write to IndexedDB
+    idbSetMetadata('jarvis_knowledge', knowledge).catch(() => {});
+    return true;
   }
   return false;
 }
