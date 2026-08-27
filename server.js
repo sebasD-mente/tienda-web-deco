@@ -221,8 +221,10 @@ app.post('/api/catalog/save', requireAuth, async (req, res) => {
       }
     };
 
-    fs.writeFileSync(CATALOG_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
-    console.log(`[VPS Disk] Persisted ${processedPosters.length} posters to 100 GB SSD.`);
+    const tmpFile = `${CATALOG_FILE}.tmp`;
+    fs.writeFileSync(tmpFile, JSON.stringify(dataToSave, null, 2), 'utf-8');
+    fs.renameSync(tmpFile, CATALOG_FILE);
+    console.log(`[VPS Disk] Atomic persist of ${processedPosters.length} posters to 100 GB SSD.`);
     return res.status(200).json({ success: true, count: processedPosters.length, updatedAt: dataToSave.updatedAt });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/save:', err);
@@ -294,7 +296,9 @@ app.post('/api/settings/save', requireAuth, (req, res) => {
       whatsappPhone: (whatsappPhone || '50238375078').replace(/[^0-9]/g, ''),
       updatedAt: new Date().toISOString()
     };
-    fs.writeFileSync(CATALOG_FILE, JSON.stringify(catalog, null, 2), 'utf-8');
+    const tmpFile = `${CATALOG_FILE}.tmp`;
+    fs.writeFileSync(tmpFile, JSON.stringify(catalog, null, 2), 'utf-8');
+    fs.renameSync(tmpFile, CATALOG_FILE);
     console.log(`[Deco Settings] Updated WhatsApp phone to: ${catalog.settings.whatsappPhone}`);
     return res.status(200).json({ success: true, settings: catalog.settings });
   } catch (err) {
@@ -372,7 +376,22 @@ function getJarvisApiKey() {
       if (data.apiKey && data.apiKey.trim().length > 0) return data.apiKey.trim();
     } catch (e) {}
   }
-  return process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || OFFICIAL_GEMINI_KEY;
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0) return process.env.GEMINI_API_KEY.trim();
+  if (process.env.VITE_GEMINI_API_KEY && process.env.VITE_GEMINI_API_KEY.trim().length > 0) return process.env.VITE_GEMINI_API_KEY.trim();
+
+  // Auto-read from .env.local if running in local environment
+  const envLocalPath = path.resolve(__dirname, '.env.local');
+  if (fs.existsSync(envLocalPath)) {
+    try {
+      const content = fs.readFileSync(envLocalPath, 'utf-8');
+      const match = content.match(/VITE_GEMINI_API_KEY\s*=\s*(.+)/);
+      if (match && match[1] && match[1].trim().length > 0) {
+        return match[1].trim();
+      }
+    } catch (e) {}
+  }
+
+  return OFFICIAL_GEMINI_KEY;
 }
 
 // POST /api/jarvis/save-key (Protected Admin - Persists Gemini API Key to VPS SSD)
@@ -466,7 +485,6 @@ ${catalogSummary}
 4. Si el cliente pide cotizar medidas personalizadas especiales (ej: 50x70cm, 80x120cm), invoca 'cotizar_personalizado'.
 5. Escribe siempre en un tono natural, fluido, limpio y elegante, evitando formatos robóticos.`;
 
-    const clientKey = req.headers['x-gemini-key'] || req.body?.apiKey || '';
     const configuredKey = getJarvisApiKey();
     const keysToTry = [...new Set([clientKey, configuredKey, OFFICIAL_GEMINI_KEY].filter(k => !!k && k.trim().length > 10))];
 
@@ -478,11 +496,10 @@ ${catalogSummary}
     }
 
     const CANDIDATE_MODELS = [
-      'gemini-3.5-flash-lite',
-      'gemini-3.1-flash-lite',
-      'gemini-2.5-flash',
+      'gemini-1.5-flash',
       'gemini-2.0-flash',
-      'gemini-1.5-flash'
+      'gemini-2.0-flash-exp',
+      'gemini-1.5-pro'
     ];
     let lastError = null;
 

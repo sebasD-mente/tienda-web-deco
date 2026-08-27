@@ -1,7 +1,34 @@
 /**
- * Deco Vintage Guate - VPS Dedicated Architecture
- * Firebase has been replaced with the dedicated Hostinger VPS backend (server.js)
- * and high-performance local IndexedDB storage (idbStorage.js).
+ * Deco Vintage Guate - Official Firebase Firestore Configuration
+ * Connects directly to Google Cloud Firestore (tienda-web-deco-vintage).
  */
 
-export const isFirebaseActive = false;
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  getDoc,
+  getDocs, 
+  setDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  query
+} from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyD1yGG4BNDKB4ubEiLt8P45j1ZqCabtev0",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "tienda-web-deco-vintage.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "tienda-web-deco-vintage",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "tienda-web-deco-vintage.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "769351516290",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:769351516290:web:bcc54a093adfb6e8a1b49b"
+};
+
+// Initialize Firebase App & Firestore Database instance safely
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+export const isFirebaseActive = true;
+
+export { app, db, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, query };
