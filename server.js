@@ -436,19 +436,9 @@ if (fs.existsSync(DIST_DIR)) {
   });
 }
 
-// Start Server on Port 80 and Port 3000
-const mainPort = Number(process.env.PORT) || 3000;
-app.listen(mainPort, '0.0.0.0', () => {
-  console.log(`🚀 [Deco Vintage Server] Running on http://0.0.0.0:${mainPort} on VPS Hostinger 100 GB SSD.`);
+// Start Server on Port 3000
+const PORT = Number(process.env.PORT) || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 [Deco Vintage Server] Running on http://0.0.0.0:${PORT} on VPS Hostinger 100 GB SSD.`);
 });
-
-if (mainPort !== 80) {
-  try {
-    app.listen(80, '0.0.0.0', () => {
-      console.log(`🚀 [Deco Vintage Server] Also listening on port 80`);
-    });
-  } catch (err) {
-    console.debug('[Port 80 Fallback]:', err.message);
-  }
-}
 

@@ -10,7 +10,7 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Production Runtime with native Debian glibc for Sharp performance
+# Production Runtime
 FROM node:20-slim
 
 WORKDIR /app
@@ -24,10 +24,9 @@ COPY --from=build /app/public ./public
 COPY --from=build /app/data ./data
 COPY server.js ./
 
-EXPOSE 80
 EXPOSE 3000
 
-ENV PORT=80
+ENV PORT=3000
 ENV NODE_ENV=production
 
 CMD ["node", "server.js"]
