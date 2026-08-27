@@ -103,18 +103,6 @@ export async function askJarvis(queryOrOptions, history = []) {
       }
     }
 
-    // Safety fallback matcher if no actions returned but user asks for specific art
-    if (executedActions.length === 0) {
-      const matched = findMatchingPosters(userQuery, replyText, posters);
-      if (matched.length > 0) {
-        executedActions.push({
-          type: 'catalog_matches',
-          posters: matched,
-          motivo: 'Obras destacadas de nuestro catálogo oficial'
-        });
-      }
-    }
-
     return {
       text: replyText,
       actions: executedActions

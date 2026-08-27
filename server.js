@@ -368,21 +368,65 @@ app.post('/api/jarvis/chat', rateLimitAI, async (req, res) => {
     const settings = catalog.settings || {};
     const waPhone = settings.whatsappPhone || '50238375078';
 
-    const catalogSummary = posters.slice(0, 50).map(p => 
-      `- ID: "${p.id}", Título: "${p.title}", Categoría: "${p.category}", Precio: "${p.priceDisplay || 'Desde Q25.00'}", Imagen: "${p.thumb || p.image}"`
+    // Load rich training memory from jarvisConfig.json if available
+    let jarvisMemory = {};
+    if (fs.existsSync(JARVIS_FILE)) {
+      try { jarvisMemory = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8')); } catch (e) {}
+    }
+
+    const ownerDirectives = (jarvisMemory.ownerDirectives || [
+      "Habla siempre de forma amigable, cálida, entusiasta y servicial, como un asesor de diseño experto y buena onda.",
+      "Usa un trato de 'tú' neutro e inclusivo. NUNCA asumas género ni uses repetitivamente la palabra 'señor' o 'caballero'.",
+      "Escribe en texto conversacional fluido, natural y limpio. Evita llenar las respuestas de asteriscos, títulos rígidos '###' o estructuras de reporte técnico aburrido.",
+      "Recomienda siempre el tamaño Mediano (30x45cm) como la opción más balanceada e ideal para cualquier habitación.",
+      "Menciona que la cinta industrial Tesa de montaje viene incluida en el reverso lista para colgar sin taladros.",
+      "Este sábado y domingo 29 y 30 de agosto tendremos stand disponible en el Centro Comercial Centranorte, zona 18, Guatemala donde estarán disponibles todos nuestros diseños."
+    ]).map(d => `- ${d}`).join('\n');
+
+    const customDocs = (jarvisMemory.customDocuments || [
+      {
+        title: "Guía de Envíos y Tiempos de Entrega",
+        content: "Envíos a los 22 departamentos de Guatemala vía mensajerías certificadas (Guatex, Forza, Cargo Expreso, Mensajería Directa en Ciudad de Guatemala). Tiempo de entrega estándar de 2 a 4 días hábiles desde que se confirma el 50% de anticipo. El saldo se cancela contra entrega o previo al despacho departamental."
+      },
+      {
+        title: "Instrucciones de Montaje con Cinta Tesa",
+        content: "Todos los cuadros rígidos incluyen tiras de cinta doble cara industrial Tesa (modelo oficial tesa® 65610 Invisibond) en el reverso lista para instalar sin taladros ni clavos."
+      },
+      {
+        title: "Tecnología de Impresión HP Látex",
+        content: "Impresión de gran formato con tecnología HP Látex. Tintas ecológicas a base de agua con protección UV y garantía superior a 10 años en interiores sin pérdida de color."
+      }
+    ]).map(doc => `[DOCUMENTO: ${doc.title}]\n${doc.content}`).join('\n\n');
+
+    // Rich catalog summary with FULL descriptions and tags
+    const catalogSummary = posters.map(p => 
+      `- ID: "${p.id}", Título: "${p.title}", Subtítulo: "${p.subtitle || ''}", Categoría: "${p.category}", Descripción: "${p.description || ''}", Tags: "${(p.tags || []).join(', ')}", Precio: "${p.priceDisplay || 'Desde Q25.00'}"`
     ).join('\n');
 
-    const systemInstruction = `Eres J.A.R.V.I.S., el asistente de inteligencia artificial exclusivo de Deco Vintage Guate (tienda de cuadros y pósters rígidos de colección en Guatemala impresos con tecnología HP Látex sobre madera MDF de 5.5mm).
-WhatsApp Oficial de Atención: +${waPhone}
+    const systemInstruction = `Eres J.A.R.V.I.S. (Just A Rather Very Intelligent System), el asistente de inteligencia artificial exclusivo de Deco Vintage Guate (tienda en Guatemala de cuadros rígidos y pósters decorativos de colección en madera MDF de 5.5mm con tecnología HP Látex).
+WhatsApp Oficial de Atención al Cliente: +${waPhone}
 
-CATÁLOGO ACTUAL DE OBRAS EN TIENDA:
+=== DIRECTIVAS Y POLÍTICAS DE ATENCIÓN ===
+${ownerDirectives}
+
+=== DOCUMENTOS Y GUÍAS DE LA TIENDA ===
+${customDocs}
+
+=== MATERIALES Y PRECIOS OFICIALES ===
+- Madera MDF 5.5mm: Base sólida rígida, resistente, bordes pulidos, no se dobla. Incluye cinta doble cara industrial Tesa para colgar sin clavos.
+- PVC Sintético 5mm: Ultraligero y 100% impermeable / resistente al agua y humedad (+Q15.00).
+- Solo Vinil Adhesivo: Impresión en vinil HP Látex al 50% de descuento (mitad de precio).
+Medidas estándar: Mini (13x18cm - Q25), Pequeño (20x25cm - Q40), Portada Álbum 30x30cm (Q60), Mediano (30x45cm - Q75), Grande (40x60cm - Q125), Gigante (60x90cm - Q210).
+
+=== CATÁLOGO COMPLETO DE OBRAS EN TIENDA (CON DESCRIPCIONES Y DETALLES) ===
 ${catalogSummary}
 
-REGLAS DE ATENCIÓN:
-1. Sé amable, conciso, elegante y entusiasta con el arte geek, autos, anime, Marvel, cine y música.
-2. Si el cliente pregunta por obras o personajes que tenemos, invoca la herramienta 'recomendar_obras' con sus IDs exactos.
-3. Si el cliente pide medidas personalizadas (ej. 40x60cm, 50x70cm, circular), invoca 'cotizar_personalizado'.
-4. Los precios siempre son en Quetzales (Q) y se trabaja con el 50% de anticipo para producción y 50% contra entrega.`;
+=== REGLAS CRÍTICAS DE CONVERSACIÓN ===
+1. Eres culto, amable, natural, inteligente y conversacional. Hablas con pasión sobre cine, Marvel, autos, anime, videojuegos y música.
+2. Si el cliente te pregunta sobre detalles de una película, personajes, historia del arte, materiales, envíos, promociones o eventos (como el stand en Centranorte), responde con tu texto inteligente de forma completa y amena.
+3. REGLA ESTRICTA DE TARJETAS: ÚNICAMENTE debes invocar la herramienta 'recomendar_obras' cuando el cliente te pida EXPLÍCITAMENTE VER, MOSTRAR, RECOMENDAR U ORDENAR cuadros (ej: "muéstrame cuadros de...", "qué opciones tienes de...", "recomiéndame diseños de..."). Si el cliente solo está conversando o preguntando si tienes algo sin pedir verlos, responde primero con texto conversacional explicando lo que tienes y pregúntale si desea que se los muestres.
+4. Si el cliente pide cotizar medidas personalizadas especiales (ej: 50x70cm, 80x120cm), invoca 'cotizar_personalizado'.
+5. Escribe siempre en un tono natural, fluido, limpio y elegante, evitando formatos robóticos.`;
 
     if (!apiKey) {
       return res.status(200).json({
@@ -403,7 +447,19 @@ REGLAS DE ATENCIÓN:
           tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
         });
 
-        const chat = model.startChat();
+        // Format conversation history for Gemini if available
+        const chatHistory = [];
+        if (Array.isArray(history) && history.length > 0) {
+          for (const msg of history.slice(-6)) {
+            const role = msg.sender === 'user' ? 'user' : 'model';
+            const text = msg.text || '';
+            if (text.trim().length > 0) {
+              chatHistory.push({ role, parts: [{ text }] });
+            }
+          }
+        }
+
+        const chat = model.startChat({ history: chatHistory });
         const result = await chat.sendMessage(prompt || 'Hola');
         const response = result.response;
         const functionCalls = response.functionCalls();
@@ -437,27 +493,14 @@ REGLAS DE ATENCIÓN:
       } catch (modelErr) {
         lastError = modelErr;
         console.warn(`[Gemini Model ${modelName} Failed]:`, modelErr.message);
-        // Continue to next candidate model
       }
     }
 
-    // If all models failed or encountered quota, execute graceful intelligent catalog matcher
-    console.warn('[Gemini AI Fallback]: All models failed, falling back to catalog matching:', lastError?.message);
-    const qLower = (prompt || '').toLowerCase();
-    let matchedPosters = [];
-    if (qLower.includes('auto') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('gtr')) {
-      matchedPosters = posters.filter(p => p.category === 'AUTOS').slice(0, 3);
-    } else if (qLower.includes('superheroe') || qLower.includes('spider') || qLower.includes('marvel') || qLower.includes('batman')) {
-      matchedPosters = posters.filter(p => p.category === 'SUPERHEROES').slice(0, 3);
-    } else if (qLower.includes('vintage') || qLower.includes('leica') || qLower.includes('retro')) {
-      matchedPosters = posters.filter(p => p.category === 'VINTAGE').slice(0, 3);
-    } else if (qLower.includes('anime') || qLower.includes('dragon ball') || qLower.includes('naruto')) {
-      matchedPosters = posters.filter(p => p.category === 'ANIME').slice(0, 3);
-    }
-
+    // Fallback response ONLY if all models failed
+    console.warn('[Gemini AI Fallback]: All models failed, falling back:', lastError?.message);
     return res.status(200).json({
-      replyText: `¡Hola! Con gusto te asesoro. En Deco Vintage Guate fabricamos cuadros rígidos en madera MDF de 5.5mm con impresión HD HP Látex y cinta de montaje rápido incluida. Tenemos medidas desde 13x18cm (Q25) hasta 60x90cm (Q210). ¿Te gustaría ordenar alguna de estas obras o cotizar una medida personalizada?`,
-      actions: matchedPosters.length > 0 ? [{ type: 'catalog_matches', posters: matchedPosters, motivo: 'Obras destacadas de nuestra colección' }] : []
+      replyText: 'Estimado cliente, puedes consultarme sobre cualquier obra, materiales, envíos a toda Guatemala o escribirnos directamente a nuestro WhatsApp oficial.',
+      actions: []
     });
   } catch (err) {
     console.error('[API Error] POST /api/jarvis/chat:', err);
