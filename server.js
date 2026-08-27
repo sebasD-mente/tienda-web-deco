@@ -534,10 +534,10 @@ ${catalogSummary}
       }
     }
 
-    // Fallback response ONLY if all models failed
-    console.warn('[Gemini AI Fallback]: All models failed, falling back:', lastError?.message);
+    // Offline response ONLY if all models failed
+    console.warn('[Gemini AI Offline]: All models failed:', lastError?.message);
     return res.status(200).json({
-      replyText: 'Estimado cliente, puedes consultarme sobre cualquier obra, materiales, envíos a toda Guatemala o escribirnos directamente a nuestro WhatsApp oficial.',
+      replyText: 'El asistente J.A.R.V.I.S. no se encuentra disponible temporalmente. Por favor contáctanos vía WhatsApp.',
       actions: []
     });
   } catch (err) {

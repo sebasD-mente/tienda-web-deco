@@ -110,7 +110,7 @@ export async function askJarvis(queryOrOptions, history = []) {
   } catch (err) {
     console.error('[J.A.R.V.I.S.] Error querying server:', err);
     return {
-      text: 'Estimado cliente, puedes escribirnos directamente por WhatsApp al +' + getStoreWhatsAppPhone() + ' para brindarte atención inmediata y personalizada.',
+      text: 'El asistente J.A.R.V.I.S. no se encuentra disponible temporalmente. Por favor contáctanos vía WhatsApp.',
       actions: []
     };
   }
