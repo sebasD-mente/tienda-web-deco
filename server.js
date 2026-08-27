@@ -165,19 +165,54 @@ app.get('/api/catalog', (req, res) => {
 });
 
 // POST /api/catalog/save (Protected Admin - Persists entire catalog to VPS SSD)
-app.post('/api/catalog/save', requireAuth, (req, res) => {
+app.post('/api/catalog/save', requireAuth, async (req, res) => {
   try {
     const { categories, posters, franchises, settings } = req.body;
     if (!Array.isArray(posters)) {
       return res.status(400).json({ error: 'posters must be an array' });
     }
 
+    // Auto-process and sanitize images: convert base64 to WebP files on disk and fix any truncated extensions
+    const processedPosters = await Promise.all(posters.map(async (p) => {
+      const cleanPoster = { ...p };
+      const cleanId = (cleanPoster.id || 'obra-' + Date.now()).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+      // Auto-correct truncated .web extension
+      if (cleanPoster.thumb && cleanPoster.thumb.endsWith('.web')) {
+        cleanPoster.thumb = cleanPoster.thumb + 'p';
+      }
+      if (cleanPoster.image && cleanPoster.image.endsWith('.web')) {
+        cleanPoster.image = cleanPoster.image + 'p';
+      }
+
+      // Convert full image base64 if present
+      if (cleanPoster.image && cleanPoster.image.startsWith('data:image/')) {
+        try {
+          const base64Data = cleanPoster.image.replace(/^data:image\/\w+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+          const fileName = `${cleanId}-${Date.now().toString().slice(-4)}.webp`;
+          const fullDest = path.resolve(UPLOADS_FULL, fileName);
+          const thumbDest = path.resolve(UPLOADS_THUMB, fileName);
+
+          await sharp(buffer).resize(1400, 1400, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 86 }).toFile(fullDest);
+          await sharp(buffer).resize(480, 480, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(thumbDest);
+
+          cleanPoster.image = `/posters/uploads/full/${fileName}`;
+          cleanPoster.thumb = `/posters/uploads/thumb/${fileName}`;
+        } catch (imgErr) {
+          console.warn(`[Auto WebP Conversion Failed for ${cleanId}]:`, imgErr.message);
+        }
+      }
+
+      return cleanPoster;
+    }));
+
     const currentCatalog = getCatalogData();
     const dataToSave = {
       updatedAt: new Date().toISOString(),
       categories: categories || currentCatalog.categories || [],
       franchises: franchises || currentCatalog.franchises || [],
-      posters: posters || [],
+      posters: processedPosters,
       settings: {
         ...currentCatalog.settings,
         ...(settings || {}),
@@ -186,8 +221,8 @@ app.post('/api/catalog/save', requireAuth, (req, res) => {
     };
 
     fs.writeFileSync(CATALOG_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
-    console.log(`[VPS Disk] Persisted ${posters.length} posters to 100 GB SSD.`);
-    return res.status(200).json({ success: true, count: posters.length, updatedAt: dataToSave.updatedAt });
+    console.log(`[VPS Disk] Persisted ${processedPosters.length} posters to 100 GB SSD.`);
+    return res.status(200).json({ success: true, count: processedPosters.length, updatedAt: dataToSave.updatedAt });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/save:', err);
     return res.status(500).json({ error: err.message });

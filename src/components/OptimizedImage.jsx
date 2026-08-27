@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Image as ImageIcon } from 'lucide-react';
 
 export default function OptimizedImage({
   src,
@@ -6,10 +7,25 @@ export default function OptimizedImage({
   className = '',
   style = {},
   objectFit = 'contain',
-  priority = false
+  priority = false,
+  fallbackSrc = '/posters/wallpaper.jpg'
 }) {
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(src || fallbackSrc);
+
+  // Auto-correct truncated .web extension if passed
+  const normalizedSrc = (currentSrc && currentSrc.endsWith('.web')) ? `${currentSrc}p` : currentSrc;
+
+  const handleImageError = () => {
+    if (normalizedSrc !== fallbackSrc) {
+      setCurrentSrc(fallbackSrc);
+      setHasError(false);
+    } else {
+      setHasError(true);
+      setLoaded(true);
+    }
+  };
 
   return (
     <div
@@ -27,7 +43,7 @@ export default function OptimizedImage({
       className={className}
     >
       {/* Skeleton Shimmer Placeholder while loading */}
-      {!loaded && !error && (
+      {!loaded && !hasError && (
         <div
           style={{
             position: 'absolute',
@@ -40,30 +56,46 @@ export default function OptimizedImage({
         />
       )}
 
-      {/* The Actual Optimized WebP Image (Preserves Exact Proportions without Cropping) */}
-      <img
-        src={src}
-        alt={alt}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        onLoad={() => setLoaded(true)}
-        onError={() => {
-          setError(true);
-          setLoaded(true);
-        }}
-        style={{
-          maxWidth: '100%',
-          maxHeight: '100%',
-          width: 'auto',
-          height: 'auto',
-          objectFit: objectFit,
-          display: 'block',
-          opacity: loaded ? 1 : 0,
-          transition: 'opacity 0.35s ease, transform 0.3s ease',
-          borderRadius: '4px',
-          boxShadow: '0 6px 20px rgba(0, 0, 0, 0.7)'
-        }}
-      />
+      {/* Error Fallback Box if both primary and fallback fail */}
+      {hasError && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          color: 'var(--text-muted)',
+          padding: '12px',
+          textAlign: 'center'
+        }}>
+          <ImageIcon size={28} color="var(--accent-cyan)" />
+          <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>{alt}</span>
+        </div>
+      )}
+
+      {/* The Actual Optimized WebP Image */}
+      {!hasError && (
+        <img
+          src={normalizedSrc}
+          alt={alt}
+          loading={priority ? 'eager' : 'lazy'}
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+          onError={handleImageError}
+          style={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            objectFit: objectFit,
+            display: 'block',
+            opacity: loaded ? 1 : 0,
+            transition: 'opacity 0.35s ease, transform 0.3s ease',
+            borderRadius: '4px',
+            boxShadow: '0 6px 20px rgba(0, 0, 0, 0.7)'
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes shimmer {
