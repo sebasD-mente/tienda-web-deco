@@ -3,7 +3,7 @@ import { X, ShoppingBag, MessageSquare, Check, Star } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 
-export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhatsApp }) {
+export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhatsApp, onOpenCart }) {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -24,6 +24,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
         setSelectedSizeId(valid.find(s => s.id === 'GRANDE')?.id || valid[0]?.id || 'MEDIANO');
       }
       setQuantity(1);
+      setAdded(false);
     }
   }, [poster]);
 
@@ -49,7 +50,6 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
     });
 
     setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
   };
 
   const handleWhatsApp = () => {
@@ -336,26 +336,69 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
             </div>
 
             {/* Actions Buttons */}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={handleAdd}
-                className="btn-cyan"
-                style={{ flex: 1, justifyContent: 'center', padding: '13px' }}
-              >
-                {added ? <Check size={18} /> : <ShoppingBag size={18} />}
-                <span>{added ? '¡Añadido!' : 'Añadir al Carrito'}</span>
-              </button>
+            {added ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{
+                  background: 'rgba(0, 245, 160, 0.12)',
+                  border: '1px solid rgba(0, 245, 160, 0.4)',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  color: '#00f5a0',
+                  fontSize: '0.86rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}>
+                  <Check size={18} />
+                  <span>¡Obra agregada al carrito con éxito!</span>
+                </div>
 
-              <button
-                onClick={handleWhatsApp}
-                className="btn-secondary"
-                style={{ padding: '13px 18px', borderColor: '#25d366', color: '#25d366' }}
-                title="Comprar por WhatsApp"
-              >
-                <MessageSquare size={18} />
-                <span>WhatsApp</span>
-              </button>
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button
+                    onClick={() => {
+                      if (onOpenCart) onOpenCart();
+                      else onClose();
+                    }}
+                    className="btn-cyan"
+                    style={{ justifyContent: 'center', padding: '13px 14px', fontSize: '0.88rem' }}
+                  >
+                    <ShoppingBag size={18} />
+                    <span>Ir al Carrito</span>
+                  </button>
+
+                  <button
+                    onClick={onClose}
+                    className="btn-secondary"
+                    style={{ justifyContent: 'center', padding: '13px 14px', fontSize: '0.88rem' }}
+                  >
+                    <span>Seguir Comprando</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={handleAdd}
+                  className="btn-cyan"
+                  style={{ flex: 1, justifyContent: 'center', padding: '13px' }}
+                >
+                  <ShoppingBag size={18} />
+                  <span>Añadir al Carrito</span>
+                </button>
+
+                <button
+                  onClick={handleWhatsApp}
+                  className="btn-secondary"
+                  style={{ padding: '13px 18px', borderColor: '#25d366', color: '#25d366' }}
+                  title="Comprar por WhatsApp"
+                >
+                  <MessageSquare size={18} />
+                  <span>WhatsApp</span>
+                </button>
+              </div>
+            )}
 
           </div>
 

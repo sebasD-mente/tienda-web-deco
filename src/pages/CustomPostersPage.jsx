@@ -231,8 +231,33 @@ export default function CustomPostersPage({ onNavigate }) {
             marginBottom: '40px'
           }}>
             
-            {/* Step 1 */}
-            <div className="glass-card" style={{ padding: '28px', position: 'relative' }}>
+            {/* Step 1: Carga tu Imagen */}
+            <div
+              onClick={() => {
+                const el = document.getElementById('cotizador');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => fileInputRef.current?.click(), 350);
+              }}
+              className="glass-card"
+              style={{
+                padding: '28px',
+                position: 'relative',
+                cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                border: '1px solid rgba(0, 242, 254, 0.25)'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = '#00f2fe';
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 242, 254, 0.2)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.25)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              title="Haz clic para cargar tu foto ahora"
+            >
               <div style={{
                 position: 'absolute',
                 top: '20px',
@@ -261,13 +286,41 @@ export default function CustomPostersPage({ onNavigate }) {
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>
                 1. Carga tu Imagen o Idea
               </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.6', margin: 0 }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.6', margin: '0 0 12px 0' }}>
                 Selecciona tu fotografía o diseño directamente aquí o envíala a nuestro WhatsApp en JPG, PNG, PDF o TIFF.
               </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-cyan)', fontSize: '0.8rem', fontWeight: 700 }}>
+                <span>Subir imagen ahora</span>
+                <ArrowRight size={14} />
+              </div>
             </div>
 
-            {/* Step 2 */}
-            <div className="glass-card" style={{ padding: '28px', position: 'relative' }}>
+            {/* Step 2: Elige Base & Medidas */}
+            <div
+              onClick={() => {
+                const el = document.getElementById('cotizador');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="glass-card"
+              style={{
+                padding: '28px',
+                position: 'relative',
+                cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                border: '1px solid rgba(56, 189, 248, 0.25)'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = '#38bdf8';
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 12px 30px rgba(56, 189, 248, 0.2)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.25)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              title="Haz clic para configurar medidas y material"
+            >
               <div style={{
                 position: 'absolute',
                 top: '20px',
@@ -296,13 +349,41 @@ export default function CustomPostersPage({ onNavigate }) {
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>
                 2. Elige Base & Medidas
               </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.6', margin: 0 }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.6', margin: '0 0 12px 0' }}>
                 Escoge entre <strong>MDF 5.5mm</strong>, <strong>PVC 5mm</strong> o <strong>Solo Vinil (50%)</strong> con tamaños estándar o usa nuestro cotizador de medida especial.
               </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-blue)', fontSize: '0.8rem', fontWeight: 700 }}>
+                <span>Cotizar medidas</span>
+                <ArrowRight size={14} />
+              </div>
             </div>
 
-            {/* Step 3 */}
-            <div className="glass-card" style={{ padding: '28px', position: 'relative' }}>
+            {/* Step 3: Entrega en 3 Días */}
+            <div
+              onClick={() => {
+                const el = document.getElementById('cotizador');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="glass-card"
+              style={{
+                padding: '28px',
+                position: 'relative',
+                cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                border: '1px solid rgba(0, 245, 160, 0.25)'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = '#00f5a0';
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 245, 160, 0.2)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(0, 245, 160, 0.25)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              title="Haz clic para ordenar tu cuadro personalizado"
+            >
               <div style={{
                 position: 'absolute',
                 top: '20px',
@@ -331,9 +412,13 @@ export default function CustomPostersPage({ onNavigate }) {
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>
                 3. Entrega en 3 Días
               </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.6', margin: 0 }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.6', margin: '0 0 12px 0' }}>
                 Fabricación garantizada y lista para colgar con cinta de montaje incluida. Envíos seguros a toda Guatemala.
               </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#00f5a0', fontSize: '0.8rem', fontWeight: 700 }}>
+                <span>Ver opciones de envío</span>
+                <ArrowRight size={14} />
+              </div>
             </div>
 
           </div>

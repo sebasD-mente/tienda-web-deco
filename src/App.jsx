@@ -389,6 +389,10 @@ export default function App() {
         onClose={handleClosePosterModal}
         onAddToCart={handleAddToCart}
         onQuickWhatsApp={handleQuickWhatsApp}
+        onOpenCart={() => {
+          handleClosePosterModal();
+          setIsCartOpen(true);
+        }}
       />
 
       {/* Jarvis AI Assistant Widget */}

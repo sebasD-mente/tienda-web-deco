@@ -23,13 +23,13 @@ export default function CategoryShelf({
 }) {
   const scrollRefs = useRef({});
 
-  // 1. Pick 3 distinct categories that actually have posters
+  // 1. Pick 4 distinct categories that actually have posters (Total 5 with Best Sellers)
   const spotlightCategories = useMemo(() => {
     const populated = categories.filter(
       c => c.id !== 'TODAS' && c.id !== 'TODOS' && posters.some(p => p.category === c.id)
     );
     const shuffled = shuffleArray(populated);
-    return shuffled.slice(0, 3);
+    return shuffled.slice(0, 4);
   }, [categories, posters]);
 
   // 2. Randomize posters for each category (max 8 preview images to optimize performance)
