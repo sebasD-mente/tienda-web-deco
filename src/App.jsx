@@ -99,10 +99,6 @@ export default function App() {
         if (state.categoryId) setSelectedCategoryId(state.categoryId);
         if (state.franchiseId) setSelectedFranchiseId(state.franchiseId);
         window.scrollTo(0, 0);
-      } else {
-        // Root fallback to Home
-        setCurrentPage('home');
-        window.scrollTo(0, 0);
       }
     };
 

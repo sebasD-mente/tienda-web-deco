@@ -391,65 +391,74 @@ REGLAS DE ATENCIÓN:
       });
     }
 
-    try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        systemInstruction: systemInstruction,
-        tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-      });
+    const CANDIDATE_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-3.6-flash'];
+    let lastError = null;
 
-      const chat = model.startChat();
-      const result = await chat.sendMessage(prompt || 'Hola');
-      const response = result.response;
-      const functionCalls = response.functionCalls();
-      let replyText = response.text ? response.text() : '';
-      const executedActions = [];
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemInstruction,
+          tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+        });
 
-      if (functionCalls && functionCalls.length > 0) {
-        for (const call of functionCalls) {
-          if (call.name === 'recomendar_obras') {
-            const ids = call.args.posterIds || [];
-            const matched = posters.filter(p => ids.includes(p.id));
-            executedActions.push({
-              type: 'catalog_matches',
-              posters: matched,
-              motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
-            });
-          } else if (call.name === 'cotizar_personalizado') {
-            const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
-            executedActions.push({
-              type: 'custom_quote',
-              quote
-            });
+        const chat = model.startChat();
+        const result = await chat.sendMessage(prompt || 'Hola');
+        const response = result.response;
+        const functionCalls = response.functionCalls();
+        let replyText = response.text ? response.text() : '';
+        const executedActions = [];
+
+        if (functionCalls && functionCalls.length > 0) {
+          for (const call of functionCalls) {
+            if (call.name === 'recomendar_obras') {
+              const ids = call.args.posterIds || [];
+              const matched = posters.filter(p => ids.includes(p.id));
+              executedActions.push({
+                type: 'catalog_matches',
+                posters: matched,
+                motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
+              });
+            } else if (call.name === 'cotizar_personalizado') {
+              const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
+              executedActions.push({
+                type: 'custom_quote',
+                quote
+              });
+            }
           }
         }
-      }
 
-      return res.status(200).json({
-        replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
-        actions: executedActions
-      });
-    } catch (geminiError) {
-      console.warn('[Gemini AI Fallback]:', geminiError.message);
-      // Fallback response with catalog matching so customer is always served
-      const qLower = (prompt || '').toLowerCase();
-      let matchedPosters = [];
-      if (qLower.includes('auto') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('gtr')) {
-        matchedPosters = posters.filter(p => p.category === 'AUTOS').slice(0, 3);
-      } else if (qLower.includes('superheroe') || qLower.includes('spider') || qLower.includes('marvel') || qLower.includes('batman')) {
-        matchedPosters = posters.filter(p => p.category === 'SUPERHEROES').slice(0, 3);
-      } else if (qLower.includes('vintage') || qLower.includes('leica') || qLower.includes('retro')) {
-        matchedPosters = posters.filter(p => p.category === 'VINTAGE').slice(0, 3);
-      } else {
-        matchedPosters = posters.filter(p => p.isFeatured).slice(0, 3);
+        return res.status(200).json({
+          replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
+          actions: executedActions
+        });
+      } catch (modelErr) {
+        lastError = modelErr;
+        console.warn(`[Gemini Model ${modelName} Failed]:`, modelErr.message);
+        // Continue to next candidate model
       }
-
-      return res.status(200).json({
-        replyText: `¡Hola! Con gusto te asesoro. En Deco Vintage Guate fabricamos cuadros rígidos en madera MDF de 5.5mm con impresión HD HP Látex y cinta de montaje rápido incluida. Tenemos medidas desde 13x18cm (Q25) hasta 60x90cm (Q210). ¿Te gustaría ordenar alguna de estas obras o cotizar una medida personalizada?`,
-        actions: matchedPosters.length > 0 ? [{ type: 'catalog_matches', posters: matchedPosters, motivo: 'Obras destacadas de nuestra colección' }] : []
-      });
     }
+
+    // If all models failed or encountered quota, execute graceful intelligent catalog matcher
+    console.warn('[Gemini AI Fallback]: All models failed, falling back to catalog matching:', lastError?.message);
+    const qLower = (prompt || '').toLowerCase();
+    let matchedPosters = [];
+    if (qLower.includes('auto') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('gtr')) {
+      matchedPosters = posters.filter(p => p.category === 'AUTOS').slice(0, 3);
+    } else if (qLower.includes('superheroe') || qLower.includes('spider') || qLower.includes('marvel') || qLower.includes('batman')) {
+      matchedPosters = posters.filter(p => p.category === 'SUPERHEROES').slice(0, 3);
+    } else if (qLower.includes('vintage') || qLower.includes('leica') || qLower.includes('retro')) {
+      matchedPosters = posters.filter(p => p.category === 'VINTAGE').slice(0, 3);
+    } else if (qLower.includes('anime') || qLower.includes('dragon ball') || qLower.includes('naruto')) {
+      matchedPosters = posters.filter(p => p.category === 'ANIME').slice(0, 3);
+    }
+
+    return res.status(200).json({
+      replyText: `¡Hola! Con gusto te asesoro. En Deco Vintage Guate fabricamos cuadros rígidos en madera MDF de 5.5mm con impresión HD HP Látex y cinta de montaje rápido incluida. Tenemos medidas desde 13x18cm (Q25) hasta 60x90cm (Q210). ¿Te gustaría ordenar alguna de estas obras o cotizar una medida personalizada?`,
+      actions: matchedPosters.length > 0 ? [{ type: 'catalog_matches', posters: matchedPosters, motivo: 'Obras destacadas de nuestra colección' }] : []
+    });
   } catch (err) {
     console.error('[API Error] POST /api/jarvis/chat:', err);
     return res.status(500).json({ error: 'Error al procesar consulta con J.A.R.V.I.S.: ' + err.message });

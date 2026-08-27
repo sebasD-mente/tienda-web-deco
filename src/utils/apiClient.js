@@ -160,10 +160,22 @@ export async function apiSaveSettings(settingsPayload) {
 // 7. J.A.R.V.I.S. Secure AI Query
 export async function apiAskJarvis(prompt, history = []) {
   try {
+    let clientKey = '';
+    try {
+      if (typeof localStorage !== 'undefined') {
+        clientKey = localStorage.getItem('deco_gemini_api_key_v1') || '';
+      }
+    } catch (e) {}
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (clientKey) {
+      headers['x-gemini-key'] = clientKey;
+    }
+
     const res = await fetch('/api/jarvis/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, history })
+      headers,
+      body: JSON.stringify({ prompt, history, apiKey: clientKey })
     });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));

@@ -204,14 +204,18 @@ export default function CustomPostersPage({ onNavigate }) {
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <a
-              href="#cotizador"
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('cotizador');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="btn-cyan"
-              style={{ padding: '13px 28px', fontSize: '0.95rem' }}
+              style={{ padding: '13px 28px', fontSize: '0.95rem', cursor: 'pointer' }}
             >
               <span>Configurar & Cotizar</span>
               <ArrowRight size={16} />
-            </a>
+            </button>
 
             <button
               onClick={() => onNavigate && onNavigate('catalog')}
