@@ -18,6 +18,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 80;
 
+// Trust reverse proxy (Dokploy / Traefik / Nginx) for accurate client IP rate limiting
+app.set('trust proxy', 1);
+
 // Security Credentials & Secrets
 const ADMIN_USER = process.env.ADMIN_USER || 'SebasDmente';
 const ADMIN_PASS = process.env.ADMIN_PASSWORD || '4214294880101';
@@ -51,18 +54,21 @@ const AUTH_SECRET = process.env.ADMIN_SECRET || 'deco_vintage_guate_secret_2026_
 
 function generateAuthToken() {
   const payload = JSON.stringify({ user: ADMIN_USER, exp: Date.now() + 30 * 24 * 60 * 60 * 1000 }); // Valid for 30 days
-  const b64 = Buffer.from(payload).toString('base64url');
-  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('base64url');
+  const b64 = Buffer.from(payload).toString('hex');
+  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('hex');
   return `${b64}.${sig}`;
 }
 
 function verifyAuthToken(token) {
-  if (!token || !token.includes('.')) return false;
-  const [b64, sig] = token.split('.');
-  const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('base64url');
+  if (!token || typeof token !== 'string' || !token.includes('.')) return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  const b64 = parts[0];
+  const sig = parts[1];
+  const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('hex');
   if (sig !== expectedSig) return false;
   try {
-    const payload = JSON.parse(Buffer.from(b64, 'base64url').toString('utf8'));
+    const payload = JSON.parse(Buffer.from(b64, 'hex').toString('utf8'));
     if (payload.exp && Date.now() > payload.exp) return false;
     return payload && payload.user === ADMIN_USER;
   } catch (e) {
