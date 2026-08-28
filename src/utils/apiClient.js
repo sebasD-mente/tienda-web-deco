@@ -77,6 +77,10 @@ export async function apiSaveCatalog(catalogPayload) {
       body: JSON.stringify(catalogPayload)
     });
     const data = await res.json();
+    if (res.status === 401) {
+      clearAuthToken();
+      throw new Error('Tu sesión de administrador ha expirado. Por favor haz clic en "Cerrar Sesión" en la esquina superior e ingresa tus credenciales nuevamente.');
+    }
     if (!res.ok || !data.success) {
       throw new Error(data.error || `HTTP Error ${res.status}`);
     }
@@ -103,6 +107,21 @@ export async function apiUploadPosterImage(dataUrl, posterId) {
   } catch (err) {
     console.error('[API Client] Error uploading poster image:', err);
     throw err;
+  }
+}
+
+// 3.1. Delete Poster Image from VPS Disk
+export async function apiDeletePosterImage(imagePath, thumbPath) {
+  try {
+    const res = await fetch('/api/catalog/delete-image', {
+      method: 'POST',
+      headers: getHeaders(true),
+      body: JSON.stringify({ imagePath, thumbPath })
+    });
+    return await res.json();
+  } catch (err) {
+    console.warn('[API Client] Error deleting image from server:', err.message);
+    return { success: false };
   }
 }
 
