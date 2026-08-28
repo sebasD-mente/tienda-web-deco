@@ -524,87 +524,69 @@ Medidas estándar: Mini (14x21cm - Q25), Pequeño (21x27cm - Q35), Portada Álbu
 === CATÁLOGO COMPLETO DE OBRAS EN TIENDA ===
 ${catalogSummary}`;
 
-    const configuredKey = getJarvisApiKey();
-    const keysToTry = [...new Set([OFFICIAL_GEMINI_KEY, configuredKey, clientKey].filter(k => !!k && k.trim().length > 10 && k.startsWith('AIzaSy')))];
-
-    if (keysToTry.length === 0) {
-      return res.status(200).json({
-        replyText: 'El asistente de inteligencia artificial J.A.R.V.I.S. no se encuentra disponible en este momento. Por favor contáctanos directamente a nuestro WhatsApp oficial.',
-        actions: []
-      });
-    }
-
-    const CANDIDATE_MODELS = [
-      'gemini-3.6-flash',
-      'gemini-3.5-flash-lite',
-      'gemini-3.1-flash-lite',
-      'gemini-2.5-flash-lite'
-    ];
+    const keyToUse = OFFICIAL_GEMINI_KEY;
+    const modelName = 'gemini-3.5-flash-lite';
     let lastError = null;
 
-    for (const keyToUse of keysToTry) {
-      for (const modelName of CANDIDATE_MODELS) {
-        try {
-          const genAI = new GoogleGenerativeAI(keyToUse);
-          const model = genAI.getGenerativeModel({
-            model: modelName,
-            systemInstruction: systemInstruction,
-            tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-          });
+    try {
+      const genAI = new GoogleGenerativeAI(keyToUse);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemInstruction,
+        tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+      });
 
-          // Format conversation history for Gemini with strict role alternation (user <-> model)
-          const chatHistory = [];
-          if (Array.isArray(history) && history.length > 0) {
-            let lastRole = null;
-            for (const msg of history.slice(-10)) {
-              const role = (msg.sender === 'user' || msg.sender === 'client') ? 'user' : 'model';
-              const text = (msg.text || msg.content || '').trim();
-              if (text.length > 0 && role !== lastRole) {
-                chatHistory.push({ role, parts: [{ text }] });
-                lastRole = role;
-              }
-            }
-            if (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
-              chatHistory.shift();
-            }
+      // Format conversation history for Gemini with strict role alternation (user <-> model)
+      const chatHistory = [];
+      if (Array.isArray(history) && history.length > 0) {
+        let lastRole = null;
+        for (const msg of history.slice(-10)) {
+          const role = (msg.sender === 'user' || msg.sender === 'client') ? 'user' : 'model';
+          const text = (msg.text || msg.content || '').trim();
+          if (text.length > 0 && role !== lastRole) {
+            chatHistory.push({ role, parts: [{ text }] });
+            lastRole = role;
           }
-
-          const chat = model.startChat({ history: chatHistory });
-          const result = await chat.sendMessage(prompt || 'Hola');
-          const response = result.response;
-          const functionCalls = response.functionCalls();
-          let replyText = response.text ? response.text() : '';
-          const executedActions = [];
-
-          if (functionCalls && functionCalls.length > 0) {
-            for (const call of functionCalls) {
-              if (call.name === 'recomendar_obras') {
-                const ids = call.args.posterIds || [];
-                const matched = posters.filter(p => ids.includes(p.id));
-                executedActions.push({
-                  type: 'catalog_matches',
-                  posters: matched,
-                  motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
-                });
-              } else if (call.name === 'cotizar_personalizado') {
-                const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
-                executedActions.push({
-                  type: 'custom_quote',
-                  quote
-                });
-              }
-            }
-          }
-
-          return res.status(200).json({
-            replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
-            actions: executedActions
-          });
-        } catch (modelErr) {
-          lastError = modelErr;
-          console.warn(`[Gemini Model ${modelName} with Key ...${keyToUse.slice(-6)} Failed]:`, modelErr.message);
+        }
+        if (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
+          chatHistory.shift();
         }
       }
+
+      const chat = model.startChat({ history: chatHistory });
+      const result = await chat.sendMessage(prompt || 'Hola');
+      const response = result.response;
+      const functionCalls = response.functionCalls();
+      let replyText = response.text ? response.text() : '';
+      const executedActions = [];
+
+      if (functionCalls && functionCalls.length > 0) {
+        for (const call of functionCalls) {
+          if (call.name === 'recomendar_obras') {
+            const ids = call.args.posterIds || [];
+            const matched = posters.filter(p => ids.includes(p.id));
+            executedActions.push({
+              type: 'catalog_matches',
+              posters: matched,
+              motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
+            });
+          } else if (call.name === 'cotizar_personalizado') {
+            const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
+            executedActions.push({
+              type: 'custom_quote',
+              quote
+            });
+          }
+        }
+      }
+
+      return res.status(200).json({
+        replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
+        actions: executedActions
+      });
+    } catch (modelErr) {
+      lastError = modelErr;
+      console.warn(`[Gemini Model ${modelName} Failed]:`, modelErr.message);
     }
 
     // High-Availability Intelligent Fallback Engine (Runs if Google API rate limit 429 is reached)
