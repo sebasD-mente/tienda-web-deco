@@ -646,11 +646,10 @@ ${catalogSummary}`;
         try {
           const ai = new GoogleGenAI({ apiKey: keyToUse.trim() });
           
-          const contents = [];
-          for (const turn of chatHistory) {
-            contents.push({ role: turn.role, parts: [{ text: turn.text }] });
-          }
-          contents.push({ role: 'user', parts: [{ text: prompt || 'Hola' }] });
+          const contents = [
+            ...chatHistory,
+            { role: 'user', parts: [{ text: prompt || 'Hola' }] }
+          ];
 
           const resAI = await ai.models.generateContent({
             model: modelName,
@@ -710,11 +709,10 @@ ${catalogSummary}`;
         const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'tienda-deco-vintage-web';
         const vertexUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`;
         
-        const vertexContents = [];
-        for (const turn of chatHistory) {
-          vertexContents.push({ role: turn.role, parts: [{ text: turn.text }] });
-        }
-        vertexContents.push({ role: 'user', parts: [{ text: prompt || 'Hola' }] });
+        const vertexContents = [
+          ...chatHistory,
+          { role: 'user', parts: [{ text: prompt || 'Hola' }] }
+        ];
 
         const vertexRes = await fetch(vertexUrl, {
           method: 'POST',
