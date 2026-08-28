@@ -110,6 +110,15 @@ function rateLimitAI(req, res, next) {
   next();
 }
 
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: 'v7.0-genai-modern',
+    engine: '@google/genai-gemini-3.6-flash',
+    hasApiKey: !!getJarvisApiKey(),
+    keyPrefix: (getJarvisApiKey() || '').substring(0, 10)
+  });
+});
+
 // Serve static images directly from VPS disk with caching
 app.use('/posters/uploads', express.static(UPLOADS_DIR, { maxAge: '30d' }));
 app.use('/posters', express.static(path.resolve(__dirname, 'public/posters'), { maxAge: '30d' }));
