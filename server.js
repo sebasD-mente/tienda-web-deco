@@ -535,9 +535,7 @@ ${catalogSummary}`;
     }
 
     const CANDIDATE_MODELS = [
-      'gemini-3.6-flash',
-      'gemini-3.7-flash',
-      'gemini-flash-latest'
+      'gemini-3.6-flash'
     ];
     let lastError = null;
 

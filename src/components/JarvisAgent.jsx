@@ -314,6 +314,7 @@ export default function JarvisAgent({
     >
       <div
         className="glass-card jarvis-hud-container"
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: '780px',
           maxWidth: '100%',
@@ -328,7 +329,6 @@ export default function JarvisAgent({
           overflow: 'hidden',
           position: 'relative'
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* HUD Top Corner Accents */}
         <div style={{ position: 'absolute', top: 0, left: 0, width: '16px', height: '16px', borderTop: '2px solid #00f2fe', borderLeft: '2px solid #00f2fe', zIndex: 10 }} />
