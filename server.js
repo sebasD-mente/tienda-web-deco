@@ -636,6 +636,7 @@ ${catalogSummary}`;
         }
         return sliced;
       }
+      return alternating;
     };
 
     const chatHistory = formatChatHistory(history);
