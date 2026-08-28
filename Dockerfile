@@ -11,7 +11,7 @@ COPY . .
 RUN npm run build
 
 # Production Runtime
-FROM node:20-slim
+FROM node:20-slim AS production
 
 WORKDIR /app
 
