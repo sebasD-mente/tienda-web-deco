@@ -475,6 +475,45 @@ app.post('/api/jarvis/save-key', requireAuth, (req, res) => {
   }
 });
 
+let cachedVertexToken = null;
+let cachedVertexTokenExpiry = 0;
+
+async function getVertexAccessToken() {
+  const now = Date.now();
+  if (cachedVertexToken && now < cachedVertexTokenExpiry - 60000) {
+    return cachedVertexToken;
+  }
+  const clientId = process.env.GOOGLE_CLOUD_CLIENT_ID || (getJarvisMemory().googleClientId || '');
+  const clientSecret = process.env.GOOGLE_CLOUD_CLIENT_SECRET || (getJarvisMemory().googleClientSecret || '');
+  const refreshToken = process.env.GOOGLE_CLOUD_REFRESH_TOKEN || (getJarvisMemory().googleRefreshToken || '');
+
+  if (!refreshToken) {
+    return null;
+  }
+
+  try {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token'
+      })
+    });
+    const tokenData = await tokenRes.json();
+    if (tokenData.access_token) {
+      cachedVertexToken = tokenData.access_token;
+      cachedVertexTokenExpiry = now + ((tokenData.expires_in || 3600) * 1000);
+      return cachedVertexToken;
+    }
+  } catch (e) {
+    console.warn('[Vertex Token Refresh Error]:', e.message);
+  }
+  return null;
+}
+
 // POST /api/jarvis/chat (Public with Rate Limiting - Secure Server-Side Gemini AI)
 app.post('/api/jarvis/chat', rateLimitAI, async (req, res) => {
   try {
@@ -597,47 +636,9 @@ ${catalogSummary}`;
         }
         return sliced;
       }
-      return alternating;
     };
 
-let cachedVertexToken = null;
-let cachedVertexTokenExpiry = 0;
-
-async function getVertexAccessToken() {
-  const now = Date.now();
-  if (cachedVertexToken && now < cachedVertexTokenExpiry - 60000) {
-    return cachedVertexToken;
-  }
-  const clientId = process.env.GOOGLE_CLOUD_CLIENT_ID || (getJarvisMemory().googleClientId || '');
-  const clientSecret = process.env.GOOGLE_CLOUD_CLIENT_SECRET || (getJarvisMemory().googleClientSecret || '');
-  const refreshToken = process.env.GOOGLE_CLOUD_REFRESH_TOKEN || (getJarvisMemory().googleRefreshToken || '');
-
-  if (!refreshToken) {
-    return null;
-  }
-
-  try {
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token'
-      })
-    });
-    const tokenData = await tokenRes.json();
-    if (tokenData.access_token) {
-      cachedVertexToken = tokenData.access_token;
-      cachedVertexTokenExpiry = now + ((tokenData.expires_in || 3600) * 1000);
-      return cachedVertexToken;
-    }
-  } catch (e) {
-    console.warn('[Vertex Token Refresh Error]:', e.message);
-  }
-  return null;
-}
+    const chatHistory = formatChatHistory(history);
 
     // 1. Primary Engine: Official Modern Google GenAI SDK (@google/genai)
     if (keyToUse && keyToUse.trim().length > 0) {
@@ -687,6 +688,8 @@ async function getVertexAccessToken() {
           if (!replyText && executedActions.length > 0) {
             replyText = '¡Por supuesto! Aquí tienes las obras y detalles seleccionados especialmente para ti:';
           }
+
+          console.log(`[Deco J.A.R.V.I.S.] Processed via ${modelName} | Turns: ${chatHistory.length} | Prompt: "${prompt?.slice(0, 40)}..."`);
 
           return res.status(200).json({
             replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
