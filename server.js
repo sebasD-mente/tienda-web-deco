@@ -144,7 +144,7 @@ app.post('/api/auth/login', (req, res) => {
 app.post('/api/auth/verify', (req, res) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace(/^Bearer\s+/, '').trim();
-  if (token && activeTokens.has(token)) {
+  if (token && verifyAuthToken(token)) {
     return res.status(200).json({ valid: true, user: ADMIN_USER });
   }
   return res.status(401).json({ valid: false });

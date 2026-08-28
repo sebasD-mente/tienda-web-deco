@@ -53,15 +53,26 @@ function cleanObsoleteBrowserStorage() {
  */
 async function persistToFirestore(payload) {
   try {
+    const cleanPosters = (payload.posters || []).map(p => {
+      const copy = { ...p };
+      if (copy.image && copy.image.startsWith('data:image/')) {
+        copy.image = '/posters/wallpaper.jpg';
+      }
+      if (copy.thumb && copy.thumb.startsWith('data:image/')) {
+        copy.thumb = '/posters/wallpaper.jpg';
+      }
+      return copy;
+    });
+
     const catalogRef = doc(db, 'catalogStore', 'masterCatalog');
     await setDoc(catalogRef, {
-      updatedAt: new Date().toISOString(),
-      posters: payload.posters || [],
+      updatedAt: payload.updatedAt || new Date().toISOString(),
+      posters: cleanPosters,
       categories: payload.categories || [],
       franchises: payload.franchises || [],
       settings: payload.settings || {}
     }, { merge: true });
-    console.log(`[Deco Storage] Master catalog synced to Google Cloud Firestore (${(payload.posters || []).length} posters).`);
+    console.log(`[Deco Storage] Master catalog synced to Google Cloud Firestore (${cleanPosters.length} posters).`);
   } catch (fsErr) {
     console.warn('[Deco Storage] Firestore sync warning:', fsErr.message);
   }
