@@ -206,10 +206,13 @@ app.post('/api/catalog/save', requireAuth, async (req, res) => {
 
           cleanPoster.image = `/posters/uploads/full/${fileName}`;
           cleanPoster.thumb = `/posters/uploads/thumb/${fileName}`;
-        } catch (imgErr) {
-          console.warn(`[Auto WebP Conversion Failed for ${cleanId}]:`, imgErr.message);
-        }
-      }
+      // Normalize poster schema fields to match master standard
+      cleanPoster.availableSizes = (Array.isArray(cleanPoster.availableSizes) && cleanPoster.availableSizes.length > 0)
+        ? cleanPoster.availableSizes
+        : ['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE'];
+      cleanPoster.tags = Array.isArray(cleanPoster.tags) ? cleanPoster.tags : [cleanPoster.category];
+      cleanPoster.description = cleanPoster.description || '';
+      cleanPoster.priceDisplay = cleanPoster.priceDisplay || 'Desde Q 25.00';
 
       return cleanPoster;
     }));

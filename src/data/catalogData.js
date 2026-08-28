@@ -1143,3 +1143,22 @@ export const CATALOG_POSTERS = [
     "description": "Batalla aérea sobre los rascacielos de Nueva York entre Spider-Man y sus más grandes archienemigos."
   }
 ];
+
+export const INITIAL_FRANCHISES = [
+  { id: 'dragon-ball', name: 'Dragon Ball', img: '/franchises/dragon-ball.webp', category: 'ANIME' },
+  { id: 'disney', name: 'Walt Disney', img: '/franchises/disney.webp', category: 'SERIESYPELICULAS' },
+  { id: 'marvel', name: 'Marvel Studios', img: '/franchises/marvel.webp', category: 'SUPERHEROES' },
+  { id: 'dc-comics', name: 'DC Comics', img: '/franchises/dc-comics.webp', category: 'SUPERHEROES' },
+  { id: 'star-wars', name: 'Star Wars', img: '/franchises/star-wars.webp', category: 'SERIESYPELICULAS' },
+  { id: 'porsche', name: 'Porsche Motorsport', img: '/franchises/porsche.webp', category: 'AUTOS' },
+  { id: 'ferrari', name: 'Scuderia Ferrari', img: '/franchises/ferrari.webp', category: 'AUTOS' },
+  { id: 'formula-1', name: 'Formula 1', img: '/franchises/f1.webp', category: 'AUTOS' }
+];
+
+export const STORE_SETTINGS = {
+  storeName: 'Deco Vintage Guate',
+  whatsappPhone: '50238375078',
+  deliveryMinDays: 2,
+  deliveryMaxDays: 4,
+  customCm2Price: 0.048
+};

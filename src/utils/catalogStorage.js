@@ -19,11 +19,38 @@ const DEFAULT_CATEGORIES = BASE_CATEGORIES;
 const DEFAULT_FRANCHISES = BASE_FRANCHISES;
 const DEFAULT_SETTINGS = BASE_SETTINGS || { whatsappPhone: '50238375078' };
 
-// 1. Reactive In-Memory Runtime Cache
-let memoryPosters = [...DEFAULT_POSTERS];
-let memoryCategories = [...DEFAULT_CATEGORIES];
-let memoryFranchises = [...DEFAULT_FRANCHISES];
-let memorySettings = { ...DEFAULT_SETTINGS };
+const CACHE_KEY = 'deco_v5_master_catalog_cache';
+
+function loadCachedCatalog() {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.posters) && parsed.posters.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
+function saveCachedCatalog(data) {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    } catch (e) {}
+  }
+}
+
+const initialCache = loadCachedCatalog();
+
+// 1. Reactive In-Memory Runtime Cache (Hydrated from persistent browser cache if present)
+let memoryPosters = initialCache?.posters ? [...initialCache.posters] : [...DEFAULT_POSTERS];
+let memoryCategories = initialCache?.categories ? [...initialCache.categories] : [...DEFAULT_CATEGORIES];
+let memoryFranchises = initialCache?.franchises ? [...initialCache.franchises] : [...DEFAULT_FRANCHISES];
+let memorySettings = initialCache?.settings ? { ...initialCache.settings } : { ...DEFAULT_SETTINGS };
 
 /**
  * Clean up obsolete browser localStorage keys from older versions
@@ -92,6 +119,13 @@ export async function syncCatalogFromServer() {
       memoryCategories = serverCatalog.categories || DEFAULT_CATEGORIES;
       memoryFranchises = serverCatalog.franchises || DEFAULT_FRANCHISES;
       memorySettings = serverCatalog.settings || DEFAULT_SETTINGS;
+
+      saveCachedCatalog({
+        posters: memoryPosters,
+        categories: memoryCategories,
+        franchises: memoryFranchises,
+        settings: memorySettings
+      });
 
       if (memorySettings.whatsappPhone) {
         saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
@@ -198,6 +232,13 @@ async function persistCatalogAll(posters, categories, franchises, settings) {
       memoryCategories = res.catalog.categories || memoryCategories;
       memoryFranchises = res.catalog.franchises || memoryFranchises;
       memorySettings = res.catalog.settings || memorySettings;
+
+      saveCachedCatalog({
+        posters: memoryPosters,
+        categories: memoryCategories,
+        franchises: memoryFranchises,
+        settings: memorySettings
+      });
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('deco-catalog-updated'));
