@@ -52,6 +52,69 @@ export const ROOM_ENVIRONMENTS = [
 
 export const CATALOG_POSTERS = [
   {
+    "id": "porsche-911-gt3-rs-neon-cyber-1787885238498",
+    "title": "Porsche 911 GT3 RS Neon Cyber",
+    "subtitle": "Línea de Edición Especial 2026",
+    "category": "AUTOS",
+    "franchise": "porsche",
+    "image": "/posters/wallpaper.jpg",
+    "thumb": "/posters/wallpaper.jpg",
+    "tags": [
+      "Porsche",
+      "GT3RS",
+      "Autos",
+      "Neon"
+    ],
+    "isFeatured": true,
+    "rating": 5,
+    "reviewsCount": 45,
+    "sizeBadge": "6 Tamaños",
+    "priceDisplay": "Desde Q 25.00",
+    "description": "Edición limitada del legendario Porsche 911 GT3 RS con iluminación neón cibernética sobre fibra de carbono."
+  },
+  {
+    "id": "goku-ssj-god-aura-1787885238498",
+    "title": "Goku Super Saiyan God Aura",
+    "subtitle": "Colección Dragon Ball Super",
+    "category": "ANIME",
+    "franchise": "dragon-ball",
+    "image": "/posters/wallpaper.jpg",
+    "thumb": "/posters/wallpaper.jpg",
+    "tags": [
+      "DragonBall",
+      "Goku",
+      "Anime",
+      "SSJGod"
+    ],
+    "isFeatured": true,
+    "rating": 5,
+    "reviewsCount": 52,
+    "sizeBadge": "6 Tamaños",
+    "priceDisplay": "Desde Q 25.00",
+    "description": "Goku envuelto en la divina aura roja del modo Super Saiyan God, impreso en madera MDF rígida de 5.5mm."
+  },
+  {
+    "id": "batman-dark-knight-retro-art-1787885238498",
+    "title": "Batman The Dark Knight Retro Art",
+    "subtitle": "Edición Limitada Gotham City",
+    "category": "SUPERHEROES",
+    "franchise": "dc-comics",
+    "image": "/posters/wallpaper.jpg",
+    "thumb": "/posters/wallpaper.jpg",
+    "tags": [
+      "Batman",
+      "DCComics",
+      "Superheroes",
+      "Gotham"
+    ],
+    "isFeatured": true,
+    "rating": 5,
+    "reviewsCount": 38,
+    "sizeBadge": "6 Tamaños",
+    "priceDisplay": "Desde Q 25.00",
+    "description": "Ilustración retro minimalista del Caballero de la Noche sobre el horizonte de Gotham City bajo la batiseñal."
+  },
+  {
     "id": "deco-mtc9z4h1-7lvm",
     "title": "Infinity War",
     "subtitle": "Avengers",
@@ -1077,24 +1140,6 @@ export const CATALOG_POSTERS = [
       "GIGANTE"
     ],
     "priceDisplay": "Desde Q 25.00",
+    "description": "Batalla aérea sobre los rascacielos de Nueva York entre Spider-Man y sus más grandes archienemigos."
   }
 ];
-
-export const INITIAL_FRANCHISES = [
-  { id: 'dragon-ball', name: 'Dragon Ball', img: '/franchises/dragon-ball.webp', category: 'ANIME' },
-  { id: 'disney', name: 'Walt Disney', img: '/franchises/disney.webp', category: 'SERIESYPELICULAS' },
-  { id: 'marvel', name: 'Marvel Studios', img: '/franchises/marvel.webp', category: 'SUPERHEROES' },
-  { id: 'dc-comics', name: 'DC Comics', img: '/franchises/dc-comics.webp', category: 'SUPERHEROES' },
-  { id: 'star-wars', name: 'Star Wars', img: '/franchises/star-wars.webp', category: 'SERIESYPELICULAS' },
-  { id: 'porsche', name: 'Porsche Motorsport', img: '/franchises/porsche.webp', category: 'AUTOS' },
-  { id: 'ferrari', name: 'Scuderia Ferrari', img: '/franchises/ferrari.webp', category: 'AUTOS' },
-  { id: 'formula-1', name: 'Formula 1', img: '/franchises/f1.webp', category: 'AUTOS' }
-];
-
-export const STORE_SETTINGS = {
-  storeName: 'Deco Vintage Guate',
-  whatsappPhone: '50238375078',
-  deliveryMinDays: 2,
-  deliveryMaxDays: 4,
-  customCm2Price: 0.048
-};
