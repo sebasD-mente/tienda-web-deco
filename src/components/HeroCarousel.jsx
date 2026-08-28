@@ -14,13 +14,21 @@ function shuffleArray(array) {
   return arr;
 }
 
-export default function HeroCarousel({ onSelectPoster, onSelectCategory, onSelectFranchise, onNavigate, posters = CATALOG_POSTERS }) {
+export default function HeroCarousel({
+  onSelectPoster,
+  onSelectCategory,
+  onSelectFranchise,
+  onNavigate,
+  posters = [],
+  franchises: propFranchises
+}) {
   const bestSellersScrollRef = useRef(null);
-  const [franchises, setFranchises] = useState(() => getStoredFranchises());
+  const [internalFranchises, setInternalFranchises] = useState(() => getStoredFranchises());
+  const franchises = (propFranchises && propFranchises.length > 0) ? propFranchises : internalFranchises;
 
   useEffect(() => {
     const handleUpdate = () => {
-      setFranchises(getStoredFranchises());
+      setInternalFranchises(getStoredFranchises());
     };
     window.addEventListener('deco-catalog-updated', handleUpdate);
     return () => window.removeEventListener('deco-catalog-updated', handleUpdate);

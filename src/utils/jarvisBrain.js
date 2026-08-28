@@ -105,7 +105,8 @@ export async function askJarvis(queryOrOptions, history = []) {
 
     return {
       text: replyText,
-      actions: executedActions
+      actions: executedActions,
+      poweredBy: serverResponse.poweredBy || 'gemini-3.6-flash'
     };
   } catch (err) {
     console.error('[J.A.R.V.I.S.] Error querying server:', err);

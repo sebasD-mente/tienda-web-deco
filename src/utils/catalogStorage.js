@@ -112,13 +112,13 @@ export async function syncCatalogFromServer() {
   try {
     cleanObsoleteBrowserStorage();
 
-    // Primary & Sole Source of Truth: VPS SSD Server
+    // 1. Primary Source of Truth: VPS SSD Server
     const serverCatalog = await apiGetCatalog();
     if (serverCatalog && Array.isArray(serverCatalog.posters) && serverCatalog.posters.length > 0) {
       memoryPosters = serverCatalog.posters;
-      memoryCategories = serverCatalog.categories || DEFAULT_CATEGORIES;
-      memoryFranchises = serverCatalog.franchises || DEFAULT_FRANCHISES;
-      memorySettings = serverCatalog.settings || DEFAULT_SETTINGS;
+      memoryCategories = serverCatalog.categories || memoryCategories;
+      memoryFranchises = serverCatalog.franchises || memoryFranchises;
+      memorySettings = serverCatalog.settings || memorySettings;
 
       saveCachedCatalog({
         posters: memoryPosters,
@@ -138,8 +138,43 @@ export async function syncCatalogFromServer() {
       return true;
     }
   } catch (err) {
-    console.warn('[Deco Storage] VPS catalog sync error:', err.message);
+    console.warn('[Deco Storage] VPS catalog sync warning:', err.message);
   }
+
+  // 2. High-Availability Secondary Fallback: Direct Firestore Query
+  try {
+    const catalogRef = doc(db, 'catalogStore', 'masterCatalog');
+    const snap = await getDoc(catalogRef);
+    if (snap.exists()) {
+      const firestoreCatalog = snap.data();
+      if (Array.isArray(firestoreCatalog.posters) && firestoreCatalog.posters.length > 0) {
+        memoryPosters = firestoreCatalog.posters;
+        memoryCategories = firestoreCatalog.categories || memoryCategories;
+        memoryFranchises = firestoreCatalog.franchises || memoryFranchises;
+        memorySettings = firestoreCatalog.settings || memorySettings;
+
+        saveCachedCatalog({
+          posters: memoryPosters,
+          categories: memoryCategories,
+          franchises: memoryFranchises,
+          settings: memorySettings
+        });
+
+        if (memorySettings.whatsappPhone) {
+          saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
+        }
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('deco-catalog-updated'));
+        }
+        console.log(`[Deco Storage] Master catalog loaded from Cloud Firestore: ${memoryPosters.length} posters.`);
+        return true;
+      }
+    }
+  } catch (fsErr) {
+    console.warn('[Deco Storage] Firestore direct sync error:', fsErr.message);
+  }
+
   return false;
 }
 
@@ -155,9 +190,16 @@ if (typeof window !== 'undefined') {
         const firestoreCatalog = snap.data();
         if (Array.isArray(firestoreCatalog.posters) && firestoreCatalog.posters.length > 0) {
           memoryPosters = firestoreCatalog.posters;
-          memoryCategories = firestoreCatalog.categories || DEFAULT_CATEGORIES;
-          memoryFranchises = firestoreCatalog.franchises || DEFAULT_FRANCHISES;
-          memorySettings = firestoreCatalog.settings || DEFAULT_SETTINGS;
+          memoryCategories = firestoreCatalog.categories || memoryCategories;
+          memoryFranchises = firestoreCatalog.franchises || memoryFranchises;
+          memorySettings = firestoreCatalog.settings || memorySettings;
+
+          saveCachedCatalog({
+            posters: memoryPosters,
+            categories: memoryCategories,
+            franchises: memoryFranchises,
+            settings: memorySettings
+          });
 
           if (memorySettings.whatsappPhone) {
             saveStoreWhatsAppPhone(memorySettings.whatsappPhone);

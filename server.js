@@ -206,6 +206,11 @@ app.post('/api/catalog/save', requireAuth, async (req, res) => {
 
           cleanPoster.image = `/posters/uploads/full/${fileName}`;
           cleanPoster.thumb = `/posters/uploads/thumb/${fileName}`;
+        } catch (e) {
+          console.warn('[Deco Storage] Failed to convert base64 image:', e.message);
+        }
+      }
+
       // Normalize poster schema fields to match master standard
       cleanPoster.availableSizes = (Array.isArray(cleanPoster.availableSizes) && cleanPoster.availableSizes.length > 0)
         ? cleanPoster.availableSizes
@@ -525,68 +530,101 @@ Medidas estándar: Mini (14x21cm - Q25), Pequeño (21x27cm - Q35), Portada Álbu
 ${catalogSummary}`;
 
     const keyToUse = OFFICIAL_GEMINI_KEY;
-    const modelName = 'gemini-3.5-flash-lite';
+    const CANDIDATE_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
     let lastError = null;
 
-    try {
-      const genAI = new GoogleGenerativeAI(keyToUse);
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: systemInstruction,
-        tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-      });
-
-      // Format conversation history for Gemini with strict role alternation (user <-> model)
-      const chatHistory = [];
-      if (Array.isArray(history) && history.length > 0) {
-        let lastRole = null;
-        for (const msg of history.slice(-10)) {
-          const role = (msg.sender === 'user' || msg.sender === 'client') ? 'user' : 'model';
-          const text = (msg.text || msg.content || '').trim();
-          if (text.length > 0 && role !== lastRole) {
-            chatHistory.push({ role, parts: [{ text }] });
-            lastRole = role;
-          }
+    // 1. Format conversation history for Gemini with strict validation:
+    // - Discards initial bot greetings (must start with 'user')
+    // - Enforces strict role alternation (user <-> model)
+    // - Ensures last history turn is 'model' before sendMessage(prompt)
+    // - Filters out fallback error messages
+    const formatChatHistory = (rawHistory, maxTurns = 8) => {
+      if (!Array.isArray(rawHistory) || rawHistory.length === 0) return [];
+      const normalized = [];
+      for (const msg of rawHistory) {
+        const role = (msg.sender === 'user' || msg.sender === 'client' || msg.role === 'user') ? 'user' : 'model';
+        const text = (msg.text || msg.content || '').trim();
+        if (text.length > 0 && !text.includes('no se encuentra disponible temporalmente')) {
+          normalized.push({ role, text });
         }
-        if (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
-          chatHistory.shift();
+      }
+      const firstUserIdx = normalized.findIndex(m => m.role === 'user');
+      if (firstUserIdx === -1) return [];
+
+      const validSequence = normalized.slice(firstUserIdx);
+      const alternating = [];
+      let lastRole = null;
+      for (const item of validSequence) {
+        if (item.role !== lastRole) {
+          alternating.push({ role: item.role, parts: [{ text: item.text }] });
+          lastRole = item.role;
+        } else {
+          const prev = alternating[alternating.length - 1];
+          prev.parts[0].text += `\n${item.text}`;
         }
       }
 
-      const chat = model.startChat({ history: chatHistory });
-      const result = await chat.sendMessage(prompt || 'Hola');
-      const response = result.response;
-      const functionCalls = response.functionCalls();
-      let replyText = response.text ? response.text() : '';
-      const executedActions = [];
-
-      if (functionCalls && functionCalls.length > 0) {
-        for (const call of functionCalls) {
-          if (call.name === 'recomendar_obras') {
-            const ids = call.args.posterIds || [];
-            const matched = posters.filter(p => ids.includes(p.id));
-            executedActions.push({
-              type: 'catalog_matches',
-              posters: matched,
-              motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
-            });
-          } else if (call.name === 'cotizar_personalizado') {
-            const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
-            executedActions.push({
-              type: 'custom_quote',
-              quote
-            });
-          }
-        }
+      if (alternating.length > 0 && alternating[alternating.length - 1].role === 'user') {
+        alternating.pop();
       }
 
-      return res.status(200).json({
-        replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
-        actions: executedActions
-      });
-    } catch (modelErr) {
-      lastError = modelErr;
-      console.warn(`[Gemini Model ${modelName} Failed]:`, modelErr.message);
+      if (alternating.length > maxTurns) {
+        let sliced = alternating.slice(-maxTurns);
+        if (sliced.length > 0 && sliced[0].role !== 'user') {
+          sliced.shift();
+        }
+        return sliced;
+      }
+      return alternating;
+    };
+
+    const chatHistory = formatChatHistory(history);
+
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        const genAI = new GoogleGenerativeAI(keyToUse);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemInstruction,
+          tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+        });
+
+        const chat = model.startChat({ history: chatHistory });
+        const result = await chat.sendMessage(prompt || 'Hola');
+        const response = result.response;
+        const functionCalls = response.functionCalls();
+        let replyText = response.text ? response.text() : '';
+        const executedActions = [];
+
+        if (functionCalls && functionCalls.length > 0) {
+          for (const call of functionCalls) {
+            if (call.name === 'recomendar_obras') {
+              const ids = call.args.posterIds || [];
+              const matched = posters.filter(p => ids.includes(p.id));
+              executedActions.push({
+                type: 'catalog_matches',
+                posters: matched,
+                motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
+              });
+            } else if (call.name === 'cotizar_personalizado') {
+              const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
+              executedActions.push({
+                type: 'custom_quote',
+                quote
+              });
+            }
+          }
+        }
+
+        return res.status(200).json({
+          replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
+          actions: executedActions,
+          poweredBy: modelName
+        });
+      } catch (modelErr) {
+        lastError = modelErr;
+        console.warn(`[Gemini Model ${modelName} Failed]:`, modelErr.message);
+      }
     }
 
     // High-Availability Intelligent Fallback Engine (Runs if Google API rate limit 429 is reached)

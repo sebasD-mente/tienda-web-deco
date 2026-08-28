@@ -61,7 +61,19 @@ export default function CategoryShelf({
     <section id="catalogo" style={{ padding: '0 0 70px 0', position: 'relative', background: '#060910' }}>
       <div className="container">
 
-        {/* 3 Random Spotlight Categories Shelves */}
+        {/* Loading Skeleton if no posters yet */}
+        {spotlightCategories.length === 0 && posters.length === 0 && (
+          <div style={{ marginBottom: '55px' }}>
+            <div style={{ height: '38px', width: '220px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', marginBottom: '20px', animation: 'shimmer 1.5s infinite linear' }} />
+            <div style={{ display: 'flex', gap: '20px', overflowX: 'hidden' }}>
+              {[1, 2, 3, 4].map(idx => (
+                <div key={idx} style={{ minWidth: '260px', height: '380px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.05)' }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Spotlight Categories Shelves */}
         {spotlightCategories.map((category) => {
           const catPosters = filterPosters(category.id);
           if (catPosters.length === 0) return null;
