@@ -11,6 +11,7 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -622,7 +623,68 @@ async function getVertexAccessToken() {
   return null;
 }
 
-    // 1. Primary Engine: Google Cloud Vertex AI (Direct GCP Billing & High Stability)
+    // 1. Primary Engine: Official Modern Google GenAI SDK (@google/genai)
+    if (keyToUse && keyToUse.trim().length > 0) {
+      for (const modelName of ['gemini-3.6-flash', 'gemini-3.5-flash']) {
+        try {
+          const ai = new GoogleGenAI({ apiKey: keyToUse.trim() });
+          
+          const contents = [];
+          for (const turn of chatHistory) {
+            contents.push({ role: turn.role, parts: [{ text: turn.text }] });
+          }
+          contents.push({ role: 'user', parts: [{ text: prompt || 'Hola' }] });
+
+          const resAI = await ai.models.generateContent({
+            model: modelName,
+            contents: contents,
+            config: {
+              systemInstruction: systemInstruction,
+              tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+            }
+          });
+
+          let replyText = resAI.text || '';
+          const executedActions = [];
+          const functionCalls = resAI.functionCalls;
+
+          if (functionCalls && functionCalls.length > 0) {
+            for (const call of functionCalls) {
+              if (call.name === 'recomendar_obras') {
+                const ids = call.args?.posterIds || [];
+                const matched = posters.filter(p => ids.includes(p.id));
+                executedActions.push({
+                  type: 'catalog_matches',
+                  posters: matched,
+                  motivo: call.args?.motivo || 'Obras recomendadas de nuestro catálogo oficial'
+                });
+              } else if (call.name === 'cotizar_personalizado') {
+                const quote = calculateCustomPrice(call.args?.anchoCm, call.args?.altoCm, call.args?.material);
+                executedActions.push({
+                  type: 'custom_quote',
+                  quote
+                });
+              }
+            }
+          }
+
+          if (!replyText && executedActions.length > 0) {
+            replyText = '¡Por supuesto! Aquí tienes las obras y detalles seleccionados especialmente para ti:';
+          }
+
+          return res.status(200).json({
+            replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
+            actions: executedActions,
+            poweredBy: `Google Gemini 3.6 Flash (@google/genai - ${modelName})`
+          });
+        } catch (genAiErr) {
+          lastError = genAiErr;
+          console.warn(`[@google/genai ${modelName} Failed]:`, genAiErr.message);
+        }
+      }
+    }
+
+    // 2. Secondary Engine: Google Cloud Vertex AI
     try {
       const vertexToken = await getVertexAccessToken();
       if (vertexToken) {
@@ -685,63 +747,10 @@ async function getVertexAccessToken() {
               poweredBy: 'Google Cloud Vertex AI (gemini-2.5-flash)'
             });
           }
-        } else {
-          const errBody = await vertexRes.text();
-          console.warn('[Vertex AI Error HTTP ' + vertexRes.status + ']:', errBody);
         }
       }
     } catch (vertexErr) {
       console.warn('[Vertex AI Execution Failed]:', vertexErr.message);
-    }
-
-    // 2. Secondary Engine: Google Gemini Developer API
-    if (keyToUse && keyToUse.trim().length > 0) {
-      for (const modelName of CANDIDATE_MODELS) {
-        try {
-          const genAI = new GoogleGenerativeAI(keyToUse);
-          const model = genAI.getGenerativeModel({
-            model: modelName,
-            systemInstruction: systemInstruction,
-            tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-          });
-
-          const chat = model.startChat({ history: chatHistory });
-          const result = await chat.sendMessage(prompt || 'Hola');
-          const response = result.response;
-          const functionCalls = response.functionCalls();
-          let replyText = response.text ? response.text() : '';
-          const executedActions = [];
-
-          if (functionCalls && functionCalls.length > 0) {
-            for (const call of functionCalls) {
-              if (call.name === 'recomendar_obras') {
-                const ids = call.args.posterIds || [];
-                const matched = posters.filter(p => ids.includes(p.id));
-                executedActions.push({
-                  type: 'catalog_matches',
-                  posters: matched,
-                  motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
-                });
-              } else if (call.name === 'cotizar_personalizado') {
-                const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
-                executedActions.push({
-                  type: 'custom_quote',
-                  quote
-                });
-              }
-            }
-          }
-
-          return res.status(200).json({
-            replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
-            actions: executedActions,
-            poweredBy: modelName
-          });
-        } catch (modelErr) {
-          lastError = modelErr;
-          console.warn(`[Gemini Model ${modelName} Failed]:`, modelErr.message);
-        }
-      }
     }
 
     // High-Availability Intelligent Fallback Engine (Runs if Google API rate limit 429 is reached)
