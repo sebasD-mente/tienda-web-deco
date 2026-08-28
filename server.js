@@ -583,8 +583,118 @@ ${catalogSummary}`;
       return alternating;
     };
 
-    const chatHistory = formatChatHistory(history);
+let cachedVertexToken = null;
+let cachedVertexTokenExpiry = 0;
 
+async function getVertexAccessToken() {
+  const now = Date.now();
+  if (cachedVertexToken && now < cachedVertexTokenExpiry - 60000) {
+    return cachedVertexToken;
+  }
+  const clientId = process.env.GOOGLE_CLOUD_CLIENT_ID || (getJarvisMemory().googleClientId || '');
+  const clientSecret = process.env.GOOGLE_CLOUD_CLIENT_SECRET || (getJarvisMemory().googleClientSecret || '');
+  const refreshToken = process.env.GOOGLE_CLOUD_REFRESH_TOKEN || (getJarvisMemory().googleRefreshToken || '');
+
+  if (!refreshToken) {
+    return null;
+  }
+
+  try {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token'
+      })
+    });
+    const tokenData = await tokenRes.json();
+    if (tokenData.access_token) {
+      cachedVertexToken = tokenData.access_token;
+      cachedVertexTokenExpiry = now + ((tokenData.expires_in || 3600) * 1000);
+      return cachedVertexToken;
+    }
+  } catch (e) {
+    console.warn('[Vertex Token Refresh Error]:', e.message);
+  }
+  return null;
+}
+
+    // 1. Primary Engine: Google Cloud Vertex AI (Direct GCP Billing & High Stability)
+    try {
+      const vertexToken = await getVertexAccessToken();
+      if (vertexToken) {
+        const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'tienda-deco-vintage-web';
+        const vertexUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`;
+        
+        const vertexContents = [];
+        for (const turn of chatHistory) {
+          vertexContents.push({ role: turn.role, parts: [{ text: turn.text }] });
+        }
+        vertexContents.push({ role: 'user', parts: [{ text: prompt || 'Hola' }] });
+
+        const vertexRes = await fetch(vertexUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${vertexToken}`
+          },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: vertexContents,
+            tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+          })
+        });
+
+        if (vertexRes.ok) {
+          const vertexData = await vertexRes.json();
+          const candidate = vertexData.candidates && vertexData.candidates[0];
+          if (candidate && candidate.content && candidate.content.parts) {
+            let replyText = '';
+            const executedActions = [];
+
+            for (const part of candidate.content.parts) {
+              if (part.text) {
+                replyText += part.text;
+              }
+              if (part.functionCall) {
+                const call = part.functionCall;
+                if (call.name === 'recomendar_obras') {
+                  const ids = call.args?.posterIds || [];
+                  const matched = posters.filter(p => ids.includes(p.id));
+                  executedActions.push({
+                    type: 'catalog_matches',
+                    posters: matched,
+                    motivo: call.args?.motivo || 'Obras recomendadas de nuestro catálogo oficial'
+                  });
+                } else if (call.name === 'cotizar_personalizado') {
+                  const quote = calculateCustomPrice(call.args?.anchoCm, call.args?.altoCm, call.args?.material);
+                  executedActions.push({
+                    type: 'custom_quote',
+                    quote
+                  });
+                }
+              }
+            }
+
+            return res.status(200).json({
+              replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
+              actions: executedActions,
+              poweredBy: 'Google Cloud Vertex AI (gemini-2.5-flash)'
+            });
+          }
+        } else {
+          const errBody = await vertexRes.text();
+          console.warn('[Vertex AI Error HTTP ' + vertexRes.status + ']:', errBody);
+        }
+      }
+    } catch (vertexErr) {
+      console.warn('[Vertex AI Execution Failed]:', vertexErr.message);
+    }
+
+    // 2. Secondary Engine: Google Gemini Developer API
     if (keyToUse && keyToUse.trim().length > 0) {
       for (const modelName of CANDIDATE_MODELS) {
         try {
