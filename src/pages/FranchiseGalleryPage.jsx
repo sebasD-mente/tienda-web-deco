@@ -24,9 +24,18 @@ export default function FranchiseGalleryPage({
     };
   }, [franchises, franchiseId]);
 
-  // Filter posters belonging to this franchise (strict matching by poster.franchise)
+  // Filter posters belonging to this franchise (flexible matching by franchise id, category, title or subtitle)
   const franchisePosters = useMemo(() => {
-    return posters.filter(p => p.franchise === currentFranchise.id);
+    const fId = (currentFranchise.id || '').toLowerCase();
+    const fName = (currentFranchise.name || '').toLowerCase();
+    return posters.filter(p => {
+      if (p.franchise && p.franchise.toLowerCase() === fId) return true;
+      if (p.category && currentFranchise.category && p.category === currentFranchise.category) return true;
+      if (p.title && p.title.toLowerCase().includes(fId)) return true;
+      if (p.subtitle && (p.subtitle.toLowerCase().includes(fId) || p.subtitle.toLowerCase().includes(fName))) return true;
+      if (fName && p.title.toLowerCase().includes(fName)) return true;
+      return false;
+    });
   }, [posters, currentFranchise]);
 
   // Apply in-page search

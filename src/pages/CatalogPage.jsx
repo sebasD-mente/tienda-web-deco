@@ -31,14 +31,14 @@ export default function CatalogPage({
   // Filter out the 'TODAS' / 'TODOS' meta-category for individual shelves
   const activeCategories = categories.filter(c => c.id !== 'TODAS' && c.id !== 'TODOS');
 
-  // Randomize and limit each category shelf to a max of 8 posters for optimal preview performance
+  // Include all posters for each category deterministically without random hiding
   const categoryPostersMap = useMemo(() => {
     const map = {};
     activeCategories.forEach(category => {
       const allInCat = posters.filter(p => p.category === category.id);
       map[category.id] = {
         totalCount: allInCat.length,
-        previewItems: shuffleArray(allInCat).slice(0, 8)
+        previewItems: allInCat
       };
     });
     return map;
