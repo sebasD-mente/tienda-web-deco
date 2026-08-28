@@ -231,7 +231,7 @@ app.post('/api/catalog/save', requireAuth, async (req, res) => {
     fs.writeFileSync(tmpFile, JSON.stringify(dataToSave, null, 2), 'utf-8');
     fs.renameSync(tmpFile, CATALOG_FILE);
     console.log(`[VPS Disk] Atomic persist of ${processedPosters.length} posters to 100 GB SSD.`);
-    return res.status(200).json({ success: true, count: processedPosters.length, updatedAt: dataToSave.updatedAt });
+    return res.status(200).json({ success: true, count: processedPosters.length, updatedAt: dataToSave.updatedAt, catalog: dataToSave });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/save:', err);
     return res.status(500).json({ error: err.message });

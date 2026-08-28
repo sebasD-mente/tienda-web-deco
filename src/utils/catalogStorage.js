@@ -180,6 +180,7 @@ async function persistCatalogAll(posters, categories, franchises, settings) {
     updatedAt: new Date().toISOString()
   };
 
+  // Optimistic memory update
   memoryPosters = payload.posters;
   memoryCategories = payload.categories;
   memoryFranchises = payload.franchises;
@@ -189,23 +190,25 @@ async function persistCatalogAll(posters, categories, franchises, settings) {
     window.dispatchEvent(new Event('deco-catalog-updated'));
   }
 
-  // 1. Primary Sync: Save to VPS SSD immediately
+  // 1. Primary Sync: Save to VPS SSD and update memory with server processed catalog
   try {
-    await apiSaveCatalog(payload);
-    console.log('[Deco Storage] Master catalog saved to VPS SSD.');
+    const res = await apiSaveCatalog(payload);
+    if (res && res.catalog && Array.isArray(res.catalog.posters)) {
+      memoryPosters = res.catalog.posters;
+      memoryCategories = res.catalog.categories || memoryCategories;
+      memoryFranchises = res.catalog.franchises || memoryFranchises;
+      memorySettings = res.catalog.settings || memorySettings;
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('deco-catalog-updated'));
+      }
+    }
+    console.log('[Deco Storage] Master catalog saved and confirmed on VPS SSD.');
   } catch (vpsErr) {
     console.error('[Deco Storage] VPS save error:', vpsErr.message);
   }
 
-  // 2. Secondary Sync: Push to Cloud Firestore with non-blocking 3s timeout
-  Promise.race([
-    persistToFirestore(payload),
-    new Promise(r => setTimeout(r, 3000))
-  ]).catch(err => {
-    console.warn('[Deco Storage] Firestore background sync warning:', err);
-  });
-
-  return payload;
+  return { posters: memoryPosters, categories: memoryCategories, franchises: memoryFranchises, settings: memorySettings };
 }
 
 /**
