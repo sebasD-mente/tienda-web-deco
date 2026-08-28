@@ -711,14 +711,35 @@ app.get('/api/health', (req, res) => {
 // Serve static assets from public/ and dist/
 app.use(express.static(path.resolve(__dirname, 'public'), { maxAge: '30d' }));
 if (fs.existsSync(DIST_DIR)) {
-  app.use(express.static(DIST_DIR, { maxAge: '1y', immutable: true }));
+  // Hashed assets in /assets/ (immutable 1 year)
+  app.use('/assets', express.static(path.resolve(DIST_DIR, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+    fallthrough: false
+  }));
 
   // Never return index.html for missing .js / .css / .webp assets (prevents MIME type errors)
   app.use('/assets', (req, res) => {
     res.status(404).send('Asset not found');
   });
 
+  // Serve root static files from dist, strictly forbidding cache on HTML
+  app.use(express.static(DIST_DIR, {
+    maxAge: '1d',
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    }
+  }));
+
+  // SPA fallback for all HTML routes (strictly no-cache)
   app.use((req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.resolve(DIST_DIR, 'index.html'));
   });
 }
