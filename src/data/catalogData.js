@@ -52,6 +52,116 @@ export const ROOM_ENVIRONMENTS = [
 
 export const CATALOG_POSTERS = [
   {
+    "id": "deco-mtc9z4h1-7lvm",
+    "title": "Infinity War",
+    "subtitle": "Avengers",
+    "category": "SUPERHEROES",
+    "franchise": "marvel",
+    "description": "",
+    "tags": [],
+    "isFeatured": false,
+    "rating": 5,
+    "reviewsCount": 30,
+    "image": "/posters/uploads/full/obra-1787880597024-7957.webp",
+    "thumb": "/posters/uploads/thumb/obra-1787880597024-7957.webp",
+    "priceDisplay": "Desde Q25",
+    "priceRange": "Q25 - Q125",
+    "minPrice": 25,
+    "sizes": [
+      {
+        "id": "MINI",
+        "name": "Mini",
+        "dimensions": "14 x 21 cm",
+        "widthCm": 14,
+        "heightCm": 21,
+        "price": 25,
+        "badge": "Ideal para coleccionar y escritorios"
+      },
+      {
+        "id": "PEQUENO",
+        "name": "Pequeño",
+        "dimensions": "21 x 27 cm",
+        "widthCm": 21,
+        "heightCm": 27,
+        "price": 35,
+        "badge": "Espacios reducidos y cabeceras"
+      },
+      {
+        "id": "MEDIANO",
+        "name": "Mediano",
+        "dimensions": "30 x 45 cm",
+        "widthCm": 30,
+        "heightCm": 45,
+        "price": 65,
+        "badge": "⭐ El más vendido para habitaciones"
+      },
+      {
+        "id": "GRANDE",
+        "name": "Grande",
+        "dimensions": "45 x 60 cm",
+        "widthCm": 45,
+        "heightCm": 60,
+        "price": 125,
+        "badge": "Protagonista para salas y oficinas"
+      }
+    ]
+  },
+  {
+    "id": "deco-mtc8ou0n-10pd",
+    "title": "Van Gogh",
+    "subtitle": "La Noche Estrellada sobre el Ródano",
+    "category": "OBRASDEARTE",
+    "franchise": null,
+    "description": "",
+    "tags": [],
+    "isFeatured": false,
+    "rating": 5,
+    "reviewsCount": 30,
+    "image": "/posters/uploads/full/obra-1787878418040-9439.webp",
+    "thumb": "/posters/uploads/thumb/obra-1787878418040-9439.webp",
+    "priceDisplay": "Desde Q25",
+    "priceRange": "Q25 - Q125",
+    "minPrice": 25,
+    "sizes": [
+      {
+        "id": "MINI",
+        "name": "Mini",
+        "dimensions": "14 x 21 cm",
+        "widthCm": 14,
+        "heightCm": 21,
+        "price": 25,
+        "badge": "Ideal para coleccionar y escritorios"
+      },
+      {
+        "id": "PEQUENO",
+        "name": "Pequeño",
+        "dimensions": "21 x 27 cm",
+        "widthCm": 21,
+        "heightCm": 27,
+        "price": 35,
+        "badge": "Espacios reducidos y cabeceras"
+      },
+      {
+        "id": "MEDIANO",
+        "name": "Mediano",
+        "dimensions": "30 x 45 cm",
+        "widthCm": 30,
+        "heightCm": 45,
+        "price": 65,
+        "badge": "⭐ El más vendido para habitaciones"
+      },
+      {
+        "id": "GRANDE",
+        "name": "Grande",
+        "dimensions": "45 x 60 cm",
+        "widthCm": 45,
+        "heightCm": 60,
+        "price": 125,
+        "badge": "Protagonista para salas y oficinas"
+      }
+    ]
+  },
+  {
     "id": "van-gogh-2098",
     "title": "Van Gogh",
     "subtitle": "La Noche Estrellada",
@@ -967,55 +1077,24 @@ export const CATALOG_POSTERS = [
       "GIGANTE"
     ],
     "priceDisplay": "Desde Q 25.00",
-    "description": "Batalla aérea sobre los rascacielos de Nueva York entre Spider-Man y sus más grandes archienemigos."
   }
 ];
 
 export const INITIAL_FRANCHISES = [
-  {
-    "id": "dragon-ball",
-    "name": "Dragon Ball",
-    "img": "/franchises/dragon-ball.webp",
-    "category": "ANIME"
-  },
-  {
-    "id": "disney",
-    "name": "Walt Disney",
-    "img": "/franchises/disney.webp",
-    "category": "CINE"
-  },
-  {
-    "id": "nba",
-    "name": "NBA",
-    "img": "/franchises/nba.webp",
-    "category": "AUTOS"
-  },
-  {
-    "id": "back-to-future",
-    "name": "Back to the Future",
-    "img": "/franchises/back-to-future.webp",
-    "category": "AUTOS"
-  },
-  {
-    "id": "dc",
-    "name": "DC Comics",
-    "img": "/franchises/dc.webp",
-    "category": "SUPERHEROES"
-  },
-  {
-    "id": "star-wars",
-    "name": "Star Wars",
-    "img": "/franchises/star-wars.webp",
-    "category": "CINE"
-  },
-  {
-    "id": "marvel",
-    "name": "MARVEL",
-    "img": "/franchises/marvel.webp"
-  }
+  { id: 'dragon-ball', name: 'Dragon Ball', img: '/franchises/dragon-ball.webp', category: 'ANIME' },
+  { id: 'disney', name: 'Walt Disney', img: '/franchises/disney.webp', category: 'SERIESYPELICULAS' },
+  { id: 'marvel', name: 'Marvel Studios', img: '/franchises/marvel.webp', category: 'SUPERHEROES' },
+  { id: 'dc-comics', name: 'DC Comics', img: '/franchises/dc-comics.webp', category: 'SUPERHEROES' },
+  { id: 'star-wars', name: 'Star Wars', img: '/franchises/star-wars.webp', category: 'SERIESYPELICULAS' },
+  { id: 'porsche', name: 'Porsche Motorsport', img: '/franchises/porsche.webp', category: 'AUTOS' },
+  { id: 'ferrari', name: 'Scuderia Ferrari', img: '/franchises/ferrari.webp', category: 'AUTOS' },
+  { id: 'formula-1', name: 'Formula 1', img: '/franchises/f1.webp', category: 'AUTOS' }
 ];
 
 export const STORE_SETTINGS = {
-  "whatsappPhone": "50238375078",
-  "updatedAt": "2026-08-27T14:50:43.127Z"
+  storeName: 'Deco Vintage Guate',
+  whatsappPhone: '50238375078',
+  deliveryMinDays: 2,
+  deliveryMaxDays: 4,
+  customCm2Price: 0.048
 };
