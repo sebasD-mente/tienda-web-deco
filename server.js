@@ -400,18 +400,43 @@ function getJarvisApiKey() {
   return OFFICIAL_GEMINI_KEY;
 }
 
+function getJarvisMemory() {
+  let vpsMem = {};
+  let srcMem = {};
+  const srcFile = path.resolve(__dirname, 'src/data/jarvisConfig.json');
+
+  if (fs.existsSync(JARVIS_FILE)) {
+    try { vpsMem = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8')); } catch (e) {}
+  }
+  if (fs.existsSync(srcFile)) {
+    try { srcMem = JSON.parse(fs.readFileSync(srcFile, 'utf-8')); } catch (e) {}
+  }
+
+  const mergedDocsMap = new Map();
+  (srcMem.customDocuments || []).forEach(d => mergedDocsMap.set(d.id || d.title, d));
+  (vpsMem.customDocuments || []).forEach(d => mergedDocsMap.set(d.id || d.title, d));
+
+  const mergedDirectives = [...new Set([...(srcMem.ownerDirectives || []), ...(vpsMem.ownerDirectives || [])])];
+
+  return {
+    ...srcMem,
+    ...vpsMem,
+    customDocuments: Array.from(mergedDocsMap.values()),
+    ownerDirectives: mergedDirectives
+  };
+}
+
 // POST /api/jarvis/save-key (Protected Admin - Persists Gemini API Key to VPS SSD)
 app.post('/api/jarvis/save-key', requireAuth, (req, res) => {
   try {
     const { apiKey } = req.body;
-    let config = {};
-    if (fs.existsSync(JARVIS_FILE)) {
-      try { config = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8')); } catch (e) {}
-    }
+    let config = getJarvisMemory();
     config.apiKey = (apiKey || '').trim();
     config.updatedAt = new Date().toISOString();
     fs.writeFileSync(JARVIS_FILE, JSON.stringify(config, null, 2), 'utf-8');
-    console.log('[Deco J.A.R.V.I.S.] Saved Gemini API key to VPS SSD.');
+    const srcFile = path.resolve(__dirname, 'src/data/jarvisConfig.json');
+    try { fs.writeFileSync(srcFile, JSON.stringify(config, null, 2), 'utf-8'); } catch (e) {}
+    console.log('[Deco J.A.R.V.I.S.] Saved Gemini API key to VPS SSD & src config.');
     return res.status(200).json({ success: true, message: 'Clave de Gemini API guardada en VPS SSD.' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -431,16 +456,13 @@ app.post('/api/jarvis/chat', rateLimitAI, async (req, res) => {
     const settings = catalog.settings || {};
     const waPhone = settings.whatsappPhone || '50238375078';
 
-    // Load rich training memory from jarvisConfig.json if available
-    let jarvisMemory = {};
-    if (fs.existsSync(JARVIS_FILE)) {
-      try { jarvisMemory = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8')); } catch (e) {}
-    }
+    // Load merged rich training memory (custom documents + directives + events)
+    const jarvisMemory = getJarvisMemory();
 
     const ownerDirectives = (jarvisMemory.ownerDirectives || [
       "Habla siempre de forma amigable, cálida, entusiasta y servicial, como un asesor de diseño experto y buena onda.",
-      "Usa un trato de 'tú' neutro e inclusivo. NUNCA asumas género ni uses repetitivamente la palabra 'señor' o 'caballero'.",
-      "Escribe en texto conversacional fluido, natural y limpio. Evita llenar las respuestas de asteriscos, títulos rígidos '###' o estructuras de reporte técnico aburrido.",
+      "Usa un trato de 'tú' neutro e inclusivo. NUNCA asumas género ni uses repetitivamente palabras robóticas.",
+      "Escribe en texto conversacional fluido, natural y limpio.",
       "Recomienda siempre el tamaño Mediano (30x45cm) como la opción más balanceada e ideal para cualquier habitación.",
       "Menciona que la cinta industrial Tesa de montaje viene incluida en el reverso lista para colgar sin taladros.",
       "Este sábado y domingo 29 y 30 de agosto tendremos stand disponible en el Centro Comercial Centranorte, zona 18, Guatemala donde estarán disponibles todos nuestros diseños."
@@ -459,7 +481,7 @@ app.post('/api/jarvis/chat', rateLimitAI, async (req, res) => {
         title: "Tecnología de Impresión HP Látex",
         content: "Impresión de gran formato con tecnología HP Látex. Tintas ecológicas a base de agua con protección UV y garantía superior a 10 años en interiores sin pérdida de color."
       }
-    ]).map(doc => `[DOCUMENTO: ${doc.title}]\n${doc.content}`).join('\n\n');
+    ]).map(doc => `[DOCUMENTO / EVENTO: ${doc.title}]\nCategoría: ${doc.category || 'General'}\nContenido: ${doc.content}`).join('\n\n');
 
     // Rich catalog summary with FULL descriptions and tags
     const catalogSummary = posters.map(p => 
@@ -469,27 +491,33 @@ app.post('/api/jarvis/chat', rateLimitAI, async (req, res) => {
     const systemInstruction = `Eres J.A.R.V.I.S. (Just A Rather Very Intelligent System), el asistente de inteligencia artificial exclusivo de Deco Vintage Guate (tienda en Guatemala de cuadros rígidos y pósters decorativos de colección en madera MDF de 5.5mm con tecnología HP Látex).
 WhatsApp Oficial de Atención al Cliente: +${waPhone}
 
-=== DIRECTIVAS Y POLÍTICAS DE ATENCIÓN ===
+=== ESTILO Y PERSONALIDAD DE J.A.R.V.I.S. ===
+- Eres súper amable, cálido, conversacional, servicial, ameno y educado. Hablas con emoción y cultura sobre cine, Marvel, DC, autos, anime, videojuegos, arte y música.
+- Trato cercano: Trata al cliente de 'tú' de forma natural y respetuosa. NUNCA uses repetitivamente palabras robóticas o frías como 'señor', 'caballero' o estructuras de soporte aburrido.
+
+=== REGLA ESTRICTA DE HERRAMIENTAS Y TARJETAS (MUY IMPORTANTE) ===
+1. Responde 100% CON TEXTO FLUIDO Y AMIGABLE en la inmensa mayoría de interacciones.
+2. ÚNICAMENTE debes invocar la herramienta 'recomendar_obras' si el usuario pide EXPLÍCITAMENTE VER, MOSTRAR, ENSEÑAR U ORDENAR cuadros (ej: "muéstrame cuadros de...", "quiero ver diseños de...", "enséñame qué opciones tienes...").
+3. Si el usuario SOLO está conversando, preguntando si tienes alguna temática (ej: "¿Tienen cuadros de Spider-Man?"), preguntando sobre un evento o haciendo preguntas generales, RESPONDE 100% CON TEXTO CONVERSACIONAL ENTUSIASTA explicando lo que tienes y pregúntale amablemente si le gustaría que se los muestres.
+4. Si el cliente pide cotizar medidas personalizadas especiales (ej: 50x70cm, 80x120cm), invoca 'cotizar_personalizado'.
+
+=== HILO Y CONTINUIDAD DE LA CONVERSACIÓN ===
+- Mantén la coherencia con lo que el usuario te ha dicho previamente en sus mensajes anteriores.
+
+=== DIRECTIVAS Y POLÍTICAS DE ATENCIÓN DE LOS DUEÑOS ===
 ${ownerDirectives}
 
-=== DOCUMENTOS Y GUÍAS DE LA TIENDA ===
+=== DOCUMENTOS, EVENTOS Y GUÍAS OFICIALES DE LA TIENDA ===
 ${customDocs}
 
 === MATERIALES Y PRECIOS OFICIALES ===
 - Madera MDF 5.5mm: Base sólida rígida, resistente, bordes pulidos, no se dobla. Incluye cinta doble cara industrial Tesa para colgar sin clavos.
 - PVC Sintético 5mm: Ultraligero y 100% impermeable / resistente al agua y humedad (+Q15.00).
 - Solo Vinil Adhesivo: Impresión en vinil HP Látex al 50% de descuento (mitad de precio).
-Medidas estándar: Mini (13x18cm - Q25), Pequeño (20x25cm - Q40), Portada Álbum 30x30cm (Q60), Mediano (30x45cm - Q75), Grande (40x60cm - Q125), Gigante (60x90cm - Q210).
+Medidas estándar: Mini (14x21cm - Q25), Pequeño (21x27cm - Q35), Portada Álbum (30x30cm - Q55), Mediano (30x45cm - Q65), Grande (45x60cm - Q125), Gigante (60x100cm - Q210).
 
-=== CATÁLOGO COMPLETO DE OBRAS EN TIENDA (CON DESCRIPCIONES Y DETALLES) ===
-${catalogSummary}
-
-=== REGLAS CRÍTICAS DE CONVERSACIÓN ===
-1. Eres culto, amable, natural, inteligente y conversacional. Hablas con pasión sobre cine, Marvel, autos, anime, videojuegos y música.
-2. Si el cliente te pregunta sobre detalles de una película, personajes, historia del arte, materiales, envíos, promociones o eventos (como el stand en Centranorte), responde con tu texto inteligente de forma completa y amena.
-3. REGLA ESTRICTA DE TARJETAS: ÚNICAMENTE debes invocar la herramienta 'recomendar_obras' cuando el cliente te pida EXPLÍCITAMENTE VER, MOSTRAR, RECOMENDAR U ORDENAR cuadros (ej: "muéstrame cuadros de...", "qué opciones tienes de...", "recomiéndame diseños de..."). Si el cliente solo está conversando o preguntando si tienes algo sin pedir verlos, responde primero con texto conversacional explicando lo que tienes y pregúntale si desea que se los muestres.
-4. Si el cliente pide cotizar medidas personalizadas especiales (ej: 50x70cm, 80x120cm), invoca 'cotizar_personalizado'.
-5. Escribe siempre en un tono natural, fluido, limpio y elegante, evitando formatos robóticos.`;
+=== CATÁLOGO COMPLETO DE OBRAS EN TIENDA ===
+${catalogSummary}`;
 
     const configuredKey = getJarvisApiKey();
     const keysToTry = [...new Set([OFFICIAL_GEMINI_KEY, configuredKey, clientKey].filter(k => !!k && k.trim().length > 10 && k.startsWith('AIzaSy')))];
@@ -520,15 +548,20 @@ ${catalogSummary}
             tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
           });
 
-          // Format conversation history for Gemini if available
+          // Format conversation history for Gemini with strict role alternation (user <-> model)
           const chatHistory = [];
           if (Array.isArray(history) && history.length > 0) {
-            for (const msg of history.slice(-6)) {
-              const role = msg.sender === 'user' ? 'user' : 'model';
-              const text = msg.text || '';
-              if (text.trim().length > 0) {
+            let lastRole = null;
+            for (const msg of history.slice(-10)) {
+              const role = (msg.sender === 'user' || msg.sender === 'client') ? 'user' : 'model';
+              const text = (msg.text || msg.content || '').trim();
+              if (text.length > 0 && role !== lastRole) {
                 chatHistory.push({ role, parts: [{ text }] });
+                lastRole = role;
               }
+            }
+            if (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
+              chatHistory.shift();
             }
           }
 
@@ -578,7 +611,7 @@ ${catalogSummary}
     });
   } catch (err) {
     console.error('[API Error] POST /api/jarvis/chat:', err);
-    return res.status(500).json({ error: 'Error al procesar consulta con J.A.R.V.I.S.: ' + err.message });
+    return res.status(500).json({ error: 'Error procesando consulta de J.A.R.V.I.S.: ' + err.message });
   }
 });
 
@@ -602,11 +635,8 @@ app.post('/api/catalog/delete-image', requireAuth, (req, res) => {
 // GET & POST Jarvis Training Memory
 app.get('/api/jarvis', (req, res) => {
   try {
-    if (fs.existsSync(JARVIS_FILE)) {
-      const raw = fs.readFileSync(JARVIS_FILE, 'utf-8');
-      return res.status(200).json(JSON.parse(raw));
-    }
-    return res.status(200).json({});
+    const memory = getJarvisMemory();
+    return res.status(200).json(memory);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -619,6 +649,8 @@ app.post('/api/jarvis/save', requireAuth, (req, res) => {
       ...req.body
     };
     fs.writeFileSync(JARVIS_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
+    const srcFile = path.resolve(__dirname, 'src/data/jarvisConfig.json');
+    try { fs.writeFileSync(srcFile, JSON.stringify(dataToSave, null, 2), 'utf-8'); } catch (e) {}
     return res.status(200).json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
