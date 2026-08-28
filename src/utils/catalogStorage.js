@@ -10,7 +10,7 @@ import {
   INITIAL_FRANCHISES as BASE_FRANCHISES,
   STORE_SETTINGS as BASE_SETTINGS
 } from '../data/catalogData.js';
-import { apiGetCatalog, apiSaveCatalog } from './apiClient.js';
+import { apiGetCatalog, apiSaveCatalog, apiDeletePosterImage } from './apiClient.js';
 import { saveStoreWhatsAppPhone } from '../config/constants.js';
 import { db, doc, getDoc, setDoc, onSnapshot } from './firebase.js';
 
@@ -232,7 +232,8 @@ async function persistCatalogAll(posters, categories, franchises, settings) {
     posters: posters || getStoredPosters(),
     categories: categories || getStoredCategories(),
     franchises: franchises || getStoredFranchises(),
-    settings: settings || getStoredSettings()
+    settings: settings || getStoredSettings(),
+    updatedAt: new Date().toISOString()
   };
 
   memoryPosters = payload.posters;
@@ -244,11 +245,21 @@ async function persistCatalogAll(posters, categories, franchises, settings) {
     window.dispatchEvent(new Event('deco-catalog-updated'));
   }
 
-  // Dual Sync: Save to both VPS and Cloud Firestore
-  await Promise.allSettled([
-    apiSaveCatalog(payload),
-    persistToFirestore(payload)
-  ]);
+  // 1. Primary Sync: Save to VPS SSD immediately
+  try {
+    await apiSaveCatalog(payload);
+    console.log('[Deco Storage] Master catalog saved to VPS SSD.');
+  } catch (vpsErr) {
+    console.error('[Deco Storage] VPS save error:', vpsErr.message);
+  }
+
+  // 2. Secondary Sync: Push to Cloud Firestore with non-blocking 3s timeout
+  Promise.race([
+    persistToFirestore(payload),
+    new Promise(r => setTimeout(r, 3000))
+  ]).catch(err => {
+    console.warn('[Deco Storage] Firestore background sync warning:', err);
+  });
 
   return payload;
 }
@@ -291,7 +302,16 @@ export async function togglePosterFeatured(posterId) {
  */
 export async function deletePosterById(posterId) {
   const current = getStoredPosters();
+  const posterToDelete = current.find(p => p.id === posterId);
   const updated = current.filter(p => p.id !== posterId);
+
+  // Clean up physical WebP files on VPS SSD if saved on server
+  if (posterToDelete) {
+    if (posterToDelete.image || posterToDelete.thumb) {
+      apiDeletePosterImage(posterToDelete.image, posterToDelete.thumb).catch(() => {});
+    }
+  }
+
   await persistCatalogAll(updated, getStoredCategories(), getStoredFranchises(), getStoredSettings());
   console.log(`[Deco Storage] Poster "${posterId}" deleted from Cloud Firestore & VPS SSD.`);
   return updated;
