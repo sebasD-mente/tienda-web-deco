@@ -128,8 +128,15 @@ app.use('/jarvis/references', express.static(JARVIS_REFS, { maxAge: '30d' }));
 // Helper to get catalog data safely
 function getCatalogData() {
   if (fs.existsSync(CATALOG_FILE)) {
-    const raw = fs.readFileSync(CATALOG_FILE, 'utf-8');
-    return JSON.parse(raw);
+    try {
+      let raw = fs.readFileSync(CATALOG_FILE, 'utf-8');
+      if (raw.charCodeAt(0) === 0xFEFF) {
+        raw = raw.slice(1);
+      }
+      return JSON.parse(raw.trim());
+    } catch (err) {
+      console.error('[Deco Catalog] Error parsing catalog JSON:', err.message);
+    }
   }
   return { categories: [], franchises: [], posters: [], settings: { whatsappPhone: '50238375078' } };
 }
