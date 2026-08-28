@@ -85,49 +85,49 @@ export async function syncCatalogFromServer() {
   try {
     cleanObsoleteBrowserStorage();
 
-    // 1. Primary Source: Google Cloud Firestore
+    // 1. Fetch Firestore catalog
+    let firestoreData = null;
     try {
       const catalogRef = doc(db, 'catalogStore', 'masterCatalog');
       const snap = await getDoc(catalogRef);
       if (snap.exists()) {
-        const firestoreCatalog = snap.data();
-        if (Array.isArray(firestoreCatalog.posters) && firestoreCatalog.posters.length > 0) {
-          memoryPosters = firestoreCatalog.posters;
-          memoryCategories = firestoreCatalog.categories || DEFAULT_CATEGORIES;
-          memoryFranchises = firestoreCatalog.franchises || DEFAULT_FRANCHISES;
-          memorySettings = firestoreCatalog.settings || DEFAULT_SETTINGS;
-
-          if (memorySettings.whatsappPhone) {
-            saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
-          }
-
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event('deco-catalog-updated'));
-          }
-          console.log(`[Deco Storage] Master catalog loaded directly from Google Cloud Firestore: ${memoryPosters.length} posters.`);
-
-          // Sync VPS in background to keep both copies aligned
-          apiSaveCatalog({
-            posters: memoryPosters,
-            categories: memoryCategories,
-            franchises: memoryFranchises,
-            settings: memorySettings
-          }).catch(() => {});
-
-          return true;
-        }
+        firestoreData = snap.data();
       }
     } catch (fsErr) {
-      console.warn('[Deco Storage] Firestore check fallback to VPS:', fsErr.message);
+      console.warn('[Deco Storage] Error reading Firestore:', fsErr.message);
     }
 
-    // 2. Secondary Source: VPS Server Endpoint
-    const serverCatalog = await apiGetCatalog();
-    if (serverCatalog && Array.isArray(serverCatalog.posters) && serverCatalog.posters.length > 0) {
-      memoryPosters = serverCatalog.posters;
-      memoryCategories = serverCatalog.categories || DEFAULT_CATEGORIES;
-      memoryFranchises = serverCatalog.franchises || DEFAULT_FRANCHISES;
-      memorySettings = serverCatalog.settings || DEFAULT_SETTINGS;
+    // 2. Fetch VPS catalog
+    let vpsData = null;
+    try {
+      vpsData = await apiGetCatalog();
+    } catch (vpsErr) {
+      console.warn('[Deco Storage] Error reading VPS:', vpsErr.message);
+    }
+
+    // 3. Determine winning catalog based on updatedAt timestamp
+    const fsTime = firestoreData?.updatedAt ? new Date(firestoreData.updatedAt).getTime() : 0;
+    const vpsTime = vpsData?.updatedAt ? new Date(vpsData.updatedAt).getTime() : 0;
+
+    let winner = null;
+    let winnerSource = '';
+
+    if (fsTime > 0 && fsTime >= vpsTime && Array.isArray(firestoreData?.posters)) {
+      winner = firestoreData;
+      winnerSource = 'Google Cloud Firestore';
+    } else if (vpsTime > 0 && Array.isArray(vpsData?.posters)) {
+      winner = vpsData;
+      winnerSource = 'VPS SSD';
+    } else if (firestoreData && Array.isArray(firestoreData.posters)) {
+      winner = firestoreData;
+      winnerSource = 'Firestore (Fallback)';
+    }
+
+    if (winner && Array.isArray(winner.posters)) {
+      memoryPosters = winner.posters;
+      memoryCategories = winner.categories || DEFAULT_CATEGORIES;
+      memoryFranchises = winner.franchises || DEFAULT_FRANCHISES;
+      memorySettings = winner.settings || DEFAULT_SETTINGS;
 
       if (memorySettings.whatsappPhone) {
         saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
@@ -136,20 +136,31 @@ export async function syncCatalogFromServer() {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('deco-catalog-updated'));
       }
-      console.log(`[Deco Storage] Master catalog loaded directly from VPS SSD: ${memoryPosters.length} posters.`);
+      console.log(`[Deco Storage] Master catalog synchronized from ${winnerSource}: ${memoryPosters.length} posters.`);
 
-      // Seed Firestore with initial data if empty
-      persistToFirestore({
-        posters: memoryPosters,
-        categories: memoryCategories,
-        franchises: memoryFranchises,
-        settings: memorySettings
-      });
+      // Align secondary source if outdated
+      if (winnerSource === 'Google Cloud Firestore' && fsTime > vpsTime) {
+        apiSaveCatalog({
+          posters: memoryPosters,
+          categories: memoryCategories,
+          franchises: memoryFranchises,
+          settings: memorySettings,
+          updatedAt: winner.updatedAt
+        }).catch(() => {});
+      } else if (winnerSource === 'VPS SSD' && vpsTime > fsTime) {
+        persistToFirestore({
+          posters: memoryPosters,
+          categories: memoryCategories,
+          franchises: memoryFranchises,
+          settings: memorySettings,
+          updatedAt: winner.updatedAt
+        }).catch(() => {});
+      }
 
       return true;
     }
   } catch (err) {
-    console.warn('[Deco Storage] Server unreachable, using embedded master data:', err.message);
+    console.warn('[Deco Storage] General sync error:', err.message);
   }
   return false;
 }

@@ -576,6 +576,23 @@ ${catalogSummary}
   }
 });
 
+app.post('/api/catalog/delete-image', requireAuth, (req, res) => {
+  try {
+    const { imagePath, thumbPath } = req.body;
+    if (imagePath && imagePath.startsWith('/posters/uploads/')) {
+      const fullFile = path.resolve(__dirname, 'public', imagePath.replace(/^\//, ''));
+      if (fs.existsSync(fullFile)) fs.unlinkSync(fullFile);
+    }
+    if (thumbPath && thumbPath.startsWith('/posters/uploads/')) {
+      const thumbFile = path.resolve(__dirname, 'public', thumbPath.replace(/^\//, ''));
+      if (fs.existsSync(thumbFile)) fs.unlinkSync(thumbFile);
+    }
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // GET & POST Jarvis Training Memory
 app.get('/api/jarvis', (req, res) => {
   try {
