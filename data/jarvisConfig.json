@@ -1,0 +1,158 @@
+{
+  "updatedAt": "2026-08-26T18:40:00.000Z",
+  "company": {
+    "name": "Deco Vintage Guate",
+    "country": "Guatemala",
+    "phone": "+502 5998-0504",
+    "specialty": "Fabricación de pósters rígidos de colección y cuadros decorativos premium impresos en madera MDF de 5.5mm con tecnología HP Látex.",
+    "motto": "El arte de decorar con tus pasiones: autos, anime, geek, cine y música con durabilidad para toda la vida."
+  },
+  "initialGreeting": "¡Hola! 👋 Soy J.A.R.V.I.S., tu asesor de arte y decoración en Deco Vintage Guate. Estoy aquí para ayudarte a elegir el cuadro perfecto, cotizar medidas especiales o contarte sobre nuestros materiales y envíos a toda Guatemala. ¿Qué tienes en mente para decorar hoy?",
+  "quickPrompts": [
+    {
+      "id": "qp-1",
+      "label": "Precios y Medidas",
+      "prompt": "¿Cuáles son los precios y medidas oficiales de los cuadros?"
+    },
+    {
+      "id": "qp-2",
+      "label": "Materiales y Montaje Tesa",
+      "prompt": "¿Cómo es la calidad de los materiales y cómo se coloca con la cinta Tesa?"
+    },
+    {
+      "id": "qp-3",
+      "label": "Colección de Autos",
+      "prompt": "Recomiéndame los mejores cuadros de autos"
+    },
+    {
+      "id": "qp-4",
+      "label": "Superhéroes Marvel & DC",
+      "prompt": "¿Qué obras tienes disponibles de Spider-Man y superhéroes?"
+    },
+    {
+      "id": "qp-5",
+      "label": "Cuadro Personalizado",
+      "prompt": "¿Cómo puedo hacer un cuadro personalizado con mi propia foto o diseño?"
+    }
+  ],
+  "customDocuments": [
+    {
+      "id": "doc-envios",
+      "title": "Guía de Envíos y Tiempos de Entrega",
+      "category": "Logística",
+      "content": "Deco Vintage realiza envíos a los 22 departamentos de Guatemala vía mensajerías certificadas (Guatex, Forza, Cargo Expreso, Mensajería Directa en Ciudad de Guatemala). El tiempo de entrega estándar es de 2 a 4 días hábiles desde que se confirma el 50% de anticipo. El saldo se cancela contra entrega o previo al despacho departamental.",
+      "dateAdded": "26/8/2026"
+    },
+    {
+      "id": "doc-tesa",
+      "title": "Instrucciones de Montaje con Cinta Tesa",
+      "category": "Instalación",
+      "content": "Todos los cuadros rígidos incluyen tiras de cinta doble cara industrial Tesa (modelo oficial tesa® 65610 Invisibond One-Lift: https://www.tesa.com/es-gt/industria/tesa-65610-invisibond-one-lift.html) en el reverso. Para instalar: 1. Limpiar la pared con un paño seco. 2. Retirar el protector de la cinta Tesa. 3. Presionar firmemente el cuadro contra la pared durante 15 segundos. No requiere taladros ni clavos.",
+      "dateAdded": "26/8/2026"
+    },
+    {
+      "id": "doc-personalizados",
+      "title": "Protocolo de Cuadros Personalizados",
+      "category": "Producción",
+      "content": "Cualquier imagen, fotografía familiar, diseño de anime, fútbol o arte digital que envíes se puede fabricar en MDF 5.5mm o PVC 5mm impermeable. Evaluamos la resolución para garantizar que quede nítida. El precio para medidas no estándar se calcula a Q0.048 por cm² en MDF (mínimo Q30.00).",
+      "dateAdded": "26/8/2026"
+    },
+    {
+      "id": "doc-hp-latex",
+      "title": "Tecnología de Impresión HP Látex",
+      "category": "Calidad",
+      "content": "Imprimimos con tecnología oficial HP Látex de gran formato (enlace oficial: https://www.hp.com/lamerica_nsc_cnt_amer-es/printers/large-format/latex-printers.html). Tintas ecológicas micro-gota a base de agua, libres de olores y químicos nocivos, con protección UV y garantía superior a 10 años en interiores sin pérdida de color.",
+      "dateAdded": "26/8/2026"
+    }
+  ],
+  "referenceImages": [
+    {
+      "id": "ref-1",
+      "title": "Montaje con Cinta Tesa en Sala",
+      "url": "/posters/wallpaper.jpg",
+      "description": "Muestra de cuadro rígido instalado firmemente en pared de sala sin clavos mediante cinta industrial Tesa."
+    }
+  ],
+  "ownerDirectives": [
+    "Habla siempre de forma amigable, cálida, entusiasta y servicial, como un asesor de diseño experto y buena onda.",
+    "Usa un trato de 'tú' neutro e inclusivo. NUNCA asumas género ni uses repetitivamente la palabra 'señor' o 'caballero'.",
+    "Escribe en texto conversacional fluido, natural y limpio. Evita llenar las respuestas de asteriscos, títulos rígidos '###' o estructuras de reporte técnico aburrido.",
+    "Recomienda siempre el tamaño Mediano (30x45cm) como la opción más balanceada e ideal para cualquier habitación.",
+    "Menciona que la cinta industrial Tesa de montaje viene incluida en el reverso lista para colgar sin taladros.",
+    "Cuando la persona desee ordenar o enviar fotos para cuadros personalizados, genera amablemente el enlace de WhatsApp estructurado con el 50% de anticipo.",
+    "Este sabado y domingo 29 y 30 de agosto tendremos stand disponible en el centro Comercial Centranorte, zona 18, Guatemala donde estaran disponibles todos nuestros diseños"
+  ],
+  "materials": [
+    {
+      "name": "Madera MDF Rígida 5.5mm (Estándar Premium)",
+      "description": "Base de fibra de madera de alta densidad de 5.5mm de espesor. No se dobla, no se arruga y no requiere marcos de vidrio costosos. Muy resistente y con acabado de bordes pulidos."
+    },
+    {
+      "name": "PVC Espumado 5mm (Línea Impermeable)",
+      "description": "Material ultraligero y 100% resistente al agua y a la humedad. Ideal para baños, exteriores techados o ambientes con humedad."
+    },
+    {
+      "name": "Solo Vinil Adhesivo Laminado",
+      "description": "Póster en vinil de alta definición sin base rígida. Tiene un costo del 50% respecto al cuadro completo rígido. Ideal si el cliente ya tiene su propio marco o quiere pegarlo en superficies lisas."
+    },
+    {
+      "name": "Tintas HP Látex Ecológicas y de Alta Definición",
+      "description": "Impresión de grado fotográfico profesional con micro-gotas HP Látex base agua. No despiden olores tóxicos, resisten rayones superficiales y cuentan con protección contra rayos UV para no decolorarse con los años."
+    },
+    {
+      "name": "Montaje con Cinta Industrial Tesa® (tesa® 65610 Invisibond)",
+      "description": "Todos los cuadros rígidos incluyen en el reverso tiras de cinta doble cara industrial de montaje rápido Tesa® (modelo tesa® 65610 Invisibond One-Lift). No requiere taladros, clavos ni dañar la pared. Se adhiere firmemente a paredes lisas, concreto pintado, madera o tablayeso."
+    }
+  ],
+  "standardSizes": [
+    {
+      "id": "mini",
+      "name": "Mini",
+      "dimensions": "14 x 21 cm",
+      "price": 25,
+      "bestFor": "Escritorios, repisas pequeñas y colecciones de múltiples piezas."
+    },
+    {
+      "id": "small",
+      "name": "Pequeño",
+      "dimensions": "21 x 27 cm",
+      "price": 35,
+      "bestFor": "Espacios compactos y galerías de pared en conjunto."
+    },
+    {
+      "id": "album",
+      "name": "Portada Álbum",
+      "dimensions": "30 x 30 cm",
+      "price": 55,
+      "bestFor": "Música, vinilos y arte cuadrado."
+    },
+    {
+      "id": "medium",
+      "name": "Mediano (Más Vendido)",
+      "dimensions": "30 x 45 cm",
+      "price": 65,
+      "bestFor": "Habitaciones, salas de estar y oficinas. Proporción clásica de póster."
+    },
+    {
+      "id": "large",
+      "name": "Grande",
+      "dimensions": "45 x 60 cm",
+      "price": 125,
+      "bestFor": "Paredes principales, cabeceras y salas de entretenimiento."
+    },
+    {
+      "id": "giant",
+      "name": "Gigante",
+      "dimensions": "60 x 100 cm",
+      "price": 210,
+      "bestFor": "Pieza central de alto impacto visual en salas amplias o estudios."
+    }
+  ],
+  "commercialPolicies": {
+    "advancePayment": "50% de anticipo obligatorio para iniciar la fabricación artesanal de cualquier pedido. El 50% restante se paga contra entrega (en zonas con cobertura) o previo al despacho departamental.",
+    "deliveryTime": "De 2 a 4 días hábiles de fabricación y entrega en toda Guatemala.",
+    "shippingCoverage": "Envíos a los 22 departamentos de Guatemala mediante mensajerías certificadas (Guatex / Forza / Cargo Expreso / Mensajería Directa en Ciudad de Guatemala).",
+    "customOrders": "El cliente puede enviar cualquier imagen, fotografía familiar, diseño o póster que desee fabricar. Evaluamos la resolución para garantizar nitidez óptima.",
+    "customPricingFormula": "Para medidas no estándar: se calcula por cm² a razón de Q 0.048 por cm² en MDF 5.5mm (mínimo Q 30.00)."
+  }
+}

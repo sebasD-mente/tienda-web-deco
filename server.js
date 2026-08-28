@@ -381,19 +381,24 @@ function calculateCustomPrice(widthCm, heightCm, material = 'mdf') {
   };
 }
 
-const OFFICIAL_GEMINI_KEY = Buffer.from('QUl6YVN5RGJoTnptWWZyN3ZFOEdWT2wtd2xpRnJ1SkRnUGZvYThZ', 'base64').toString('utf-8');
-
 function getJarvisApiKey() {
+  // 1. Production Docker Environment Variable (Dokploy Secrets - Highest Security)
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0) {
+    return process.env.GEMINI_API_KEY.trim();
+  }
+  if (process.env.VITE_GEMINI_API_KEY && process.env.VITE_GEMINI_API_KEY.trim().length > 0) {
+    return process.env.VITE_GEMINI_API_KEY.trim();
+  }
+
+  // 2. Persistent Storage on VPS SSD (Admin Panel Key Injection)
   if (fs.existsSync(JARVIS_FILE)) {
     try {
       const data = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8'));
       if (data.apiKey && data.apiKey.trim().length > 0) return data.apiKey.trim();
     } catch (e) {}
   }
-  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0) return process.env.GEMINI_API_KEY.trim();
-  if (process.env.VITE_GEMINI_API_KEY && process.env.VITE_GEMINI_API_KEY.trim().length > 0) return process.env.VITE_GEMINI_API_KEY.trim();
 
-  // Auto-read from .env.local if running in local environment
+  // 3. Local Development Fallback (.env.local)
   const envLocalPath = path.resolve(__dirname, '.env.local');
   if (fs.existsSync(envLocalPath)) {
     try {
@@ -405,7 +410,7 @@ function getJarvisApiKey() {
     } catch (e) {}
   }
 
-  return OFFICIAL_GEMINI_KEY;
+  return '';
 }
 
 function getJarvisMemory() {
@@ -413,11 +418,11 @@ function getJarvisMemory() {
   let srcMem = {};
   const srcFile = path.resolve(__dirname, 'src/data/jarvisConfig.json');
 
-  if (fs.existsSync(srcFile)) {
-    try { srcMem = JSON.parse(fs.readFileSync(srcFile, 'utf-8')); } catch (e) {}
-  }
   if (fs.existsSync(JARVIS_FILE)) {
     try { vpsMem = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8')); } catch (e) {}
+  }
+  if (fs.existsSync(srcFile)) {
+    try { srcMem = JSON.parse(fs.readFileSync(srcFile, 'utf-8')); } catch (e) {}
   }
 
   const customDocs = (vpsMem.customDocuments && vpsMem.customDocuments.length > 0) 
@@ -529,8 +534,8 @@ Medidas estándar: Mini (14x21cm - Q25), Pequeño (21x27cm - Q35), Portada Álbu
 === CATÁLOGO COMPLETO DE OBRAS EN TIENDA ===
 ${catalogSummary}`;
 
-    const keyToUse = OFFICIAL_GEMINI_KEY;
-    const CANDIDATE_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+    const keyToUse = apiKey;
+    const CANDIDATE_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
     let lastError = null;
 
     // 1. Format conversation history for Gemini with strict validation:
@@ -580,50 +585,52 @@ ${catalogSummary}`;
 
     const chatHistory = formatChatHistory(history);
 
-    for (const modelName of CANDIDATE_MODELS) {
-      try {
-        const genAI = new GoogleGenerativeAI(keyToUse);
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: systemInstruction,
-          tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-        });
+    if (keyToUse && keyToUse.trim().length > 0) {
+      for (const modelName of CANDIDATE_MODELS) {
+        try {
+          const genAI = new GoogleGenerativeAI(keyToUse);
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: systemInstruction,
+            tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+          });
 
-        const chat = model.startChat({ history: chatHistory });
-        const result = await chat.sendMessage(prompt || 'Hola');
-        const response = result.response;
-        const functionCalls = response.functionCalls();
-        let replyText = response.text ? response.text() : '';
-        const executedActions = [];
+          const chat = model.startChat({ history: chatHistory });
+          const result = await chat.sendMessage(prompt || 'Hola');
+          const response = result.response;
+          const functionCalls = response.functionCalls();
+          let replyText = response.text ? response.text() : '';
+          const executedActions = [];
 
-        if (functionCalls && functionCalls.length > 0) {
-          for (const call of functionCalls) {
-            if (call.name === 'recomendar_obras') {
-              const ids = call.args.posterIds || [];
-              const matched = posters.filter(p => ids.includes(p.id));
-              executedActions.push({
-                type: 'catalog_matches',
-                posters: matched,
-                motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
-              });
-            } else if (call.name === 'cotizar_personalizado') {
-              const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
-              executedActions.push({
-                type: 'custom_quote',
-                quote
-              });
+          if (functionCalls && functionCalls.length > 0) {
+            for (const call of functionCalls) {
+              if (call.name === 'recomendar_obras') {
+                const ids = call.args.posterIds || [];
+                const matched = posters.filter(p => ids.includes(p.id));
+                executedActions.push({
+                  type: 'catalog_matches',
+                  posters: matched,
+                  motivo: call.args.motivo || 'Obras recomendadas de nuestro catálogo oficial'
+                });
+              } else if (call.name === 'cotizar_personalizado') {
+                const quote = calculateCustomPrice(call.args.anchoCm, call.args.altoCm, call.args.material);
+                executedActions.push({
+                  type: 'custom_quote',
+                  quote
+                });
+              }
             }
           }
-        }
 
-        return res.status(200).json({
-          replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
-          actions: executedActions,
-          poweredBy: modelName
-        });
-      } catch (modelErr) {
-        lastError = modelErr;
-        console.warn(`[Gemini Model ${modelName} Failed]:`, modelErr.message);
+          return res.status(200).json({
+            replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
+            actions: executedActions,
+            poweredBy: modelName
+          });
+        } catch (modelErr) {
+          lastError = modelErr;
+          console.warn(`[Gemini Model ${modelName} Failed]:`, modelErr.message);
+        }
       }
     }
 
