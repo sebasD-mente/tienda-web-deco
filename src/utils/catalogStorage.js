@@ -85,7 +85,15 @@ export async function syncCatalogFromServer() {
   try {
     cleanObsoleteBrowserStorage();
 
-    // 1. Fetch Firestore catalog
+    // 1. Fetch Primary Master Catalog from VPS SSD (Always live & reliable)
+    let vpsData = null;
+    try {
+      vpsData = await apiGetCatalog();
+    } catch (vpsErr) {
+      console.warn('[Deco Storage] VPS read fallback:', vpsErr.message);
+    }
+
+    // 2. Fetch Secondary Backup Catalog from Cloud Firestore
     let firestoreData = null;
     try {
       const catalogRef = doc(db, 'catalogStore', 'masterCatalog');
@@ -94,33 +102,25 @@ export async function syncCatalogFromServer() {
         firestoreData = snap.data();
       }
     } catch (fsErr) {
-      console.warn('[Deco Storage] Error reading Firestore:', fsErr.message);
+      console.warn('[Deco Storage] Firestore read fallback:', fsErr.message);
     }
 
-    // 2. Fetch VPS catalog
-    let vpsData = null;
-    try {
-      vpsData = await apiGetCatalog();
-    } catch (vpsErr) {
-      console.warn('[Deco Storage] Error reading VPS:', vpsErr.message);
-    }
-
-    // 3. Determine winning catalog based on updatedAt timestamp
-    const fsTime = firestoreData?.updatedAt ? new Date(firestoreData.updatedAt).getTime() : 0;
+    // 3. Determine winning catalog: VPS SSD is primary unless Firestore is strictly newer
     const vpsTime = vpsData?.updatedAt ? new Date(vpsData.updatedAt).getTime() : 0;
+    const fsTime = firestoreData?.updatedAt ? new Date(firestoreData.updatedAt).getTime() : 0;
 
     let winner = null;
     let winnerSource = '';
 
-    if (fsTime > 0 && fsTime >= vpsTime && Array.isArray(firestoreData?.posters)) {
-      winner = firestoreData;
-      winnerSource = 'Google Cloud Firestore';
-    } else if (vpsTime > 0 && Array.isArray(vpsData?.posters)) {
+    if (vpsTime > 0 && vpsTime >= fsTime && Array.isArray(vpsData?.posters)) {
       winner = vpsData;
       winnerSource = 'VPS SSD';
-    } else if (firestoreData && Array.isArray(firestoreData.posters)) {
+    } else if (fsTime > 0 && Array.isArray(firestoreData?.posters)) {
       winner = firestoreData;
-      winnerSource = 'Firestore (Fallback)';
+      winnerSource = 'Google Cloud Firestore';
+    } else if (vpsData && Array.isArray(vpsData.posters)) {
+      winner = vpsData;
+      winnerSource = 'VPS SSD (Fallback)';
     }
 
     if (winner && Array.isArray(winner.posters)) {
@@ -139,16 +139,16 @@ export async function syncCatalogFromServer() {
       console.log(`[Deco Storage] Master catalog synchronized from ${winnerSource}: ${memoryPosters.length} posters.`);
 
       // Align secondary source if outdated
-      if (winnerSource === 'Google Cloud Firestore' && fsTime > vpsTime) {
-        apiSaveCatalog({
+      if (winnerSource === 'VPS SSD' && vpsTime > fsTime) {
+        persistToFirestore({
           posters: memoryPosters,
           categories: memoryCategories,
           franchises: memoryFranchises,
           settings: memorySettings,
           updatedAt: winner.updatedAt
         }).catch(() => {});
-      } else if (winnerSource === 'VPS SSD' && vpsTime > fsTime) {
-        persistToFirestore({
+      } else if (winnerSource === 'Google Cloud Firestore' && fsTime > vpsTime) {
+        apiSaveCatalog({
           posters: memoryPosters,
           categories: memoryCategories,
           franchises: memoryFranchises,
