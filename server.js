@@ -408,24 +408,26 @@ function getJarvisMemory() {
   let srcMem = {};
   const srcFile = path.resolve(__dirname, 'src/data/jarvisConfig.json');
 
-  if (fs.existsSync(JARVIS_FILE)) {
-    try { vpsMem = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8')); } catch (e) {}
-  }
   if (fs.existsSync(srcFile)) {
     try { srcMem = JSON.parse(fs.readFileSync(srcFile, 'utf-8')); } catch (e) {}
   }
+  if (fs.existsSync(JARVIS_FILE)) {
+    try { vpsMem = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8')); } catch (e) {}
+  }
 
-  const mergedDocsMap = new Map();
-  (srcMem.customDocuments || []).forEach(d => mergedDocsMap.set(d.id || d.title, d));
-  (vpsMem.customDocuments || []).forEach(d => mergedDocsMap.set(d.id || d.title, d));
+  const customDocs = (vpsMem.customDocuments && vpsMem.customDocuments.length > 0) 
+    ? vpsMem.customDocuments 
+    : (srcMem.customDocuments || []);
 
-  const mergedDirectives = [...new Set([...(srcMem.ownerDirectives || []), ...(vpsMem.ownerDirectives || [])])];
+  const ownerDirectives = (vpsMem.ownerDirectives && vpsMem.ownerDirectives.length > 0) 
+    ? vpsMem.ownerDirectives 
+    : (srcMem.ownerDirectives || []);
 
   return {
     ...srcMem,
     ...vpsMem,
-    customDocuments: Array.from(mergedDocsMap.values()),
-    ownerDirectives: mergedDirectives
+    customDocuments: customDocs,
+    ownerDirectives: ownerDirectives
   };
 }
 
@@ -533,11 +535,9 @@ ${catalogSummary}`;
     }
 
     const CANDIDATE_MODELS = [
-      'gemini-3.5-flash-lite',
-      'gemini-3.5-flash',
       'gemini-3.6-flash',
-      'gemini-1.5-flash',
-      'gemini-2.0-flash'
+      'gemini-3.7-flash',
+      'gemini-flash-latest'
     ];
     let lastError = null;
 
