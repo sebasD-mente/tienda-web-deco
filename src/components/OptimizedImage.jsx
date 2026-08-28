@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 
 export default function OptimizedImage({
@@ -13,6 +13,11 @@ export default function OptimizedImage({
   const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [currentSrc, setCurrentSrc] = useState(src || fallbackSrc);
+
+  useEffect(() => {
+    setCurrentSrc(src || fallbackSrc);
+    setHasError(false);
+  }, [src, fallbackSrc]);
 
   // Auto-correct truncated .web extension if passed
   const normalizedSrc = (currentSrc && currentSrc.endsWith('.web')) ? `${currentSrc}p` : currentSrc;

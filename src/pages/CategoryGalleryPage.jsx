@@ -281,7 +281,7 @@ export default function CategoryGalleryPage({
                     src={poster.thumb || poster.image}
                     alt={poster.title}
                     objectFit="contain"
-                    priority={index < 4}
+                    priority={index < 8}
                     style={{ background: 'transparent' }}
                   />
 

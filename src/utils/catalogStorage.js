@@ -19,7 +19,7 @@ const DEFAULT_CATEGORIES = BASE_CATEGORIES;
 const DEFAULT_FRANCHISES = BASE_FRANCHISES;
 const DEFAULT_SETTINGS = BASE_SETTINGS || { whatsappPhone: '50238375078' };
 
-const CACHE_KEY = 'deco_v5_master_catalog_cache';
+const CACHE_KEY = 'deco_v6_master_catalog_cache';
 
 function loadCachedCatalog() {
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -59,6 +59,9 @@ function cleanObsoleteBrowserStorage() {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   try {
     const keysToRemove = [
+      'deco_v5_master_catalog_cache',
+      'deco_v4_master_catalog_cache',
+      'deco_v3_master_catalog_cache',
       'deco_vintage_catalog_posters_v2',
       'deco_vintage_catalog_categories_v2',
       'deco_vintage_catalog_franchises_v2',
@@ -76,7 +79,7 @@ function cleanObsoleteBrowserStorage() {
 }
 
 /**
- * Helper to sync catalog payload to Google Cloud Firestore
+ * Helper to sync catalog payload to Google Cloud Firestore in background (non-blocking)
  */
 async function persistToFirestore(payload) {
   try {
@@ -92,27 +95,24 @@ async function persistToFirestore(payload) {
     });
 
     const catalogRef = doc(db, 'catalogStore', 'masterCatalog');
-    await setDoc(catalogRef, {
+    setDoc(catalogRef, {
       updatedAt: payload.updatedAt || new Date().toISOString(),
       posters: cleanPosters,
       categories: payload.categories || [],
       franchises: payload.franchises || [],
       settings: payload.settings || {}
-    }, { merge: true });
-    console.log(`[Deco Storage] Master catalog synced to Google Cloud Firestore (${cleanPosters.length} posters).`);
-  } catch (fsErr) {
-    console.warn('[Deco Storage] Firestore sync warning:', fsErr.message);
-  }
+    }, { merge: true }).catch(() => {});
+  } catch (fsErr) {}
 }
 
 /**
- * 2. Synchronizes master catalog from Cloud Firestore & VPS Server
+ * 2. Synchronizes master catalog immediately from VPS SSD Server (<500ms)
  */
 export async function syncCatalogFromServer() {
-  try {
-    cleanObsoleteBrowserStorage();
+  cleanObsoleteBrowserStorage();
 
-    // 1. Primary Source of Truth: VPS SSD Server
+  try {
+    // Primary Source of Truth: VPS SSD Server (Lightning Fast)
     const serverCatalog = await apiGetCatalog();
     if (serverCatalog && Array.isArray(serverCatalog.posters) && serverCatalog.posters.length > 0) {
       memoryPosters = serverCatalog.posters;
@@ -141,79 +141,12 @@ export async function syncCatalogFromServer() {
     console.warn('[Deco Storage] VPS catalog sync warning:', err.message);
   }
 
-  // 2. High-Availability Secondary Fallback: Direct Firestore Query
-  try {
-    const catalogRef = doc(db, 'catalogStore', 'masterCatalog');
-    const snap = await getDoc(catalogRef);
-    if (snap.exists()) {
-      const firestoreCatalog = snap.data();
-      if (Array.isArray(firestoreCatalog.posters) && firestoreCatalog.posters.length > 0) {
-        memoryPosters = firestoreCatalog.posters;
-        memoryCategories = firestoreCatalog.categories || memoryCategories;
-        memoryFranchises = firestoreCatalog.franchises || memoryFranchises;
-        memorySettings = firestoreCatalog.settings || memorySettings;
-
-        saveCachedCatalog({
-          posters: memoryPosters,
-          categories: memoryCategories,
-          franchises: memoryFranchises,
-          settings: memorySettings
-        });
-
-        if (memorySettings.whatsappPhone) {
-          saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
-        }
-
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('deco-catalog-updated'));
-        }
-        console.log(`[Deco Storage] Master catalog loaded from Cloud Firestore: ${memoryPosters.length} posters.`);
-        return true;
-      }
-    }
-  } catch (fsErr) {
-    console.warn('[Deco Storage] Firestore direct sync error:', fsErr.message);
-  }
-
   return false;
 }
 
-// Auto-run synchronization immediately
+// Auto-run synchronization immediately upon load
 if (typeof window !== 'undefined') {
   syncCatalogFromServer();
-
-  // Listen for real-time remote updates from Firestore across browser tabs/devices
-  try {
-    const catalogRef = doc(db, 'catalogStore', 'masterCatalog');
-    onSnapshot(catalogRef, (snap) => {
-      if (snap.exists()) {
-        const firestoreCatalog = snap.data();
-        if (Array.isArray(firestoreCatalog.posters) && firestoreCatalog.posters.length > 0) {
-          memoryPosters = firestoreCatalog.posters;
-          memoryCategories = firestoreCatalog.categories || memoryCategories;
-          memoryFranchises = firestoreCatalog.franchises || memoryFranchises;
-          memorySettings = firestoreCatalog.settings || memorySettings;
-
-          saveCachedCatalog({
-            posters: memoryPosters,
-            categories: memoryCategories,
-            franchises: memoryFranchises,
-            settings: memorySettings
-          });
-
-          if (memorySettings.whatsappPhone) {
-            saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
-          }
-
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event('deco-catalog-updated'));
-          }
-        }
-      }
-    }, (err) => {
-      console.warn('[Deco Storage] Realtime snapshot listener warning:', err.message);
-    });
-  } catch (e) {}
 }
 
 /**

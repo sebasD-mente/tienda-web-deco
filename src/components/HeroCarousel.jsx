@@ -327,7 +327,7 @@ export default function HeroCarousel({
                         src={poster.thumb || poster.image}
                         alt={poster.title}
                         objectFit="contain"
-                        priority={index < 2}
+                        priority={index < 8}
                         style={{ background: 'transparent' }}
                       />
 

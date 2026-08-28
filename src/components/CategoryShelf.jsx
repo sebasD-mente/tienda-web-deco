@@ -266,7 +266,7 @@ export default function CategoryShelf({
                         src={poster.thumb || poster.image}
                         alt={poster.title}
                         objectFit="contain"
-                        priority={index < 2}
+                        priority={index < 6}
                         style={{ background: 'transparent' }}
                       />
 
