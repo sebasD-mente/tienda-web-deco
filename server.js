@@ -644,7 +644,13 @@ Medidas estándar: Mini (14x21cm - Q25), Pequeño (21x27cm - Q35), Portada Álbu
 ${catalogSummary}`;
 
     const keyToUse = apiKey;
-    const CANDIDATE_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest'];
+    const CANDIDATE_MODELS = [
+      'gemini-3.6-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-flash-latest',
+      'gemini-flash-lite-latest',
+      'gemini-3.5-flash'
+    ];
     let lastError = null;
 
     // 1. Format conversation history for Gemini with strict validation:
@@ -695,8 +701,9 @@ ${catalogSummary}`;
     const chatHistory = formatChatHistory(history);
 
     // 1. Primary Engine: Official Modern Google GenAI SDK (@google/genai)
+    // Multi-model failover pool: each model has its own quota pool in Google AI Studio
     if (keyToUse && keyToUse.trim().length > 0) {
-      for (const modelName of ['gemini-3.6-flash', 'gemini-3.5-flash']) {
+      for (const modelName of CANDIDATE_MODELS) {
         try {
           const ai = new GoogleGenAI({ apiKey: keyToUse.trim() });
           
@@ -747,11 +754,11 @@ ${catalogSummary}`;
           return res.status(200).json({
             replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
             actions: executedActions,
-            poweredBy: `Google Gemini 3.6 Flash (@google/genai - ${modelName})`
+            poweredBy: `Google Gemini (@google/genai - ${modelName})`
           });
         } catch (genAiErr) {
           lastError = genAiErr;
-          console.warn(`[@google/genai ${modelName} Failed]:`, genAiErr.message);
+          console.warn(`[@google/genai ${modelName} Failed (${genAiErr.message?.slice(0, 80)})] -> Failing over to next model...`);
         }
       }
     }
@@ -828,22 +835,36 @@ ${catalogSummary}`;
     console.warn('[Gemini AI Quota Exceeded / Offline]: Activating High-Availability Local Intelligence. Last error:', lastError?.message);
 
     const qLower = (prompt || '').toLowerCase();
-    let localReply = '¡Hola! 👋 Qué gusto saludarte. Soy J.A.R.V.I.S., tu asesor de diseño en Deco Vintage Guate. ¿En qué te puedo ayudar hoy? Te puedo dar precios de medidas estándar, cotizar medidas personalizadas o contarte sobre nuestros materiales y el montaje sin clavos con cinta Tesa.';
+    let localReply = '';
     const localActions = [];
 
-    if (qLower.includes('hola') || qLower.includes('buenas') || qLower.includes('saludos')) {
-      localReply = '¡Hola! 👋 Qué gusto saludarte. Soy J.A.R.V.I.S., tu asesor de diseño en Deco Vintage Guate. ¿Cómo estás? Dime qué temática te gusta (autos, anime, superhéroes, películas, arte) o qué duda tienes y con gusto te ayudo.';
+    // 1. Dynamic Search in Custom Documents & Events
+    const rawDocs = jarvisMemory.customDocuments || [];
+    const matchedDoc = rawDocs.find(d => {
+      const tNorm = (d.title || '').toLowerCase();
+      const cNorm = (d.content || '').toLowerCase();
+      return (tNorm && qLower.includes(tNorm)) || 
+             (qLower.includes('evento') && (tNorm.includes('fest') || tNorm.includes('stand') || tNorm.includes('evento'))) ||
+             (qLower.includes('fan fest') && tNorm.includes('fan fest')) ||
+             (qLower.includes('centranorte') && (tNorm.includes('centranorte') || cNorm.includes('centranorte')));
+    });
+
+    if (matchedDoc) {
+      localReply = `¡Claro que sí! Con respecto a **${matchedDoc.title}**:\n\n${matchedDoc.content}\n\n¿Te gustaría que te ayude a preparar o cotizar algún cuadro para esta ocasión?`;
+    } else if (qLower.includes('hola') || qLower.includes('buenas') || qLower.includes('saludos')) {
+      localReply = '¡Hola! 👋 Qué gusto saludarte. Soy J.A.R.V.I.S., tu asesor de diseño en Deco Vintage Guate. ¿Cómo estás? Dime qué temática te gusta (autos, anime, superhéroes, películas, música) o qué duda tienes sobre nuestros cuadros rígidos y con gusto te ayudo.';
     } else if (qLower.includes('precio') || qLower.includes('cuanto cuesta') || qLower.includes('medida') || qLower.includes('costo')) {
       localReply = 'Nuestras medidas y precios oficiales son:\n- **Mini (14x21cm)**: Q25.00\n- **Pequeño (21x27cm)**: Q35.00\n- **Portada Álbum (30x30cm)**: Q55.00\n- **Mediano (30x45cm)**: Q65.00 (Más Vendido ⭐)\n- **Grande (45x60cm)**: Q125.00\n- **Gigante (60x100cm)**: Q210.00\n\nTodos los cuadros son rígidos en madera MDF de 5.5mm con impresión HP Látex e incluyen cinta industrial Tesa en el reverso para colgar sin clavos.';
-    } else if (qLower.includes('centranorte') || qLower.includes('stand') || qLower.includes('evento')) {
-      localReply = '¡Así es! Este sábado y domingo 29 y 30 de agosto tendremos nuestro stand en el Centro Comercial Centranorte, zona 18 de la Ciudad de Guatemala. ¡Te esperamos para que veas todos los diseños en persona!';
     } else if (qLower.includes('envio') || qLower.includes('entrega') || qLower.includes('guatemala')) {
       localReply = 'Realizamos envíos a los 22 departamentos de Guatemala vía mensajerías certificadas (Guatex, Forza, Cargo Expreso, Mensajería Directa en Capital). El tiempo de entrega es de 2 a 4 días hábiles desde que confirmas con el 50% de anticipo.';
+    } else {
+      localReply = '¡Con mucho gusto te asisto! En Deco Vintage Guate fabricamos cuadros decorativos rígidos de alta calidad en madera MDF de 5.5mm con tecnología HP Látex y cinta industrial Tesa incluida para colgar sin taladros. ¿Te gustaría conocer precios, ver diseños o cotizar una medida personalizada?';
     }
 
     return res.status(200).json({
       replyText: localReply,
-      actions: localActions
+      actions: localActions,
+      poweredBy: 'Deco Local High-Availability Fallback Engine'
     });
   } catch (err) {
     console.error('[API Error] POST /api/jarvis/chat:', err);
