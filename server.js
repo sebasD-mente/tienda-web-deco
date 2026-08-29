@@ -572,7 +572,16 @@ app.post('/api/jarvis/chat', rateLimitAI, async (req, res) => {
   try {
     const { prompt, history } = req.body;
     const clientKey = req.headers['x-gemini-key'] || req.body.apiKey;
-    const apiKey = (clientKey && clientKey.trim().length > 0) ? clientKey.trim() : getJarvisApiKey();
+    const masterServerKey = getJarvisApiKey();
+
+    // Prioritize master server key (VPS environment) over any client-provided header
+    const candidateKeys = [];
+    if (masterServerKey && masterServerKey.trim().length > 0) {
+      candidateKeys.push(masterServerKey.trim());
+    }
+    if (clientKey && clientKey.trim().length > 0 && !candidateKeys.includes(clientKey.trim())) {
+      candidateKeys.push(clientKey.trim());
+    }
 
     const catalog = getCatalogData();
     const posters = catalog.posters || [];
@@ -612,7 +621,7 @@ app.post('/api/jarvis/chat', rateLimitAI, async (req, res) => {
       `- ID: "${p.id}", Título: "${p.title}", Subtítulo: "${p.subtitle || ''}", Categoría: "${p.category}", Descripción: "${p.description || ''}", Tags: "${(p.tags || []).join(', ')}", Precio: "${p.priceDisplay || 'Desde Q25.00'}"`
     ).join('\n');
 
-    const systemInstruction = `Eres J.A.R.V.I.S. (Just A Rather Very Intelligent System), el asistente de inteligencia artificial exclusivo de Deco Vintage Guate (tienda en Guatemala de cuadros rígidos y pósters decorativos de colección en madera MDF de 5.5mm con tecnología HP Látex).
+    const systemInstruction = `Eres J.A.R.V.I.S. (Just A Rather Very Intelligent System), el asesor de inteligencia artificial exclusivo de Deco Vintage Guate (tienda en Guatemala de cuadros rígidos y pósters decorativos de colección en madera MDF de 5.5mm con tecnología HP Látex).
 WhatsApp Oficial de Atención al Cliente: +${waPhone}
 
 === ESTILO Y PERSONALIDAD DE J.A.R.V.I.S. ===
@@ -643,21 +652,16 @@ Medidas estándar: Mini (14x21cm - Q25), Pequeño (21x27cm - Q35), Portada Álbu
 === CATÁLOGO COMPLETO DE OBRAS EN TIENDA ===
 ${catalogSummary}`;
 
-    const keyToUse = apiKey;
     const CANDIDATE_MODELS = [
       'gemini-3.6-flash',
-      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
       'gemini-flash-latest',
-      'gemini-flash-lite-latest',
-      'gemini-3.5-flash'
+      'gemini-3.5-flash-lite',
+      'gemini-flash-lite-latest'
     ];
     let lastError = null;
 
     // 1. Format conversation history for Gemini with strict validation:
-    // - Discards initial bot greetings (must start with 'user')
-    // - Enforces strict role alternation (user <-> model)
-    // - Ensures last history turn is 'model' before sendMessage(prompt)
-    // - Filters out fallback error messages
     const formatChatHistory = (rawHistory, maxTurns = 8) => {
       if (!Array.isArray(rawHistory) || rawHistory.length === 0) return [];
       const normalized = [];
@@ -701,11 +705,12 @@ ${catalogSummary}`;
     const chatHistory = formatChatHistory(history);
 
     // 1. Primary Engine: Official Modern Google GenAI SDK (@google/genai)
-    // Multi-model failover pool: each model has its own quota pool in Google AI Studio
-    if (keyToUse && keyToUse.trim().length > 0) {
+    // Multi-key & Multi-model auto-failover pool
+    for (const keyToUse of candidateKeys) {
+      let keyAuthFailed = false;
       for (const modelName of CANDIDATE_MODELS) {
         try {
-          const ai = new GoogleGenAI({ apiKey: keyToUse.trim() });
+          const ai = new GoogleGenAI({ apiKey: keyToUse });
           
           const contents = [
             ...chatHistory,
@@ -749,18 +754,27 @@ ${catalogSummary}`;
             replyText = '¡Por supuesto! Aquí tienes las obras y detalles seleccionados especialmente para ti:';
           }
 
-          console.log(`[Deco J.A.R.V.I.S.] Processed via ${modelName} | Turns: ${chatHistory.length} | Prompt: "${prompt?.slice(0, 40)}..."`);
+          console.log(`[Deco J.A.R.V.I.S.] Success via ${modelName} | Turns: ${chatHistory.length} | Prompt: "${prompt?.slice(0, 40)}..."`);
 
           return res.status(200).json({
             replyText: replyText || '¡Con gusto! Aquí tienes los detalles:',
             actions: executedActions,
-            poweredBy: `Google Gemini (@google/genai - ${modelName})`
+            poweredBy: `Google Gemini 3.6 Flash (@google/genai - ${modelName})`
           });
         } catch (genAiErr) {
           lastError = genAiErr;
-          console.warn(`[@google/genai ${modelName} Failed (${genAiErr.message?.slice(0, 80)})] -> Failing over to next model...`);
+          const errMsg = genAiErr.message || '';
+          console.warn(`[@google/genai ${modelName} Failed (${errMsg.slice(0, 80)})]`);
+
+          // If key is revoked, leaked, or invalid (401/403), skip remaining models for this key immediately
+          if (errMsg.includes('leaked') || errMsg.includes('API_KEY_INVALID') || errMsg.includes('PERMISSION_DENIED') || errMsg.includes('403') || errMsg.includes('401')) {
+            console.warn(`[Key Auth Error detected for key ${keyToUse.slice(0, 8)}... (${errMsg.slice(0, 50)})] -> Switching to next candidate key...`);
+            keyAuthFailed = true;
+            break;
+          }
         }
       }
+      if (keyAuthFailed) continue;
     }
 
     // 2. Secondary Engine: Google Cloud Vertex AI
@@ -831,14 +845,14 @@ ${catalogSummary}`;
       console.warn('[Vertex AI Execution Failed]:', vertexErr.message);
     }
 
-    // High-Availability Intelligent Fallback Engine (Runs if Google API rate limit 429 is reached)
-    console.warn('[Gemini AI Quota Exceeded / Offline]: Activating High-Availability Local Intelligence. Last error:', lastError?.message);
+    // 3. High-Availability Intelligent Fallback Engine
+    console.warn('[Gemini AI Offline / Fallback]: Activating Dynamic Local Knowledge Engine. Last error:', lastError?.message);
 
     const qLower = (prompt || '').toLowerCase();
     let localReply = '';
     const localActions = [];
 
-    // 1. Dynamic Search in Custom Documents & Events
+    // Check custom documents and events
     const rawDocs = jarvisMemory.customDocuments || [];
     const matchedDoc = rawDocs.find(d => {
       const tNorm = (d.title || '').toLowerCase();
@@ -849,22 +863,68 @@ ${catalogSummary}`;
              (qLower.includes('centranorte') && (tNorm.includes('centranorte') || cNorm.includes('centranorte')));
     });
 
-    if (matchedDoc) {
+    // Check for custom dimensions calculation (e.g. 50x70, 80x120)
+    const dimMatch = qLower.match(/(\d{2,3})\s*(?:x|\*|por)\s*(\d{2,3})/);
+
+    if (dimMatch) {
+      const w = parseInt(dimMatch[1], 10);
+      const h = parseInt(dimMatch[2], 10);
+      const isPvc = qLower.includes('pvc') || qLower.includes('impermeable');
+      const quote = calculateCustomPrice(w, h, isPvc ? 'pvc' : 'mdf');
+      localActions.push({ type: 'custom_quote', quote });
+      localReply = `¡Con gusto! Para una medida personalizada de **${w}x${h}cm** en **${quote.material}**:\n\n` +
+                   `* **Precio Total:** Q${quote.totalPrice}.00\n` +
+                   `* **Anticipo 50%:** Q${quote.deposit50}.00 (el saldo contra entrega en Ciudad de Guatemala o previo a envío departamental).\n` +
+                   `* **Incluye:** Cinta industrial Tesa en el reverso lista para colgar sin clavos ni taladros e impresión HP Látex con protección UV.\n\n` +
+                   `¿Deseas que te ayudemos a procesar este diseño personalizado por WhatsApp?`;
+    } else if (matchedDoc) {
       localReply = `¡Claro que sí! Con respecto a **${matchedDoc.title}**:\n\n${matchedDoc.content}\n\n¿Te gustaría que te ayude a preparar o cotizar algún cuadro para esta ocasión?`;
-    } else if (qLower.includes('hola') || qLower.includes('buenas') || qLower.includes('saludos')) {
-      localReply = '¡Hola! 👋 Qué gusto saludarte. Soy J.A.R.V.I.S., tu asesor de diseño en Deco Vintage Guate. ¿Cómo estás? Dime qué temática te gusta (autos, anime, superhéroes, películas, música) o qué duda tienes sobre nuestros cuadros rígidos y con gusto te ayudo.';
-    } else if (qLower.includes('precio') || qLower.includes('cuanto cuesta') || qLower.includes('medida') || qLower.includes('costo')) {
-      localReply = 'Nuestras medidas y precios oficiales son:\n- **Mini (14x21cm)**: Q25.00\n- **Pequeño (21x27cm)**: Q35.00\n- **Portada Álbum (30x30cm)**: Q55.00\n- **Mediano (30x45cm)**: Q65.00 (Más Vendido ⭐)\n- **Grande (45x60cm)**: Q125.00\n- **Gigante (60x100cm)**: Q210.00\n\nTodos los cuadros son rígidos en madera MDF de 5.5mm con impresión HP Látex e incluyen cinta industrial Tesa en el reverso para colgar sin clavos.';
-    } else if (qLower.includes('envio') || qLower.includes('entrega') || qLower.includes('guatemala')) {
-      localReply = 'Realizamos envíos a los 22 departamentos de Guatemala vía mensajerías certificadas (Guatex, Forza, Cargo Expreso, Mensajería Directa en Capital). El tiempo de entrega es de 2 a 4 días hábiles desde que confirmas con el 50% de anticipo.';
+    } else if (qLower.includes('auto') || qLower.includes('carro') || qLower.includes('f1') || qLower.includes('carrera') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('bmw') || qLower.includes('gtr')) {
+      const autoPosters = posters.filter(p => p.category === 'AUTOS' || (p.tags && p.tags.some(t => t.toLowerCase().includes('auto') || t.toLowerCase().includes('f1')))).slice(0, 4);
+      if (autoPosters.length > 0) {
+        localActions.push({ type: 'catalog_matches', posters: autoPosters, motivo: 'Cuadros destacados de automovilismo' });
+      }
+      localReply = `¡Excelente elección! Nos apasiona el mundo motor. Manejamos cuadros de **Fórmula 1**, leyendas del **JDM** (como el Toyota Supra, Nissan GTR, RX-7), superdeportivos clásicos y modernos (Porsche, Ferrari, Mustang, Lamborghini).\n\n` +
+                   `* **Impresión:** HP Látex de alta resolución ecológica y resistente al agua.\n` +
+                   `* **Estructura:** Madera MDF rígida de 5.5mm con bordes pulidos y cinta doble cara Tesa incluida para colgar sin clavos.\n` +
+                   `* **Medida más vendida:** Mediano (30x45cm) por solo **Q65.00**.\n\n` +
+                   `¡También podemos fabricar el cuadro con la foto de tu propio vehículo en cualquier medida personalizada! ¿Qué estilo de auto te gustaría lucir?`;
+    } else if (qLower.includes('material') || qLower.includes('calidad') || qLower.includes('tesa') || qLower.includes('colocar') || qLower.includes('pegar') || qLower.includes('instalar')) {
+      localReply = `¡Nuestros cuadros están fabricados con los mejores estándares!\n\n` +
+                   `1. **Base Rígida MDF 5.5mm:** Madera sólida que no se dobla ni pandea con bordes pulidos.\n` +
+                   `2. **Impresión HP Látex:** Tintas ecológicas a base de agua, libres de olor, con colores vivos y protección UV (más de 10 años garantizados en interiores sin pérdida de color).\n` +
+                   `3. **Montaje Fácil con Cinta Tesa®:** Cada cuadro incluye tiras de cinta doble cara industrial *tesa® Invisibond* en el reverso.\n\n` +
+                   `**Pasos para instalar en 15 segundos:**\n` +
+                   `* Limpia la pared con un paño seco.\n` +
+                   `* Retira el protector de la cinta Tesa.\n` +
+                   `* Presiona firmemente el cuadro contra la pared durante 15 segundos. ¡Y listo, sin taladrar ni perforar!\n\n` +
+                   `¿Qué medida o temática tienes en mente para tu pared?`;
+    } else if (qLower.includes('precio') || qLower.includes('cuanto cuesta') || qLower.includes('medida') || qLower.includes('costo') || qLower.includes('tamaño')) {
+      localReply = `Nuestras medidas y precios oficiales son:\n\n` +
+                   `- **Mini (14x21cm)**: Q25.00\n` +
+                   `- **Pequeño (21x27cm)**: Q35.00\n` +
+                   `- **Portada Álbum (30x30cm)**: Q55.00\n` +
+                   `- **Mediano (30x45cm)**: Q65.00 *(¡El Más Vendido y Recomendado! ⭐)*\n` +
+                   `- **Grande (45x60cm)**: Q125.00\n` +
+                   `- **Gigante (60x100cm)**: Q210.00\n\n` +
+                   `Todos los cuadros son rígidos en madera MDF de 5.5mm con tecnología HP Látex e incluyen cinta industrial Tesa en el reverso lista para colgar.\n\n` +
+                   `¿Deseas ver cuadros de alguna temática en específico o cotizar una medida personalizada?`;
+    } else if (qLower.includes('envio') || qLower.includes('entrega') || qLower.includes('guatemala') || qLower.includes('departamento')) {
+      localReply = `Realizamos envíos a los 22 departamentos de Guatemala vía mensajerías certificadas (Guatex, Forza, Cargo Expreso, Mensajería Directa en Ciudad de Guatemala).\n\n` +
+                   `* **Tiempo de entrega:** 2 a 4 días hábiles desde la confirmación con el 50% de anticipo.\n` +
+                   `* **Pago:** El saldo se cancela contra entrega en Ciudad de Guatemala o previo al despacho departamental.\n\n` +
+                   `¿En qué municipio o zona te encuentras para coordinar tu entrega?`;
+    } else if (qLower.includes('hola') || qLower.includes('buenas') || qLower.includes('saludos') || qLower.includes('hey')) {
+      localReply = '¡Hola! 👋 Qué gusto saludarte. Soy J.A.R.V.I.S., tu asesor de diseño en Deco Vintage Guate. Dime qué temática te apasiona (autos, anime, superhéroes, películas, música, videojuegos) o si buscas precios y cotizaciones especiales, ¡con gusto te ayudo!';
     } else {
-      localReply = '¡Con mucho gusto te asisto! En Deco Vintage Guate fabricamos cuadros decorativos rígidos de alta calidad en madera MDF de 5.5mm con tecnología HP Látex y cinta industrial Tesa incluida para colgar sin taladros. ¿Te gustaría conocer precios, ver diseños o cotizar una medida personalizada?';
+      localReply = `¡Con mucho gusto te asisto! En Deco Vintage Guate diseñamos cuadros decorativos rígidos de colección en madera MDF de 5.5mm con tecnología de impresión HP Látex y cinta industrial Tesa para colgar sin taladros.\n\n` +
+                   `Cuéntame qué diseño, personaje, banda, auto o medida te interesa y con gusto te asesoro y muestro opciones de nuestro catálogo.`;
     }
 
     return res.status(200).json({
       replyText: localReply,
       actions: localActions,
-      poweredBy: 'Deco Local High-Availability Fallback Engine'
+      poweredBy: 'Deco High-Availability Fallback Engine'
     });
   } catch (err) {
     console.error('[API Error] POST /api/jarvis/chat:', err);

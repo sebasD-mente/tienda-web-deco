@@ -9,7 +9,10 @@ export function getGeminiApiKey() {
   try {
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem(API_KEY_STORAGE_KEY);
-      if (saved && saved.trim().length > 0) return saved.trim();
+      if (saved && !saved.startsWith('AIzaSyD0nw') && saved.trim().length >= 20) return saved.trim();
+      if (saved && (saved.startsWith('AIzaSyD0nw') || saved.trim().length < 20)) {
+        localStorage.removeItem(API_KEY_STORAGE_KEY);
+      }
     }
   } catch (e) {}
   return '';

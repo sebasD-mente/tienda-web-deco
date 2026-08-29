@@ -176,31 +176,29 @@ export async function apiSaveSettings(settingsPayload) {
   }
 }
 
-// 7. J.A.R.V.I.S. Secure AI Query
+// 7. J.A.R.V.I.S. Secure AI Query (Always uses official backend intelligence)
 export async function apiAskJarvis(prompt, history = []) {
   try {
-    let clientKey = '';
+    // Auto-clean any legacy/leaked test keys from client localStorage
     try {
       if (typeof localStorage !== 'undefined') {
-        clientKey = localStorage.getItem('deco_gemini_api_key_v1') || '';
+        const savedKey = localStorage.getItem('deco_gemini_api_key_v1');
+        if (savedKey && (savedKey.startsWith('AIzaSyD0nw') || savedKey.length < 20)) {
+          localStorage.removeItem('deco_gemini_api_key_v1');
+        }
       }
     } catch (e) {}
 
-    const headers = { 'Content-Type': 'application/json' };
-    if (clientKey) {
-      headers['x-gemini-key'] = clientKey;
-    }
-
     const res = await fetch('/api/jarvis/chat', {
       method: 'POST',
-      headers,
-      body: JSON.stringify({ prompt, history, apiKey: clientKey })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, history })
     });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || `HTTP ${res.status}`);
     }
-    return await res.json(); // { replyText, actions }
+    return await res.json(); // { replyText, actions, poweredBy }
   } catch (err) {
     console.error('[API Client] Jarvis API error:', err);
     return {
