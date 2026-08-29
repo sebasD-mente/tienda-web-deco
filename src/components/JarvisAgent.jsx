@@ -131,8 +131,25 @@ export default function JarvisAgent({
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // Sync knowledge live on admin edits
+  // Sync knowledge live on admin edits and initial mount
   useEffect(() => {
+    // 1. Fetch live knowledge from server on mount
+    fetch('/api/jarvis')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.initialGreeting) {
+          setKnowledge(prev => ({ ...prev, ...data }));
+          setMessages(prev => {
+            if (prev.length === 1 && prev[0].id === 'init-1') {
+              return [{ ...prev[0], text: data.initialGreeting }];
+            }
+            return prev;
+          });
+        }
+      })
+      .catch(() => {});
+
+    // 2. Listen for live updates in admin session
     const handleKnowledgeUpdate = () => {
       const updated = getStoreKnowledge();
       setKnowledge(updated);

@@ -1,7 +1,7 @@
 // Store Knowledge Base & Training Memory for J.A.R.V.I.S. AI Agent
 
 export const DEFAULT_STORE_KNOWLEDGE = {
-  "updatedAt": "2026-08-26T18:40:00.000Z",
+  "updatedAt": "2026-08-29T04:02:56.698Z",
   "company": {
     "name": "Deco Vintage Guate",
     "country": "Guatemala",
@@ -9,7 +9,7 @@ export const DEFAULT_STORE_KNOWLEDGE = {
     "specialty": "Fabricación de pósters rígidos de colección y cuadros decorativos premium impresos en madera MDF de 5.5mm con tecnología HP Látex.",
     "motto": "El arte de decorar con tus pasiones: autos, anime, geek, cine y música con durabilidad para toda la vida."
   },
-  "initialGreeting": "¡Hola! 👋 Soy J.A.R.V.I.S., tu asesor de arte y decoración en Deco Vintage Guate. Estoy aquí para ayudarte a elegir el cuadro perfecto, cotizar medidas especiales o contarte sobre nuestros materiales y envíos a toda Guatemala. ¿Qué tienes en mente para decorar hoy?",
+  "initialGreeting": "¡Hola! 👋 Soy J.A.R.V.I.S., tu asesor  en Deco Vintage. Estoy aquí para ayudarte a elegir el cuadro perfecto, \n ¿Qué tienes en mente para decorar hoy?",
   "quickPrompts": [
     {
       "id": "qp-1",
@@ -65,6 +65,13 @@ export const DEFAULT_STORE_KNOWLEDGE = {
       "category": "Calidad",
       "content": "Imprimimos con tecnología oficial HP Látex de gran formato (enlace oficial: https://www.hp.com/lamerica_nsc_cnt_amer-es/printers/large-format/latex-printers.html). Tintas ecológicas micro-gota a base de agua, libres de olores y químicos nocivos, con protección UV y garantía superior a 10 años en interiores sin pérdida de color.",
       "dateAdded": "26/8/2026"
+    },
+    {
+      "id": "doc-1787976138406",
+      "title": "Fan Fest Guatemala",
+      "category": "Eventos",
+      "content": "El próximo 6 de septiembre tendremos el honor de participar en el Fan Fest Guatemala, que se llevará a cabo en el Parque de la Industria. Estaremos presentes en nuestro stand, donde los asistentes podrán encontrar toda nuestra variedad de pósters. También pueden hacer sus pedidos con anticipación para recogerlos el día del evento. ¡Es la oportunidad ideal para los fans que quieren autografiar sus pósters con el talento de doblaje invitado!\n\nInvitado especial del evento:\n\n🎙️ Rodo Balderas:\nReconocido por ser la voz oficial en español del popular creador de contenido MrBeast, y la voz de Caine en la exitosa serie animada El Asombroso Circo Digital.\"",
+      "dateAdded": "28/8/2026"
     }
   ],
   "referenceImages": [
@@ -81,8 +88,7 @@ export const DEFAULT_STORE_KNOWLEDGE = {
     "Escribe en texto conversacional fluido, natural y limpio. Evita llenar las respuestas de asteriscos, títulos rígidos '###' o estructuras de reporte técnico aburrido.",
     "Recomienda siempre el tamaño Mediano (30x45cm) como la opción más balanceada e ideal para cualquier habitación.",
     "Menciona que la cinta industrial Tesa de montaje viene incluida en el reverso lista para colgar sin taladros.",
-    "Cuando la persona desee ordenar o enviar fotos para cuadros personalizados, genera amablemente el enlace de WhatsApp estructurado con el 50% de anticipo.",
-    "Este sabado y domingo 29 y 30 de agosto tendremos stand disponible en el centro Comercial Centranorte, zona 18, Guatemala donde estaran disponibles todos nuestros diseños"
+    "Cuando la persona desee ordenar o enviar fotos para cuadros personalizados, genera amablemente el enlace de WhatsApp estructurado con el 50% de anticipo."
   ],
   "materials": [
     {
