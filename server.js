@@ -462,6 +462,55 @@ function getJarvisMemory() {
   };
 }
 
+// GET /api/jarvis & /api/jarvis/config (Public - Fetches Master Training Memory & Directives)
+app.get(['/api/jarvis', '/api/jarvis/config'], (req, res) => {
+  try {
+    const memory = getJarvisMemory();
+    const safeMemory = { ...memory };
+    delete safeMemory.googleClientSecret;
+    delete safeMemory.googleRefreshToken;
+    return res.status(200).json(safeMemory);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/jarvis/save (Persists Full Training Memory, Documents & Directives to VPS Disk)
+app.post('/api/jarvis/save', (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') {
+      return res.status(400).json({ success: false, error: 'Payload inválido.' });
+    }
+
+    const current = getJarvisMemory();
+    const updated = {
+      ...current,
+      ...payload,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Atomic write to data/jarvisConfig.json
+    const tmpFile = `${JARVIS_FILE}.tmp`;
+    fs.writeFileSync(tmpFile, JSON.stringify(updated, null, 2), 'utf-8');
+    fs.renameSync(tmpFile, JARVIS_FILE);
+
+    // Also sync to src/data/jarvisConfig.json
+    const srcFile = path.resolve(__dirname, 'src/data/jarvisConfig.json');
+    try { fs.writeFileSync(srcFile, JSON.stringify(updated, null, 2), 'utf-8'); } catch (e) {}
+
+    console.log('[Deco J.A.R.V.I.S.] Master training memory persisted to VPS SSD disk.');
+    return res.status(200).json({
+      success: true,
+      message: 'Memoria de J.A.R.V.I.S. guardada permanentemente en disco.',
+      updatedAt: updated.updatedAt
+    });
+  } catch (err) {
+    console.error('[Deco J.A.R.V.I.S. Save Error]:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // POST /api/jarvis/save-key (Protected Admin - Persists Gemini API Key to VPS SSD)
 app.post('/api/jarvis/save-key', requireAuth, (req, res) => {
   try {
