@@ -8,7 +8,7 @@ export default function OptimizedImage({
   style = {},
   objectFit = 'contain',
   priority = false,
-  fallbackSrc = '/posters/wallpaper.jpg'
+  fallbackSrc = ''
 }) {
   const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -23,7 +23,7 @@ export default function OptimizedImage({
   const normalizedSrc = (currentSrc && currentSrc.endsWith('.web')) ? `${currentSrc}p` : currentSrc;
 
   const handleImageError = () => {
-    if (normalizedSrc !== fallbackSrc) {
+    if (fallbackSrc && normalizedSrc !== fallbackSrc) {
       setCurrentSrc(fallbackSrc);
       setHasError(false);
     } else {

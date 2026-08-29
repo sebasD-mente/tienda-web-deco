@@ -578,7 +578,9 @@ export default function JarvisAgent({
                                     alt={p.title}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     onError={(e) => {
-                                      e.target.src = p.image || '/posters/wallpaper.jpg';
+                                      if (p.image && e.target.src !== p.image) {
+                                        e.target.src = p.image;
+                                      }
                                     }}
                                   />
                                   <span style={{

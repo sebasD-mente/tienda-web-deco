@@ -86,10 +86,10 @@ async function persistToFirestore(payload) {
     const cleanPosters = (payload.posters || []).map(p => {
       const copy = { ...p };
       if (copy.image && copy.image.startsWith('data:image/')) {
-        copy.image = '/posters/wallpaper.jpg';
+        copy.image = '/posters/optimized/full/porche-gt3-patente.webp';
       }
       if (copy.thumb && copy.thumb.startsWith('data:image/')) {
-        copy.thumb = '/posters/wallpaper.jpg';
+        copy.thumb = '/posters/optimized/thumb/porche-gt3-patente.webp';
       }
       return copy;
     });

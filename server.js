@@ -5,6 +5,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -18,6 +19,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Enable HTTP Gzip/Brotli compression for ultra-fast payload delivery
+app.use(compression());
 
 // Trust reverse proxy (Dokploy / Traefik / Nginx) for accurate client IP rate limiting
 app.set('trust proxy', 1);

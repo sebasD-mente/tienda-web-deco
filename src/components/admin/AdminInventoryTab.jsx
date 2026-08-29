@@ -210,7 +210,6 @@ export default function AdminInventoryTab({
                     <OptimizedImage
                       src={poster.thumb || poster.image}
                       alt={poster.title}
-                      fallbackSrc="/posters/wallpaper.jpg"
                       objectFit="cover"
                       style={{ width: '100%', height: '100%' }}
                     />
@@ -367,7 +366,6 @@ export default function AdminInventoryTab({
                             <OptimizedImage
                               src={poster.thumb || poster.image}
                               alt={poster.title}
-                              fallbackSrc="/posters/wallpaper.jpg"
                               objectFit="cover"
                               style={{ width: '100%', height: '100%' }}
                             />
