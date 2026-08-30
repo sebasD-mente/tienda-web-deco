@@ -48,6 +48,37 @@ const POSTER_INCLUDE_LIGHT = {
   franchise: true,
 };
 
+/** Mapeo y normalización de categoría a enum de Prisma Category */
+const VALID_CATEGORIES = [
+  'AUTOS',
+  'SUPERHEROES',
+  'ANIME',
+  'MUSICA',
+  'SERIESYPELICULAS',
+  'OBRASDEARTE',
+  'INFANTILYDIBUJOSANIMADOS',
+  'CINE'
+];
+
+export function normalizeCategory(catStr) {
+  if (!catStr) return 'AUTOS';
+  const clean = String(catStr).toUpperCase().replace(/[^A-Z]/g, '');
+  if (VALID_CATEGORIES.includes(clean)) return clean;
+
+  // Mapeos comunes por si viene en minúsculas, con espacios o tildes
+  const lower = String(catStr).toLowerCase();
+  if (lower.includes('auto') || lower.includes('car')) return 'AUTOS';
+  if (lower.includes('superh') || lower.includes('hero')) return 'SUPERHEROES';
+  if (lower.includes('anim')) return 'ANIME';
+  if (lower.includes('music')) return 'MUSICA';
+  if (lower.includes('serie') || lower.includes('pelicula')) return 'SERIESYPELICULAS';
+  if (lower.includes('obra') || lower.includes('arte')) return 'OBRASDEARTE';
+  if (lower.includes('infantil') || lower.includes('dibujo')) return 'INFANTILYDIBUJOSANIMADOS';
+  if (lower.includes('cine') || lower.includes('movie')) return 'CINE';
+
+  return 'AUTOS';
+}
+
 // =============================================================================
 //  SECCION 1 — API PRISMA (PostgreSQL) — Async
 // =============================================================================
@@ -152,75 +183,133 @@ export async function updatePosterStatus(id, newStatus) {
  * @param {object} data - Datos del poster tal como vienen del admin
  * @returns {Promise<import('@prisma/client').Poster>}
  */
+/**
+ * Crea o actualiza un poster en PostgreSQL usando Prisma.
+ * Maneja tanto la clave primaria UUID `id` como `legacyId`.
+ *
+ * @param {object} data - Datos del poster tal como vienen del admin o cliente
+ * @returns {Promise<import('@prisma/client').Poster>}
+ */
 export async function upsertPosterFromAdmin(data) {
   const {
-    id: legacyId,
+    id: inputId,
+    legacyId: inputLegacyId,
     title,
+    titulo,
     subtitle,
+    subtitulo,
     description,
+    descripcion,
     category,
+    categoria,
     franchise,
+    franchiseId: inputFranchiseId,
     tags          = [],
     image,
+    imageUrl,
     thumb,
+    thumbUrl,
     minPrice,
+    precioMinimo,
     priceDisplay,
+    precioDisplay,
     isFeatured    = false,
+    isPublished   = true,
+    estado,
     rating,
     reviewsCount  = 0,
     availableSizes,
     sizes,
   } = data;
 
-  // Resuelve el franchiseId si la franquicia existe en BD
-  let franchiseId = null;
-  if (franchise) {
+  const finalTitle = title || titulo || '';
+  const finalCategory = normalizeCategory(category || categoria);
+  const finalImage = image || imageUrl || null;
+  const finalThumb = thumb || thumbUrl || null;
+  const finalMinPrice = minPrice ?? precioMinimo ?? null;
+  const finalPriceDisplay = priceDisplay || precioDisplay || (finalMinPrice ? `Desde Q ${parseFloat(finalMinPrice).toFixed(2)}` : 'Desde Q 25.00');
+  const finalLegacyId = inputLegacyId || (inputId && !isUUID(inputId) ? inputId : null);
+
+  // Resuelve el franchiseId
+  let finalFranchiseId = inputFranchiseId || null;
+  if (!finalFranchiseId && franchise) {
     const fr = await prisma.franchise.findUnique({ where: { slug: franchise } });
-    franchiseId = fr?.id || null;
+    finalFranchiseId = fr?.id || null;
   }
 
-  // Construye los sizes para upsert anidado
-  const sizesForCreate = buildSizesForUpsert(sizes, availableSizes);
+  const sizesData = buildSizesForUpsert(sizes, availableSizes);
 
-  return prisma.poster.upsert({
-    where:  { legacyId: legacyId || '__new__' },
-    update: {
-      titulo:       title       || '',
-      subtitulo:    subtitle    || null,
-      descripcion:  description || null,
-      categoria:    category,
-      franchiseId,
+  // Determina si existe por id (UUID) o por legacyId
+  let existingPoster = null;
+  if (inputId && isUUID(inputId)) {
+    existingPoster = await prisma.poster.findUnique({ where: { id: inputId } });
+  }
+  if (!existingPoster && finalLegacyId) {
+    existingPoster = await prisma.poster.findUnique({ where: { legacyId: finalLegacyId } });
+  }
+
+  if (existingPoster) {
+    // Si se actualiza, se usa transacción para renovar tamaños si vienen especificados
+    return prisma.$transaction(async (tx) => {
+      if (sizesData.length > 0) {
+        await tx.posterSize.deleteMany({ where: { posterId: existingPoster.id } });
+      }
+
+      return tx.poster.update({
+        where: { id: existingPoster.id },
+        data: {
+          titulo:       finalTitle || existingPoster.titulo,
+          subtitulo:    subtitle ?? subtitulo ?? existingPoster.subtitulo,
+          descripcion:  description ?? descripcion ?? existingPoster.descripcion,
+          categoria:    finalCategory,
+          franchiseId:  finalFranchiseId,
+          tags:         Array.isArray(tags) ? tags : existingPoster.tags,
+          imageUrl:     finalImage ?? existingPoster.imageUrl,
+          thumbUrl:     finalThumb ?? existingPoster.thumbUrl,
+          precioMinimo: finalMinPrice != null ? finalMinPrice : existingPoster.precioMinimo,
+          precioDisplay:finalPriceDisplay,
+          isFeatured:   isFeatured ?? existingPoster.isFeatured,
+          isPublished:  isPublished ?? existingPoster.isPublished,
+          estado:       estado || existingPoster.estado,
+          rating:       rating != null ? rating : existingPoster.rating,
+          reviewsCount: reviewsCount ?? existingPoster.reviewsCount,
+          updatedAt:    new Date(),
+          ...(sizesData.length > 0 && {
+            sizes: { create: sizesData }
+          })
+        },
+        include: POSTER_INCLUDE_FULL,
+      });
+    });
+  }
+
+  // Crear nuevo póster
+  return prisma.poster.create({
+    data: {
+      legacyId:     finalLegacyId,
+      titulo:       finalTitle,
+      subtitulo:    subtitle || subtitulo || null,
+      descripcion:  description || descripcion || null,
+      categoria:    finalCategory,
+      franchiseId:  finalFranchiseId,
       tags:         Array.isArray(tags) ? tags : [],
-      imageUrl:     image       || null,
-      thumbUrl:     thumb       || null,
-      precioMinimo: minPrice    != null ? minPrice : undefined,
-      precioDisplay:priceDisplay|| null,
-      isFeatured:   isFeatured  ?? false,
-      rating:       rating      != null ? rating   : undefined,
+      imageUrl:     finalImage,
+      thumbUrl:     finalThumb,
+      precioMinimo: finalMinPrice != null ? finalMinPrice : 25.00,
+      precioDisplay:finalPriceDisplay,
+      estado:       estado || 'DISPONIBLE',
+      isPublished:  isPublished ?? true,
+      isFeatured:   isFeatured ?? false,
+      rating:       rating != null ? rating : null,
       reviewsCount: reviewsCount ?? 0,
-      updatedAt:    new Date(),
-    },
-    create: {
-      legacyId,
-      titulo:       title        || '',
-      subtitulo:    subtitle     || null,
-      descripcion:  description  || null,
-      categoria:    category,
-      franchiseId,
-      tags:         Array.isArray(tags) ? tags : [],
-      imageUrl:     image        || null,
-      thumbUrl:     thumb        || null,
-      precioMinimo: minPrice     != null ? minPrice : undefined,
-      precioDisplay:priceDisplay || null,
-      estado:       'DISPONIBLE',
-      isPublished:  true,
-      isFeatured:   isFeatured   ?? false,
-      rating:       rating       != null ? rating  : undefined,
-      reviewsCount: reviewsCount ?? 0,
-      sizes: { create: sizesForCreate },
+      sizes: { create: sizesData.length > 0 ? sizesData : buildSizesForUpsert(null, ['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE']) },
     },
     include: POSTER_INCLUDE_FULL,
   });
+}
+
+function isUUID(str) {
+  return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 }
 
 /**
