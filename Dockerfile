@@ -22,6 +22,10 @@ RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
 COPY server.js ./
+COPY config/ ./config/
+COPY middleware/ ./middleware/
+COPY routes/ ./routes/
+COPY services/ ./services/
 
 # Copy repo data as SEED ONLY (read-only bootstrap for first run on a cold volume).
 # The real runtime data lives in the persistent volume mounted at /app/data by Dokploy.
