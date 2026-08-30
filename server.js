@@ -34,6 +34,8 @@ import catalogRoutes  from './routes/catalogRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import jarvisRoutes   from './routes/jarvisRoutes.js';
 
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+
 // ── App bootstrap ─────────────────────────────────────────────────────────────
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -61,6 +63,13 @@ app.use('/api', authRoutes);
 app.use('/api', catalogRoutes);
 app.use('/api', settingsRoutes);
 app.use('/api', jarvisRoutes);
+
+// ── Manejo de errores centralizado ────────────────────────────────────────────
+// IMPORTANTE: Estos dos middlewares van SIEMPRE al final de las rutas API.
+// notFoundHandler captura cualquier ruta /api/* inexistente y genera un 404 limpio.
+// errorHandler es el receptor final de todos los errores (next(err)) del servidor.
+app.use('/api', notFoundHandler);
+app.use(errorHandler);
 
 // ── Static assets from public/ and dist/ ─────────────────────────────────────
 app.use(express.static(path.resolve(PROJECT_ROOT, 'public'), { maxAge: '30d' }));
