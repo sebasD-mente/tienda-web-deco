@@ -1,9 +1,38 @@
 /**
- * Deco Vintage Guate - Centralized API Client
+ * Deco Vintage Guate — Centralized API Client
  * Manages all network communications with the VPS Hostinger backend.
+ *
+ * Endpoints:
+ *   Auth:
+ *     POST /api/auth/login
+ *     POST /api/auth/verify
+ *
+ *   Catálogo (lectura pública):
+ *     GET  /api/catalog                  → catálogo completo (posters PG + meta JSON)
+ *     GET  /api/catalog/posters          → listado de pósters (PG)
+ *     GET  /api/catalog/posters/:id      → detalle de un póster
+ *
+ *   Pósters (admin — requiere token):
+ *     POST   /api/catalog/posters        → crear póster → { poster }
+ *     PUT    /api/catalog/posters/:id    → actualizar completo → { poster }
+ *     PATCH  /api/catalog/posters/:id    → actualizar parcial → { poster }
+ *     DELETE /api/catalog/posters/:id    → eliminar → { success }
+ *
+ *   Imagen (admin):
+ *     POST /api/catalog/upload           → subir imagen → { image, thumb }
+ *     POST /api/catalog/delete-image     → eliminar imagen del disco
+ *
+ *   Metadatos (admin — monolito JSON para cats / franquicias / settings):
+ *     POST /api/catalog/save             → persiste catálogo completo → { catalog }
+ *     POST /api/settings/save            → persiste solo settings
+ *
+ *   J.A.R.V.I.S.:
+ *     POST /api/jarvis/chat
  */
 
 const TOKEN_KEY = 'deco_admin_auth_token_v1';
+
+// ── Token helpers ─────────────────────────────────────────────────────────────
 
 export function getAuthToken() {
   try {
@@ -21,117 +50,206 @@ export function getAuthToken() {
 export function setAuthToken(token) {
   try {
     if (typeof localStorage !== 'undefined') {
-      if (token) {
-        localStorage.setItem(TOKEN_KEY, token);
-      } else {
-        localStorage.removeItem(TOKEN_KEY);
-      }
+      token ? localStorage.setItem(TOKEN_KEY, token) : localStorage.removeItem(TOKEN_KEY);
     }
     if (typeof sessionStorage !== 'undefined') {
-      if (token) {
-        sessionStorage.setItem(TOKEN_KEY, token);
-      } else {
-        sessionStorage.removeItem(TOKEN_KEY);
-      }
+      token ? sessionStorage.setItem(TOKEN_KEY, token) : sessionStorage.removeItem(TOKEN_KEY);
     }
   } catch (e) {}
 }
 
-export function clearAuthToken() {
-  setAuthToken('');
-}
+export function clearAuthToken() { setAuthToken(''); }
 
 function getHeaders(isJson = true) {
   const headers = {};
-  if (isJson) {
-    headers['Content-Type'] = 'application/json';
-  }
+  if (isJson) headers['Content-Type'] = 'application/json';
   const token = getAuthToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;
 }
 
-// 1. Get Master Catalog from Server
+/** Manejo centralizado de respuestas. Lanza si la respuesta no es OK. */
+async function handleResponse(res) {
+  const data = await res.json();
+  if (res.status === 401) {
+    clearAuthToken();
+    throw new Error('Tu sesión de administrador ha expirado. Por favor vuelve a iniciar sesión.');
+  }
+  if (!res.ok) {
+    throw new Error(data.error || data.details || `HTTP Error ${res.status}`);
+  }
+  return data;
+}
+
+// ── Catálogo — Lectura pública ─────────────────────────────────────────────────
+
+/**
+ * Obtiene el catálogo completo del servidor.
+ * El backend intenta servir pósters desde PostgreSQL y usa JSON como fallback.
+ * @returns {Promise<{ posters, categories, franchises, settings } | null>}
+ */
 export async function apiGetCatalog() {
   try {
     const res = await fetch('/api/catalog', {
-      method: 'GET',
+      method:  'GET',
       headers: { 'Accept': 'application/json' }
     });
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
-    return await res.json();
+    return res.json();
   } catch (err) {
-    console.warn('[API Client] Falling back to local catalog:', err.message);
+    console.warn('[API Client] apiGetCatalog falló, usando datos locales:', err.message);
     return null;
   }
 }
 
-// 2. Save Master Catalog to Server
-export async function apiSaveCatalog(catalogPayload) {
-  try {
-    const res = await fetch('/api/catalog/save', {
-      method: 'POST',
-      headers: getHeaders(true),
-      body: JSON.stringify(catalogPayload)
-    });
-    const data = await res.json();
-    if (res.status === 401) {
-      clearAuthToken();
-      throw new Error('Tu sesión de administrador ha expirado. Por favor haz clic en "Cerrar Sesión" en la esquina superior e ingresa tus credenciales nuevamente.');
-    }
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || `HTTP Error ${res.status}`);
-    }
-    return data;
-  } catch (err) {
-    console.error('[API Client] Error saving catalog to server:', err);
-    throw err;
-  }
+// ── Pósters — Admin CRUD ───────────────────────────────────────────────────────
+
+/**
+ * Crea un nuevo póster en PostgreSQL.
+ * El ID lo asigna el servidor (UUID). Si la imagen viene como base64 en el payload,
+ * el backend la convierte a WebP automáticamente via Sharp.
+ *
+ * @param {object} posterData - Datos del póster desde el formulario.
+ * @returns {Promise<{ success: boolean, poster: object }>}
+ */
+export async function apiCreatePoster(posterData) {
+  const res = await fetch('/api/catalog/posters', {
+    method:  'POST',
+    headers: getHeaders(true),
+    body:    JSON.stringify(posterData)
+  });
+  return handleResponse(res);
 }
 
-// 3. Upload and Optimize Image on Server (WebP Full + Thumb)
+/**
+ * Actualiza un póster existente (reemplazo completo).
+ * @param {string} posterId - UUID del póster en PostgreSQL.
+ * @param {object} posterData - Datos actualizados.
+ * @returns {Promise<{ success: boolean, poster: object }>}
+ */
+export async function apiUpdatePoster(posterId, posterData) {
+  const res = await fetch(`/api/catalog/posters/${posterId}`, {
+    method:  'PUT',
+    headers: getHeaders(true),
+    body:    JSON.stringify(posterData)
+  });
+  return handleResponse(res);
+}
+
+/**
+ * Actualiza parcialmente un póster (solo campos específicos).
+ * Usado para toggle de isFeatured, cambio de estado, etc.
+ * @param {string} posterId - UUID del póster.
+ * @param {object} patch - Campos a actualizar (ej: { isFeatured: true }).
+ * @returns {Promise<{ success: boolean, poster: object }>}
+ */
+export async function apiPatchPoster(posterId, patch) {
+  const res = await fetch(`/api/catalog/posters/${posterId}`, {
+    method:  'PATCH',
+    headers: getHeaders(true),
+    body:    JSON.stringify(patch)
+  });
+  return handleResponse(res);
+}
+
+/**
+ * Elimina el registro de un póster en PostgreSQL.
+ * @param {string} posterId - UUID del póster.
+ * @returns {Promise<{ success: boolean }>}
+ */
+export async function apiDeletePosterRecord(posterId) {
+  const res = await fetch(`/api/catalog/posters/${posterId}`, {
+    method:  'DELETE',
+    headers: getHeaders(false)
+  });
+  return handleResponse(res);
+}
+
+// ── Imagen — Upload y Delete ───────────────────────────────────────────────────
+
+/**
+ * Sube una imagen (dataUrl base64) al VPS SSD.
+ * El backend la convierte a WebP via Sharp y guarda en /posters/uploads/.
+ * @param {string} dataUrl - Imagen en formato data:image/... base64.
+ * @param {string} posterId - ID usado para nombrar el archivo (puede ser el UUID de PG).
+ * @returns {Promise<{ success: boolean, image: string, thumb: string }>}
+ */
 export async function apiUploadPosterImage(dataUrl, posterId) {
-  try {
-    const res = await fetch('/api/catalog/upload', {
-      method: 'POST',
-      headers: getHeaders(true),
-      body: JSON.stringify({ dataUrl, posterId })
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || `HTTP Error ${res.status}`);
-    }
-    return data; // { success: true, image: '/posters/uploads/full/...', thumb: '/posters/uploads/thumb/...' }
-  } catch (err) {
-    console.error('[API Client] Error uploading poster image:', err);
-    throw err;
-  }
+  const res = await fetch('/api/catalog/upload', {
+    method:  'POST',
+    headers: getHeaders(true),
+    body:    JSON.stringify({ dataUrl, posterId })
+  });
+  return handleResponse(res);
 }
 
-// 3.1. Delete Poster Image from VPS Disk
+/**
+ * Elimina los archivos físicos .webp de un póster del disco VPS SSD.
+ * @param {string} imagePath - Ruta relativa al full image (ej: /posters/uploads/full/...)
+ * @param {string} thumbPath - Ruta relativa al thumbnail.
+ * @returns {Promise<{ success: boolean }>}
+ */
 export async function apiDeletePosterImage(imagePath, thumbPath) {
   try {
     const res = await fetch('/api/catalog/delete-image', {
-      method: 'POST',
+      method:  'POST',
       headers: getHeaders(true),
-      body: JSON.stringify({ imagePath, thumbPath })
+      body:    JSON.stringify({ imagePath, thumbPath })
     });
-    return await res.json();
+    return res.json();
   } catch (err) {
-    console.warn('[API Client] Error deleting image from server:', err.message);
+    console.warn('[API Client] apiDeletePosterImage falló (no crítico):', err.message);
     return { success: false };
   }
 }
 
-// 4. Admin Authentication
+// ── Catálogo — Monolito (categorías / franquicias / settings) ─────────────────
+
+/**
+ * Persiste el catálogo completo en el VPS JSON (categorías, franquicias, settings).
+ * Usado solo para metadatos que aún no tienen tabla en PostgreSQL.
+ * @param {object} catalogPayload - { posters, categories, franchises, settings }
+ * @returns {Promise<{ success: boolean, catalog: object }>}
+ */
+export async function apiSaveCatalog(catalogPayload) {
+  const res = await fetch('/api/catalog/save', {
+    method:  'POST',
+    headers: getHeaders(true),
+    body:    JSON.stringify(catalogPayload)
+  });
+  return handleResponse(res);
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+/**
+ * Persiste solo la configuración de la tienda (WhatsApp, etc.) en el backend.
+ * @param {{ whatsappPhone: string }} settingsPayload
+ * @returns {Promise<{ success: boolean, settings: object }>}
+ */
+export async function apiSaveSettings(settingsPayload) {
+  const res = await fetch('/api/settings/save', {
+    method:  'POST',
+    headers: getHeaders(true),
+    body:    JSON.stringify(settingsPayload)
+  });
+  return handleResponse(res);
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Autentica al administrador con usuario y contraseña.
+ * @param {string} username
+ * @param {string} password
+ * @returns {Promise<{ success: boolean, user?: object, error?: string }>}
+ */
 export async function apiAdminLogin(username, password) {
   try {
     const res = await fetch('/api/auth/login', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body:    JSON.stringify({ username, password })
     });
     const data = await res.json();
     if (res.ok && data.success && data.token) {
@@ -145,13 +263,16 @@ export async function apiAdminLogin(username, password) {
   }
 }
 
-// 5. Admin Verification
+/**
+ * Verifica si el token de sesión actual es válido en el servidor.
+ * @returns {Promise<boolean>}
+ */
 export async function apiAdminVerify() {
   const token = getAuthToken();
   if (!token) return false;
   try {
-    const res = await fetch('/api/auth/verify', {
-      method: 'POST',
+    const res  = await fetch('/api/auth/verify', {
+      method:  'POST',
       headers: getHeaders(true)
     });
     const data = await res.json();
@@ -161,44 +282,26 @@ export async function apiAdminVerify() {
   }
 }
 
-// 6. Save Store Settings (WhatsApp Phone, etc.)
-export async function apiSaveSettings(settingsPayload) {
-  try {
-    const res = await fetch('/api/settings/save', {
-      method: 'POST',
-      headers: getHeaders(true),
-      body: JSON.stringify(settingsPayload)
-    });
-    return await res.json();
-  } catch (err) {
-    console.error('[API Client] Error saving settings:', err);
-    throw err;
-  }
-}
+// ── J.A.R.V.I.S. ─────────────────────────────────────────────────────────────
 
-// 7. J.A.R.V.I.S. Secure AI Query (Always uses official backend intelligence)
+/**
+ * Envía un prompt al backend de J.A.R.V.I.S. (Gemini AI).
+ * @param {string} prompt
+ * @param {Array} history
+ * @returns {Promise<{ replyText: string, actions: Array }>}
+ */
 export async function apiAskJarvis(prompt, history = []) {
   try {
-    // Auto-clean any legacy/leaked test keys from client localStorage
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const savedKey = localStorage.getItem('deco_gemini_api_key_v1');
-        if (savedKey && (savedKey.startsWith('AIzaSyD0nw') || savedKey.length < 20)) {
-          localStorage.removeItem('deco_gemini_api_key_v1');
-        }
-      }
-    } catch (e) {}
-
     const res = await fetch('/api/jarvis/chat', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, history })
+      body:    JSON.stringify({ prompt, history })
     });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || `HTTP ${res.status}`);
     }
-    return await res.json(); // { replyText, actions, poweredBy }
+    return res.json();
   } catch (err) {
     console.error('[API Client] Jarvis API error:', err);
     return {

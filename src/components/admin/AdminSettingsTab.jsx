@@ -1,29 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Phone, MessageSquare, Server, HardDrive, ShieldCheck, 
-  Download, Upload, RotateCcw, Save, CheckCircle2, 
-  AlertCircle, ExternalLink, RefreshCw, Sparkles, Check
+import React, { useState } from 'react';
+import {
+  Phone,
+  Download, Upload, RotateCcw, Save,
+  ExternalLink, RefreshCw
 } from 'lucide-react';
-import { 
-  getStoreWhatsAppPhone, 
-  saveStoreWhatsAppPhone, 
-  generateWhatsAppLink 
+import {
+  getStoreWhatsAppPhone,
+  saveStoreWhatsAppPhone,
+  generateWhatsAppLink
 } from '../../config/constants';
-import { 
-  getStoredSettings, 
-  saveStoreSettings, 
-  exportCatalogAsJSON, 
-  importCatalogFromJSON, 
+import {
+  exportCatalogAsJSON,
+  importCatalogFromJSON,
   resetCatalogToDefault,
-  syncCatalogFromServer 
+  syncCatalogFromServer
 } from '../../utils/catalogStorage';
 import { apiSaveSettings } from '../../utils/apiClient';
 
 export default function AdminSettingsTab({ onShowToast, onReloadCatalog }) {
-  const [phoneInput, setPhoneInput] = useState(() => getStoreWhatsAppPhone());
-  const [isSavingPhone, setIsSavingPhone] = useState(false);
+  const [phoneInput,      setPhoneInput]      = useState(() => getStoreWhatsAppPhone());
+  const [isSavingPhone,   setIsSavingPhone]   = useState(false);
   const [isSyncingServer, setIsSyncingServer] = useState(false);
-  const [serverStatus, setServerStatus] = useState({ online: true, checkedAt: new Date().toLocaleTimeString() });
 
   const handleSavePhone = async (e) => {
     e?.preventDefault();
@@ -35,16 +32,18 @@ export default function AdminSettingsTab({ onShowToast, onReloadCatalog }) {
 
     setIsSavingPhone(true);
     try {
+      // 1. Actualizar valor en memoria local (para links de WhatsApp inmediatos)
       saveStoreWhatsAppPhone(clean);
-      await saveStoreSettings({ whatsappPhone: clean });
+      // 2. Persistir en el backend via su endpoint dedicado (una sola escritura)
       await apiSaveSettings({ whatsappPhone: clean });
       onShowToast('¡Número de WhatsApp oficial guardado con éxito!', 'success');
     } catch (err) {
-      onShowToast('Guardado localmente. Error en sincronización VPS: ' + err.message, 'info');
+      onShowToast('Número guardado localmente. Error en servidor: ' + err.message, 'info');
     } finally {
       setIsSavingPhone(false);
     }
   };
+
 
   const handleTestWhatsApp = () => {
     const testUrl = generateWhatsAppLink('👋 ¡Hola Deco Vintage! Esta es una prueba de conexión desde el panel de administración.');

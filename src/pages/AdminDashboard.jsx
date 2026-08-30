@@ -1,65 +1,73 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Plus, Edit3, Trash2, ArrowLeft, Star, Tag, Sliders, Shield,
   CheckCircle2, AlertCircle, LogOut, Package, Database
 } from 'lucide-react';
 import ArcReactor from '../components/ArcReactor';
-import { 
-  getStoredPosters, 
-  getStoredCategories, 
+import {
+  getStoredPosters,
+  getStoredCategories,
   getStoredFranchises,
   saveAllFranchises,
-  saveOrUpdatePoster, 
+  saveOrUpdatePoster,
   togglePosterFeatured,
-  deletePosterById, 
-  addNewCategory, 
-  deleteCategoryById
+  deletePosterById,
+  addNewCategory,
+  deleteCategoryById,
+  syncCatalogFromServer
 } from '../utils/catalogStorage';
 
 // Modular Subcomponents
-import AdminInventoryTab from '../components/admin/AdminInventoryTab';
+import AdminInventoryTab    from '../components/admin/AdminInventoryTab';
 import AdminCreatePosterTab from '../components/admin/AdminCreatePosterTab';
-import AdminFranchisesTab from '../components/admin/AdminFranchisesTab';
-import AdminCategoriesTab from '../components/admin/AdminCategoriesTab';
-import AdminJarvisTab from '../components/admin/AdminJarvisTab';
-import AdminSettingsTab from '../components/admin/AdminSettingsTab';
+import AdminFranchisesTab   from '../components/admin/AdminFranchisesTab';
+import AdminCategoriesTab   from '../components/admin/AdminCategoriesTab';
+import AdminJarvisTab       from '../components/admin/AdminJarvisTab';
+import AdminSettingsTab     from '../components/admin/AdminSettingsTab';
 
 export default function AdminDashboard({ onNavigate, onLogout }) {
-  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'create' | 'franchises' | 'categories' | 'jarvis' | 'settings'
-  const [posters, setPosters] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [franchises, setFranchises] = useState([]);
+  const [activeTab,     setActiveTab]     = useState('inventory');
+  const [posters,       setPosters]       = useState([]);
+  const [categories,    setCategories]    = useState([]);
+  const [franchises,    setFranchises]    = useState([]);
   const [editingPoster, setEditingPoster] = useState(null);
-  const [toast, setToast] = useState(null);
+  const [toast,         setToast]         = useState(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
-    setTimeout(() => {
-      setToast(null);
-    }, 3500);
+    setTimeout(() => setToast(null), 3500);
   };
 
+  // Lee la cache en memoria (ya sincronizada con el servidor por catalogStorage)
   const loadData = () => {
     setPosters(getStoredPosters());
     setCategories(getStoredCategories());
     setFranchises(getStoredFranchises());
   };
 
+  // Re-sincroniza con el servidor y luego refresca la UI
+  const reloadFromServer = async () => {
+    await syncCatalogFromServer();
+    loadData();
+  };
+
   useEffect(() => {
     loadData();
-    const handleStorageUpdate = () => loadData();
-    window.addEventListener('deco-catalog-updated', handleStorageUpdate);
-    return () => window.removeEventListener('deco-catalog-updated', handleStorageUpdate);
+    // Escuchar actualizaciones del catálogo (emitidas por catalogStorage tras mutaciones)
+    const handleCatalogUpdate = () => loadData();
+    window.addEventListener('deco-catalog-updated', handleCatalogUpdate);
+    return () => window.removeEventListener('deco-catalog-updated', handleCatalogUpdate);
   }, []);
 
-  // Poster Actions
+  // ── Poster Actions ────────────────────────────────────────────────────────────
   const handleSavePoster = async (posterData) => {
     try {
-      await saveOrUpdatePoster(posterData);
-      loadData();
+      const savedPoster = await saveOrUpdatePoster(posterData);
+      // loadData() ya fue llamado por el evento 'deco-catalog-updated' en catalogStorage
       setEditingPoster(null);
       setActiveTab('inventory');
-      showToast(`¡Obra "${posterData.title}" guardada en el servidor!`, 'success');
+      const displayTitle = savedPoster?.titulo || savedPoster?.title || posterData.title;
+      showToast(`¡Obra "${displayTitle}" guardada en PostgreSQL!`, 'success');
     } catch (err) {
       showToast(`Error al guardar en el servidor: ${err.message}`, 'error');
     }
@@ -70,7 +78,6 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
     if (!confirm1) return;
     try {
       await deletePosterById(posterId);
-      loadData();
       showToast(`Obra "${posterTitle}" eliminada del servidor.`, 'info');
     } catch (err) {
       showToast(`Error al eliminar de servidor: ${err.message}`, 'error');
@@ -80,12 +87,12 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
   const handleToggleFeatured = async (posterId, posterTitle) => {
     try {
       await togglePosterFeatured(posterId);
-      loadData();
       showToast(`Estado Best Seller de "${posterTitle}" actualizado.`, 'success');
     } catch (err) {
       showToast(`Error al actualizar estado: ${err.message}`, 'error');
     }
   };
+
 
   const handleEditPoster = (poster) => {
     setEditingPoster(poster);
@@ -493,7 +500,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
           {activeTab === 'settings' && (
             <AdminSettingsTab
               onShowToast={showToast}
-              onReloadCatalog={loadData}
+              onReloadCatalog={reloadFromServer}
             />
           )}
 

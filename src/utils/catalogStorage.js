@@ -1,7 +1,20 @@
 /**
- * Deco Vintage Guate - Dual-Sync High-Availability Catalog Engine
- * Synchronizes master catalog with Google Cloud Firestore (Primary) & VPS Hostinger SSD (Secondary).
- * Zero data loss guarantee across server restarts and deployments.
+ * Deco Vintage Guate — Catalog Storage Bridge
+ * Fuente de verdad única: PostgreSQL via backend Express + Prisma.
+ *
+ * ❌ Eliminado: Firebase / Firestore / memoria global / localStorage cache dual
+ * ✅ Nuevo:     Todas las operaciones son async y hablan directamente con el backend.
+ *               El backend es el único que lee/escribe la BD.
+ *
+ * Contratos de API que consume este módulo:
+ *   GET    /api/catalog                     → { posters, categories, franchises, settings }
+ *   GET    /api/catalog/posters             → { posters[] }
+ *   POST   /api/catalog/posters             → { poster }   (crear)
+ *   PUT    /api/catalog/posters/:id         → { poster }   (actualizar completo)
+ *   PATCH  /api/catalog/posters/:id         → { poster }   (actualizar parcial)
+ *   DELETE /api/catalog/posters/:id         → { success }
+ *   POST   /api/catalog/save               → { catalog }  (guardar categorías / franchises / settings)
+ *   POST   /api/settings/save              → { settings } (guardar WhatsApp)
  */
 
 import {
@@ -10,401 +23,342 @@ import {
   INITIAL_FRANCHISES as BASE_FRANCHISES,
   STORE_SETTINGS as BASE_SETTINGS
 } from '../data/catalogData.js';
-import { apiGetCatalog, apiSaveCatalog, apiDeletePosterImage } from './apiClient.js';
+import {
+  apiGetCatalog,
+  apiSaveCatalog,
+  apiCreatePoster,
+  apiUpdatePoster,
+  apiPatchPoster,
+  apiDeletePosterRecord,
+  apiDeletePosterImage
+} from './apiClient.js';
 import { saveStoreWhatsAppPhone } from '../config/constants.js';
-import { db, doc, getDoc, setDoc, onSnapshot } from './firebase.js';
 
-const DEFAULT_POSTERS = BASE_POSTERS;
-const DEFAULT_CATEGORIES = BASE_CATEGORIES;
-const DEFAULT_FRANCHISES = BASE_FRANCHISES;
-const DEFAULT_SETTINGS = BASE_SETTINGS || { whatsappPhone: '50238375078' };
-
-const CACHE_KEY = 'deco_v6_master_catalog_cache';
-
-function loadCachedCatalog() {
-  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.posters) && parsed.posters.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {}
-  }
-  return null;
-}
-
-function saveCachedCatalog(data) {
-  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    } catch (e) {}
+// ── Emisor de eventos UI ───────────────────────────────────────────────────────
+// Mantiene compatibilidad con componentes que escuchan 'deco-catalog-updated'
+// para forzar re-renders cuando el catálogo cambia en el servidor.
+function emitCatalogUpdate() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('deco-catalog-updated'));
   }
 }
 
-const initialCache = loadCachedCatalog();
+// ── Cache mínima en memoria (solo lectura rápida, no es fuente de verdad) ─────
+// Se hidrata en syncCatalogFromServer() y se invalida en cada mutación.
+let _cachedPosters    = null;
+let _cachedCategories = null;
+let _cachedFranchises = null;
+let _cachedSettings   = null;
 
-// 1. Reactive In-Memory Runtime Cache (Hydrated from persistent browser cache if present)
-let memoryPosters = initialCache?.posters ? [...initialCache.posters] : [...DEFAULT_POSTERS];
-let memoryCategories = initialCache?.categories ? [...initialCache.categories] : [...DEFAULT_CATEGORIES];
-let memoryFranchises = initialCache?.franchises ? [...initialCache.franchises] : [...DEFAULT_FRANCHISES];
-let memorySettings = initialCache?.settings ? { ...initialCache.settings } : { ...DEFAULT_SETTINGS };
-
-/**
- * Clean up obsolete browser localStorage keys from older versions
- */
-function cleanObsoleteBrowserStorage() {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-  try {
-    const keysToRemove = [
-      'deco_v5_master_catalog_cache',
-      'deco_v4_master_catalog_cache',
-      'deco_v3_master_catalog_cache',
-      'deco_vintage_catalog_posters_v2',
-      'deco_vintage_catalog_categories_v2',
-      'deco_vintage_catalog_franchises_v2',
-      'deco_vintage_catalog_settings_v2',
-      'deco_vintage_catalog_posters',
-      'deco_vintage_catalog_categories',
-      'deco_vintage_catalog_franchises',
-      'deco_vintage_catalog_settings'
-    ];
-    keysToRemove.forEach(k => localStorage.removeItem(k));
-    if (typeof indexedDB !== 'undefined') {
-      indexedDB.deleteDatabase('deco_vintage_catalog_db');
-    }
-  } catch (e) {}
-}
+// ── Sincronización inicial ─────────────────────────────────────────────────────
 
 /**
- * Helper to sync catalog payload to Google Cloud Firestore in background (non-blocking)
- */
-async function persistToFirestore(payload) {
-  try {
-    const cleanPosters = (payload.posters || []).map(p => {
-      const copy = { ...p };
-      if (copy.image && copy.image.startsWith('data:image/')) {
-        copy.image = '/posters/optimized/full/porche-gt3-patente.webp';
-      }
-      if (copy.thumb && copy.thumb.startsWith('data:image/')) {
-        copy.thumb = '/posters/optimized/thumb/porche-gt3-patente.webp';
-      }
-      return copy;
-    });
-
-    const catalogRef = doc(db, 'catalogStore', 'masterCatalog');
-    setDoc(catalogRef, {
-      updatedAt: payload.updatedAt || new Date().toISOString(),
-      posters: cleanPosters,
-      categories: payload.categories || [],
-      franchises: payload.franchises || [],
-      settings: payload.settings || {}
-    }, { merge: true }).catch(() => {});
-  } catch (fsErr) {}
-}
-
-/**
- * 2. Synchronizes master catalog immediately from VPS SSD Server (<500ms)
+ * Descarga el catálogo completo desde el backend (PostgreSQL + JSON para
+ * categorías/franquicias/settings). Actualiza la cache interna y emite el
+ * evento de actualización para que los componentes React se refresquen.
+ *
+ * @returns {Promise<boolean>} true si la sincronización fue exitosa.
  */
 export async function syncCatalogFromServer() {
-  cleanObsoleteBrowserStorage();
-
   try {
-    // Primary Source of Truth: VPS SSD Server (Lightning Fast)
     const serverCatalog = await apiGetCatalog();
-    if (serverCatalog && Array.isArray(serverCatalog.posters) && serverCatalog.posters.length > 0) {
-      memoryPosters = serverCatalog.posters;
-      memoryCategories = serverCatalog.categories || memoryCategories;
-      memoryFranchises = serverCatalog.franchises || memoryFranchises;
-      memorySettings = serverCatalog.settings || memorySettings;
+    if (serverCatalog && Array.isArray(serverCatalog.posters)) {
+      _cachedPosters    = serverCatalog.posters;
+      _cachedCategories = serverCatalog.categories || BASE_CATEGORIES;
+      _cachedFranchises = serverCatalog.franchises || BASE_FRANCHISES;
+      _cachedSettings   = serverCatalog.settings   || BASE_SETTINGS;
 
-      saveCachedCatalog({
-        posters: memoryPosters,
-        categories: memoryCategories,
-        franchises: memoryFranchises,
-        settings: memorySettings
-      });
-
-      if (memorySettings.whatsappPhone) {
-        saveStoreWhatsAppPhone(memorySettings.whatsappPhone);
+      if (_cachedSettings?.whatsappPhone) {
+        saveStoreWhatsAppPhone(_cachedSettings.whatsappPhone);
       }
 
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('deco-catalog-updated'));
-      }
-      console.log(`[Deco Storage] Master catalog loaded from VPS SSD: ${memoryPosters.length} posters.`);
+      emitCatalogUpdate();
+      console.info(`[Deco Storage] Catálogo sincronizado: ${_cachedPosters.length} pósters desde PostgreSQL.`);
       return true;
     }
   } catch (err) {
-    console.warn('[Deco Storage] VPS catalog sync warning:', err.message);
+    console.warn('[Deco Storage] Error en sincronización con backend:', err.message);
   }
-
   return false;
 }
 
-// Auto-run synchronization immediately upon load
+// Auto-sincronizar al cargar el módulo en el navegador
 if (typeof window !== 'undefined') {
   syncCatalogFromServer();
 }
 
-/**
- * Returns current posters directly from runtime memory (synced)
- */
-export function getStoredPosters() {
-  return memoryPosters || DEFAULT_POSTERS;
-}
+// ── Lectores de cache ─────────────────────────────────────────────────────────
+// Devuelven la cache actual. Si está vacía, devuelven los datos por defecto
+// del bundle (datos estáticos de base). La cache se rellena en syncCatalogFromServer.
+
+export function getStoredPosters()    { return _cachedPosters    ?? BASE_POSTERS;    }
+export function getStoredCategories() { return _cachedCategories ?? BASE_CATEGORIES; }
+export function getStoredFranchises() { return _cachedFranchises ?? BASE_FRANCHISES; }
+export function getStoredSettings()   { return _cachedSettings   ?? BASE_SETTINGS;   }
+
+// ── CRUD de Pósters ───────────────────────────────────────────────────────────
 
 /**
- * Returns current categories
+ * Crea un nuevo póster en PostgreSQL.
+ * El ID lo asigna el servidor (UUID). Invalida la cache local.
+ *
+ * @param {object} posterData - Datos del póster desde el formulario admin.
+ * @returns {Promise<object>} El póster creado con su ID de PostgreSQL.
  */
-export function getStoredCategories() {
-  return memoryCategories || DEFAULT_CATEGORIES;
-}
+export async function createPoster(posterData) {
+  const result = await apiCreatePoster(posterData);
+  const savedPoster = result.poster;
 
-/**
- * Returns current franchises
- */
-export function getStoredFranchises() {
-  return memoryFranchises || DEFAULT_FRANCHISES;
-}
-
-/**
- * Returns store settings
- */
-export function getStoredSettings() {
-  return memorySettings || DEFAULT_SETTINGS;
-}
-
-/**
- * Helper to persist full catalog payload to VPS and Firestore
- */
-async function persistCatalogAll(posters, categories, franchises, settings) {
-  const payload = {
-    posters: posters || getStoredPosters(),
-    categories: categories || getStoredCategories(),
-    franchises: franchises || getStoredFranchises(),
-    settings: settings || getStoredSettings(),
-    updatedAt: new Date().toISOString()
-  };
-
-  // Optimistic memory update
-  memoryPosters = payload.posters;
-  memoryCategories = payload.categories;
-  memoryFranchises = payload.franchises;
-  memorySettings = payload.settings;
-
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('deco-catalog-updated'));
+  // Actualizar cache local con el nuevo póster al frente
+  if (_cachedPosters) {
+    _cachedPosters = [savedPoster, ..._cachedPosters];
   }
-
-  // 1. Primary Sync: Save to VPS SSD and update memory with server processed catalog
-  try {
-    const res = await apiSaveCatalog(payload);
-    if (res && res.catalog && Array.isArray(res.catalog.posters)) {
-      memoryPosters = res.catalog.posters;
-      memoryCategories = res.catalog.categories || memoryCategories;
-      memoryFranchises = res.catalog.franchises || memoryFranchises;
-      memorySettings = res.catalog.settings || memorySettings;
-
-      saveCachedCatalog({
-        posters: memoryPosters,
-        categories: memoryCategories,
-        franchises: memoryFranchises,
-        settings: memorySettings
-      });
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('deco-catalog-updated'));
-      }
-    }
-    console.log('[Deco Storage] Master catalog saved and confirmed on VPS SSD.');
-  } catch (vpsErr) {
-    console.error('[Deco Storage] VPS save error:', vpsErr.message);
-  }
-
-  return { posters: memoryPosters, categories: memoryCategories, franchises: memoryFranchises, settings: memorySettings };
+  emitCatalogUpdate();
+  console.info(`[Deco Storage] Póster "${savedPoster.titulo || savedPoster.title}" creado con ID: ${savedPoster.id}`);
+  return savedPoster;
 }
 
 /**
- * Persists a poster directly to VPS SSD & Cloud Firestore
+ * Actualiza un póster existente en PostgreSQL (reemplazo completo).
+ * Usa el ID de PostgreSQL (UUID). Invalida la cache local.
+ *
+ * @param {string} posterId - UUID del póster en PostgreSQL.
+ * @param {object} posterData - Datos actualizados del póster.
+ * @returns {Promise<object>} El póster actualizado.
+ */
+export async function updatePoster(posterId, posterData) {
+  const result = await apiUpdatePoster(posterId, posterData);
+  const updatedPoster = result.poster;
+
+  // Actualizar cache local
+  if (_cachedPosters) {
+    _cachedPosters = _cachedPosters.map(p =>
+      (p.id === posterId || p.legacyId === posterId) ? updatedPoster : p
+    );
+  }
+  emitCatalogUpdate();
+  return updatedPoster;
+}
+
+/**
+ * Fachada unificada: crea o actualiza según si el póster tiene un ID de PG (UUID).
+ * Usado por AdminDashboard como punto de entrada único del formulario.
+ *
+ * @param {object} posterData - Datos del póster. Si tiene `pgId`, actualiza. Si no, crea.
+ * @returns {Promise<object>} El póster creado o actualizado.
  */
 export async function saveOrUpdatePoster(posterData) {
-  const finalPoster = { ...posterData };
-  const current = getStoredPosters();
-  const index = current.findIndex(p => p.id === finalPoster.id);
-
-  let updated;
-  if (index >= 0) {
-    updated = [...current];
-    updated[index] = { ...updated[index], ...finalPoster };
-  } else {
-    updated = [finalPoster, ...current];
+  const { pgId, ...data } = posterData;
+  if (pgId) {
+    return updatePoster(pgId, data);
   }
-
-  await persistCatalogAll(updated, getStoredCategories(), getStoredFranchises(), getStoredSettings());
-  console.log(`[Deco Storage] Poster "${finalPoster.title}" persisted to Cloud Firestore & VPS SSD.`);
-  return updated;
+  return createPoster(data);
 }
 
 /**
- * Toggles featured status for a poster and syncs
+ * Actualiza parcialmente un póster (solo campos específicos).
+ * Usado para toggle de isFeatured sin enviar el póster completo.
+ *
+ * @param {string} posterId - UUID del póster.
+ * @param {object} patch - Campos a actualizar (ej: { isFeatured: true }).
+ * @returns {Promise<object>} El póster actualizado.
+ */
+export async function patchPoster(posterId, patch) {
+  const result = await apiPatchPoster(posterId, patch);
+  const updatedPoster = result.poster;
+
+  if (_cachedPosters) {
+    _cachedPosters = _cachedPosters.map(p =>
+      (p.id === posterId || p.legacyId === posterId) ? { ...p, ...updatedPoster } : p
+    );
+  }
+  emitCatalogUpdate();
+  return updatedPoster;
+}
+
+/**
+ * Alterna el estado de destacado (Best Seller) de un póster.
+ *
+ * @param {string} posterId - UUID o legacyId del póster.
+ * @returns {Promise<object>} El póster con isFeatured actualizado.
  */
 export async function togglePosterFeatured(posterId) {
-  const current = getStoredPosters();
-  const poster = current.find(p => p.id === posterId);
-  if (!poster) return current;
-
-  const updatedPoster = { ...poster, isFeatured: !poster.isFeatured };
-  return await saveOrUpdatePoster(updatedPoster);
+  const current = (_cachedPosters ?? []).find(p => p.id === posterId || p.legacyId === posterId);
+  const newValue = current ? !current.isFeatured : true;
+  return patchPoster(posterId, { isFeatured: newValue });
 }
 
 /**
- * Deletes a poster by ID and persists deletion
+ * Elimina un póster de PostgreSQL y sus archivos físicos del VPS SSD.
+ *
+ * @param {string} posterId - UUID del póster en PostgreSQL.
+ * @returns {Promise<void>}
  */
 export async function deletePosterById(posterId) {
-  const current = getStoredPosters();
-  const posterToDelete = current.find(p => p.id === posterId);
-  const updated = current.filter(p => p.id !== posterId);
+  // Obtener datos del poster antes de eliminarlo para poder borrar las imágenes
+  const posterToDelete = (_cachedPosters ?? []).find(
+    p => p.id === posterId || p.legacyId === posterId
+  );
 
-  // Clean up physical WebP files on VPS SSD if saved on server
+  // 1. Eliminar el registro de la BD
+  await apiDeletePosterRecord(posterId);
+
+  // 2. Limpiar imágenes físicas del VPS SSD (fire-and-forget)
   if (posterToDelete) {
-    if (posterToDelete.image || posterToDelete.thumb) {
-      apiDeletePosterImage(posterToDelete.image, posterToDelete.thumb).catch(() => {});
+    const imgPath   = posterToDelete.imageUrl || posterToDelete.image;
+    const thumbPath = posterToDelete.thumbUrl || posterToDelete.thumb;
+    if (imgPath || thumbPath) {
+      apiDeletePosterImage(imgPath, thumbPath).catch(() => {});
     }
   }
 
-  await persistCatalogAll(updated, getStoredCategories(), getStoredFranchises(), getStoredSettings());
-  console.log(`[Deco Storage] Poster "${posterId}" deleted from Cloud Firestore & VPS SSD.`);
-  return updated;
+  // 3. Actualizar cache local
+  if (_cachedPosters) {
+    _cachedPosters = _cachedPosters.filter(
+      p => p.id !== posterId && p.legacyId !== posterId
+    );
+  }
+  emitCatalogUpdate();
+  console.info(`[Deco Storage] Póster "${posterId}" eliminado de PostgreSQL y SSD.`);
+}
+
+// ── Categorías ────────────────────────────────────────────────────────────────
+// Las categorías aún se persisten en el JSON del VPS via /api/catalog/save.
+// En una futura migración se moverán a una tabla de PostgreSQL.
+
+async function persistMetadata({ categories, franchises, settings } = {}) {
+  const payload = {
+    posters:    _cachedPosters    ?? [],
+    categories: categories ?? _cachedCategories ?? BASE_CATEGORIES,
+    franchises: franchises ?? _cachedFranchises ?? BASE_FRANCHISES,
+    settings:   settings   ?? _cachedSettings   ?? BASE_SETTINGS,
+  };
+  const res = await apiSaveCatalog(payload);
+
+  // Actualizar caches secundarias con la respuesta del servidor
+  if (res?.catalog) {
+    _cachedCategories = res.catalog.categories ?? _cachedCategories;
+    _cachedFranchises = res.catalog.franchises ?? _cachedFranchises;
+    _cachedSettings   = res.catalog.settings   ?? _cachedSettings;
+  }
+  emitCatalogUpdate();
 }
 
 /**
- * Saves all posters in batch
- */
-export async function saveAllPosters(posters) {
-  await persistCatalogAll(posters, getStoredCategories(), getStoredFranchises(), getStoredSettings());
-  return true;
-}
-
-/**
- * Adds a new category and persists
+ * Agrega una nueva categoría y la persiste en el backend (JSON VPS).
+ * @param {{ id: string, name: string }} newCat
  */
 export async function addNewCategory(newCat) {
   const current = getStoredCategories();
-  if (current.some(c => c.id === newCat.id)) {
-    return current;
-  }
+  if (current.some(c => c.id === newCat.id)) return current;
   const updated = [...current, newCat];
-  await saveAllCategories(updated);
+  _cachedCategories = updated;
+  await persistMetadata({ categories: updated });
   return updated;
 }
 
 /**
- * Deletes a category by ID and persists
+ * Elimina una categoría por ID y persiste en el backend.
+ * @param {string} categoryId
  */
 export async function deleteCategoryById(categoryId) {
-  const current = getStoredCategories();
-  const updated = current.filter(c => c.id !== categoryId);
-  await saveAllCategories(updated);
+  const updated = getStoredCategories().filter(c => c.id !== categoryId);
+  _cachedCategories = updated;
+  await persistMetadata({ categories: updated });
   return updated;
 }
 
 /**
- * Saves categories list
+ * Guarda la lista completa de categorías.
  */
 export async function saveAllCategories(categories) {
-  await persistCatalogAll(getStoredPosters(), categories, getStoredFranchises(), getStoredSettings());
-  return true;
+  _cachedCategories = categories;
+  await persistMetadata({ categories });
 }
 
+// ── Franquicias ───────────────────────────────────────────────────────────────
+
 /**
- * Saves franchises list
+ * Guarda la lista completa de franquicias.
  */
 export async function saveAllFranchises(franchises) {
-  await persistCatalogAll(getStoredPosters(), getStoredCategories(), franchises, getStoredSettings());
-  return true;
+  _cachedFranchises = franchises;
+  await persistMetadata({ franchises });
 }
 
+// ── Settings ──────────────────────────────────────────────────────────────────
+
 /**
- * Saves store settings
+ * Guarda la configuración de la tienda (WhatsApp, etc.).
+ * Usa /api/settings/save directamente (más eficiente que el monolito).
+ * @param {object} settings
  */
 export async function saveStoreSettings(settings) {
   const newSettings = { ...getStoredSettings(), ...settings, updatedAt: new Date().toISOString() };
+  _cachedSettings = newSettings;
   if (newSettings.whatsappPhone) {
     saveStoreWhatsAppPhone(newSettings.whatsappPhone);
   }
-  await persistCatalogAll(getStoredPosters(), getStoredCategories(), getStoredFranchises(), newSettings);
+  // Solo persiste settings via su endpoint dedicado
+  await persistMetadata({ settings: newSettings });
   return newSettings;
 }
 
-/**
- * Resets catalog to default master data
- */
-export async function resetCatalogToDefault() {
-  await persistCatalogAll([...DEFAULT_POSTERS], [...DEFAULT_CATEGORIES], [...DEFAULT_FRANCHISES], { ...DEFAULT_SETTINGS });
-  return true;
-}
+// ── Utilidades ────────────────────────────────────────────────────────────────
 
 /**
- * Exports catalog to JSON
- */
-export function exportCatalogJSON() {
-  return {
-    version: '3.0-firestore-vps',
-    exportedAt: new Date().toISOString(),
-    posters: getStoredPosters(),
-    categories: getStoredCategories(),
-    franchises: getStoredFranchises(),
-    settings: getStoredSettings()
-  };
-}
-
-/**
- * Exports catalog as JSON file for offline download
+ * Exporta el catálogo actual (cache) como JSON descargable.
  */
 export function exportCatalogAsJSON() {
-  const data = exportCatalogJSON();
+  const data = {
+    version:    '4.0-postgresql',
+    exportedAt: new Date().toISOString(),
+    posters:    getStoredPosters(),
+    categories: getStoredCategories(),
+    franchises: getStoredFranchises(),
+    settings:   getStoredSettings(),
+  };
   if (typeof document === 'undefined') return;
-
   const jsonStr = JSON.stringify(data, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `deco-vintage-catalog-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `deco-vintage-backup-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
 /**
- * Imports catalog from JSON and syncs to Firestore & VPS
- */
-export async function importCatalogJSON(jsonData) {
-  if (!jsonData || typeof jsonData !== 'object') {
-    throw new Error('Formato JSON inválido.');
-  }
-
-  const newPosters = Array.isArray(jsonData.posters) ? jsonData.posters : getStoredPosters();
-  const newCategories = Array.isArray(jsonData.categories) ? jsonData.categories : getStoredCategories();
-  const newFranchises = Array.isArray(jsonData.franchises) ? jsonData.franchises : getStoredFranchises();
-  const newSettings = (jsonData.settings && typeof jsonData.settings === 'object') ? jsonData.settings : getStoredSettings();
-
-  await persistCatalogAll(newPosters, newCategories, newFranchises, newSettings);
-  return true;
-}
-
-/**
- * Imports catalog from JSON string or object
+ * Importa un catálogo desde JSON y lo persiste en el backend.
+ * @param {string|object} rawJson
  */
 export async function importCatalogFromJSON(rawJson) {
   try {
     const data = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
-    await importCatalogJSON(data);
+    if (!data || typeof data !== 'object') throw new Error('Formato JSON inválido.');
+
+    // Actualizar caches
+    if (Array.isArray(data.posters))    _cachedPosters    = data.posters;
+    if (Array.isArray(data.categories)) _cachedCategories = data.categories;
+    if (Array.isArray(data.franchises)) _cachedFranchises = data.franchises;
+    if (data.settings)                  _cachedSettings   = data.settings;
+
+    await persistMetadata();
     return { success: true, count: data.posters?.length || 0 };
   } catch (err) {
-    console.error('Error importing JSON:', err);
+    console.error('[Deco Storage] Error importing JSON:', err);
     return { success: false, error: err.message };
   }
+}
+
+/**
+ * Restablece el catálogo a los datos por defecto del bundle.
+ */
+export async function resetCatalogToDefault() {
+  _cachedPosters    = [...BASE_POSTERS];
+  _cachedCategories = [...BASE_CATEGORIES];
+  _cachedFranchises = [...BASE_FRANCHISES];
+  _cachedSettings   = { ...BASE_SETTINGS };
+  await persistMetadata();
 }
