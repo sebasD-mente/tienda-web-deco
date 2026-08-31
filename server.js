@@ -15,6 +15,8 @@
  *   routes/jarvisRoutes.js     — GET|POST /api/jarvis/* + /api/version + /api/health
  */
 
+console.log('[Boot] Vaciando cache de Docker...');
+
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
