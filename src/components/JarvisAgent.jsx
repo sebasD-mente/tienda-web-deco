@@ -749,6 +749,78 @@ export default function JarvisAgent({
                         );
                       }
 
+                      if (act.type === 'workshop_status' && act.order) {
+                        const ord = act.order;
+                        const waTrackingText = encodeURIComponent(`Hola Deco Vintage Guate, consulto sobre el avance de mi orden #${ord.ordenId}.`);
+                        return (
+                          <div key={actIdx} style={{
+                            marginTop: '12px',
+                            background: 'rgba(6, 14, 28, 0.95)',
+                            border: '1px solid rgba(0, 242, 254, 0.4)',
+                            borderRadius: '12px',
+                            padding: '14px 16px',
+                            boxShadow: '0 0 25px rgba(0, 242, 254, 0.15)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-cyan)', letterSpacing: '0.05em' }}>
+                                🛠️ SEGUIMIENTO DE TALLER: {ord.ordenId}
+                              </span>
+                              <span style={{
+                                background: 'rgba(0, 245, 160, 0.15)',
+                                color: '#00f5a0',
+                                border: '1px solid rgba(0, 245, 160, 0.35)',
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                fontSize: '0.68rem',
+                                fontWeight: 800
+                              }}>
+                                {ord.progreso}% COMPLETADO
+                              </span>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '10px' }}>
+                              <div style={{ width: `${ord.progreso}%`, height: '100%', background: 'linear-gradient(90deg, #00f2fe, #00f5a0)', borderRadius: '3px' }} />
+                            </div>
+
+                            <div style={{ fontSize: '0.8rem', color: '#e6edf3', lineHeight: 1.4, marginBottom: '10px' }}>
+                              {ord.estadoTexto}
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                              <div>🚚 <strong>Entrega:</strong> {ord.fechaEstimadaEntrega}</div>
+                              <div>📦 <strong>Envío:</strong> {ord.mensajeria}</div>
+                            </div>
+
+                            <a
+                              href={generateWhatsAppLink(`Hola Deco Vintage Guate, consulto sobre el avance de mi orden #${ord.ordenId}.`)}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                background: 'linear-gradient(90deg, #00d2ff 0%, #0077ff 100%)',
+                                color: '#ffffff',
+                                padding: '8px 14px',
+                                borderRadius: '8px',
+                                fontWeight: 800,
+                                fontSize: '0.78rem',
+                                textDecoration: 'none',
+                                boxShadow: '0 4px 12px rgba(0, 210, 255, 0.3)',
+                                width: '100%',
+                                boxSizing: 'border-box'
+                              }}
+                            >
+                              <MessageSquare size={14} />
+                              <span>Consultar con Taller por WhatsApp</span>
+                              <ExternalLink size={12} />
+                            </a>
+                          </div>
+                        );
+                      }
+
                       return null;
                     })}
                   </div>
