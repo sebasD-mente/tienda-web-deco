@@ -109,13 +109,15 @@ export async function askJarvis(queryOrOptions, history = []) {
     return {
       text: replyText,
       actions: executedActions,
-      poweredBy: serverResponse.poweredBy || 'gemini-3.6-flash'
+      poweredBy: serverResponse.poweredBy || 'gemini-3.6-flash',
+      isFallback: serverResponse.isFallback || false
     };
   } catch (err) {
-    console.error('[J.A.R.V.I.S.] Error querying server:', err);
+    console.error('[ERROR CRÍTICO J.A.R.V.I.S. Brain] Error querying server:', err);
     return {
       text: 'El asistente J.A.R.V.I.S. no se encuentra disponible temporalmente. Por favor contáctanos vía WhatsApp.',
-      actions: []
+      actions: [],
+      isFallback: true
     };
   }
 }

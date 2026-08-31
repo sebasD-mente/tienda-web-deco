@@ -25,7 +25,7 @@ const __filename = fileURLToPath(import.meta.url);
 export const JARVIS_TOOL_DECLARATIONS = [
   {
     name: 'explorar_catalogo',
-    description: 'Explora, busca y filtra las obras de arte y pósters del catálogo oficial por temática, categoría (Marvel, DC, Anime, Autos, etc.), término o IDs específicos para desplegar tarjetas interactivas.',
+    description: 'ÚNICAMENTE invocar cuando el cliente PIDA EXPLÍCITAMENTE ver, mostrar, enseñar, recomendar u ordenar obras o pósters específicos del inventario (ej: "muéstrame cuadros de autos", "qué posters de anime tienes", "recomiéndame 3 diseños de Marvel", "¿tienes cuadros de Batman?"). ESTRICTAMENTE PROHIBIDO invocar en saludos, preguntas sobre materiales, cintas Tesa, medidas, precios generales, envíos o conversación casual.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -335,12 +335,12 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
 - Eres súper amable, cálido, conversacional, servicial, ameno y educado. Hablas con emoción y cultura sobre cine, Marvel, DC, autos, anime, videojuegos, arte y música.
 - Trato cercano: Trata al cliente de 'tú' de forma natural y respetuosa. NUNCA uses repetitivamente palabras robóticas o frías como 'señor', 'caballero' o estructuras de soporte aburrido.
 
-=== REGLA ESTRICTA DE HERRAMIENTAS Y TARJETAS (MUY IMPORTANTE) ===
-1. Responde 100% CON TEXTO FLUIDO Y AMIGABLE en la inmensa mayoría de interacciones.
-2. ÚNICAMENTE debes invocar la herramienta 'explorar_catalogo' si el usuario pide EXPLÍCITAMENTE VER, MOSTRAR, ENSEÑAR U ORDENAR cuadros (ej: "muéstrame cuadros de...", "quiero ver diseños de...", "enséñame qué opciones tienes...").
-3. Si el cliente pide cotizar o fabricar medidas personalizadas especiales (ej: 50x70cm, 80x120cm, foto propia), invoca 'capturar_orden_personalizada'.
-4. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
-5. Si el usuario SOLO está conversando, preguntando si tienes alguna temática (ej: "¿Tienen cuadros de Spider-Man?"), preguntando sobre un evento o haciendo preguntas generales, RESPONDE 100% CON TEXTO CONVERSACIONAL ENTUSIASTA explicando lo que tienes y pregúntale amablemente si le gustaría que se los muestres.
+=== POLÍTICA CRÍTICA DE INTERFAZ: CUÁNDO MOSTRAR TARJETAS VS SOLO TEXTO (UX ANTI-SATURACIÓN) ===
+1. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en el 90% de las conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración). En estos casos está ESTRICTAMENTE PROHIBIDO invocar 'explorar_catalogo' o generar tarjetas de producto.
+2. ÚNICAMENTE INVOCAR 'explorar_catalogo': Cuando el cliente HAGA UNA PREGUNTA O PETICIÓN EXPLÍCITA DE INVENTARIO Y CATÁLOGO (ejemplos: "muéstrame cuadros de...", "qué posters de Spider-Man tienes", "¿tienen diseños de Dragon Ball?", "recomiéndame 2 cuadros de autos", "quiero ver obras de anime", "enséñame opciones de Marvel").
+3. Si el cliente solo está saludando ("hola", "buenas"), preguntando cómo se cuelgan los cuadros o charlando de una serie sin pedir ver catálogo, RESPONDE CON TEXTO AMIGABLE, asesóralo y pregúntale educadamente si le gustaría que le muestres los cuadros disponibles de esa categoría.
+4. Si el cliente pide cotizar o fabricar medidas personalizadas especiales (ej: 50x70cm, 80x120cm, foto propia), invoca 'capturar_orden_personalizada'.
+5. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
 
 === HILO Y CONTINUIDAD DE LA CONVERSACIÓN ===
 - Mantén la coherencia con lo que el usuario te ha dicho previamente en sus mensajes anteriores.
@@ -562,15 +562,18 @@ export function runFallbackEngine(prompt, posters, jarvisMemory) {
     localReply = `¡Claro que sí! Con respecto a **${matchedDoc.title}**:\n\n${matchedDoc.content}\n\n¿Te gustaría que te ayude a preparar o cotizar algún cuadro para esta ocasión?`;
 
   } else if (qLower.includes('auto') || qLower.includes('carro') || qLower.includes('f1') || qLower.includes('carrera') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('bmw') || qLower.includes('gtr')) {
-    const autoPosters = posters.filter(p => p.category === 'AUTOS' || (p.tags && p.tags.some(t => t.toLowerCase().includes('auto') || t.toLowerCase().includes('f1')))).slice(0, 4);
-    if (autoPosters.length > 0) {
-      localActions.push({ type: 'catalog_matches', posters: autoPosters, motivo: 'Cuadros destacados de automovilismo' });
+    const hasVisualRequest = qLower.includes('muestra') || qLower.includes('mostrar') || qLower.includes('ver') || qLower.includes('ensena') || qLower.includes('enseña') || qLower.includes('tienes') || qLower.includes('recomiend') || qLower.includes('catalogo') || qLower.includes('posters de') || qLower.includes('cuadros de');
+    if (hasVisualRequest) {
+      const autoPosters = posters.filter(p => (p.category || p.categoria) === 'AUTOS' || (p.tags && p.tags.some(t => t.toLowerCase().includes('auto') || t.toLowerCase().includes('f1')))).slice(0, 4);
+      if (autoPosters.length > 0) {
+        localActions.push({ type: 'catalog_matches', posters: autoPosters, motivo: 'Cuadros destacados de automovilismo' });
+      }
     }
     localReply = `¡Excelente elección! Nos apasiona el mundo motor. Manejamos cuadros de **Fórmula 1**, leyendas del **JDM** (como el Toyota Supra, Nissan GTR, RX-7), superdeportivos clásicos y modernos (Porsche, Ferrari, Mustang, Lamborghini).\n\n` +
                  `* **Impresión:** HP Látex de alta resolución ecológica y resistente al agua.\n` +
                  `* **Estructura:** Madera MDF rígida de 5.5mm con bordes pulidos y cinta doble cara Tesa incluida para colgar sin clavos.\n` +
                  `* **Medida más vendida:** Mediano (30x45cm) por solo **Q65.00**.\n\n` +
-                 `¡También podemos fabricar el cuadro con la foto de tu propio vehículo en cualquier medida personalizada! ¿Qué estilo de auto te gustaría lucir?`;
+                 `¡También podemos fabricar el cuadro con la foto de tu propio vehículo en cualquier medida personalizada! ¿Te gustaría que te muestre los diseños disponibles de autos?`;
 
   } else if (qLower.includes('material') || qLower.includes('calidad') || qLower.includes('tesa') || qLower.includes('colocar') || qLower.includes('pegar') || qLower.includes('instalar')) {
     localReply = `¡Nuestros cuadros están fabricados con los mejores estándares!\n\n` +
@@ -647,11 +650,10 @@ export function runFallbackEngine(prompt, posters, jarvisMemory) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CANDIDATE_MODELS = [
-  'gemini-3.6-flash',
-  'gemini-3.5-flash',
   'gemini-flash-latest',
-  'gemini-3.5-flash-lite',
-  'gemini-flash-lite-latest'
+  'gemini-flash-lite-latest',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash'
 ];
 
 /**
@@ -683,14 +685,21 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
           { role: 'user', parts: [{ text: prompt || 'Hola' }] }
         ];
 
-        const resAI = await ai.models.generateContent({
-          model:    modelName,
-          contents: contents,
-          config: {
-            systemInstruction: systemInstruction,
-            tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-          }
-        });
+        const callTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 10s timeout`)), 10000)
+        );
+
+        const resAI = await Promise.race([
+          ai.models.generateContent({
+            model:    modelName,
+            contents: contents,
+            config: {
+              systemInstruction: systemInstruction,
+              tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+            }
+          }),
+          callTimeout
+        ]);
 
         let   replyText      = resAI.text || '';
         const executedActions = [];

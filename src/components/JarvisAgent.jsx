@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Bot,
   X,
   Send,
-  Sparkles,
   MessageSquare,
-  Shield,
-  Activity,
   MapPin,
   Clock,
   ShoppingBag,
@@ -14,26 +10,33 @@ import {
   VolumeX,
   Mic,
   MicOff,
-  Cpu,
-  Layers,
   CheckCircle2,
   ExternalLink,
-  Plus,
-  ArrowRight,
-  RefreshCw,
   Eye
 } from 'lucide-react';
 import { generateWhatsAppLink } from '../config/constants';
+import { OFFICIAL_SIZES } from '../data/catalogData';
 import ArcReactor from './ArcReactor';
 import { askJarvis } from '../utils/jarvisBrain';
 import { getStoreKnowledge } from '../data/storeKnowledge';
 
-// High-tech sound synthesis using Web Audio API (no external mp3 needed)
+// High-tech sound synthesis using shared Web Audio API singleton (prevents audio context leaks)
+let sharedAudioCtx = null;
+const getAudioContext = () => {
+  if (!sharedAudioCtx && typeof window !== 'undefined') {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) sharedAudioCtx = new AudioCtx();
+  }
+  if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+};
+
 const playTechSound = (type = 'chime') => {
   try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    const ctx = getAudioContext();
+    if (!ctx) return;
 
     if (type === 'boot') {
       const osc = ctx.createOscillator();
@@ -126,6 +129,8 @@ export default function JarvisAgent({
   const [isListening, setIsListening] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [poweredModel, setPoweredModel] = useState('');
+  const [addedPosterId, setAddedPosterId] = useState(null);
+  const [lastUserPrompt, setLastUserPrompt] = useState('');
 
   const messagesEndRef = useRef(null);
   const chatScrollRef = useRef(null);
@@ -165,9 +170,16 @@ export default function JarvisAgent({
     return () => window.removeEventListener('deco-jarvis-knowledge-updated', handleKnowledgeUpdate);
   }, []);
 
-  const scrollToBottom = () => {
+  // Smart smooth scroll function that handles asynchronous expansions
+  const scrollToBottom = (smooth = true) => {
     if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      chatScrollRef.current.scrollTo({
+        top: chatScrollRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+    }
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
     }
   };
 
@@ -188,19 +200,23 @@ export default function JarvisAgent({
       if (soundEnabled) playTechSound('boot');
       const prevBodyOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-      scrollToBottom();
+      scrollToBottom(false);
       return () => {
         document.body.style.overflow = prevBodyOverflow;
       };
     }
   }, [isOpen, soundEnabled]);
 
-  // Auto-scroll to bottom of messages reliably
+  // Auto-scroll to bottom reliably when messages change or typing state updates
   useEffect(() => {
     if (isOpen) {
-      scrollToBottom();
-      const t = setTimeout(scrollToBottom, 80);
-      return () => clearTimeout(t);
+      scrollToBottom(true);
+      const t1 = setTimeout(() => scrollToBottom(true), 100);
+      const t2 = setTimeout(() => scrollToBottom(true), 350);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
   }, [messages, isTyping, isOpen]);
 
@@ -228,6 +244,7 @@ export default function JarvisAgent({
   }, []);
 
   const toggleSpeechRecognition = () => {
+    if (isTyping) return;
     if (!recognitionRef.current) {
       alert('Tu navegador no soporta entrada de voz.');
       return;
@@ -254,6 +271,7 @@ export default function JarvisAgent({
     const userMsg = { id: `u-${Date.now()}`, sender: 'user', text };
     setMessages(prev => [...prev, userMsg]);
     setInputText('');
+    setLastUserPrompt(text);
     setIsTyping(true);
 
     try {
@@ -275,25 +293,42 @@ export default function JarvisAgent({
 
       setPoweredModel(response.poweredBy || '');
 
+      const isFallbackReply = response.isFallback || (response.text && (
+        response.text.includes('No pude conectar con el cerebro principal') ||
+        response.text.includes('no se encuentra disponible temporalmente')
+      ));
+
+      if (isFallbackReply) {
+        console.warn('[J.A.R.V.I.S. UI] Fallback activado: Se recibió respuesta de contingencia del cerebro IA.');
+      }
+
       const jarvisMsg = {
         id: `j-${Date.now()}`,
         sender: 'jarvis',
         text: response.text,
         actions: response.actions || [],
-        toolResults: response.toolResults || []
+        toolResults: response.toolResults || [],
+        isHandoff: Boolean(isFallbackReply),
+        contextPrompt: text
       };
 
       setMessages(prev => [...prev, jarvisMsg]);
       if (soundEnabled) playTechSound('blip');
 
     } catch (err) {
-      console.error('Error asking Jarvis:', err);
+      console.error('[ERROR CRÍTICO J.A.R.V.I.S. UI] Excepción no controlada en frontend:', {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
+      });
       setMessages(prev => [
         ...prev,
         {
           id: `err-${Date.now()}`,
           sender: 'jarvis',
-          text: 'Se detectó una micro-interrupción en el enlace cuántico. Puedo responder a consultas de medidas oficiales, cotizar cuadros personalizados o enlazarle con atención humana en WhatsApp.'
+          isHandoff: true,
+          contextPrompt: text,
+          text: 'Se detectó una micro-interrupción en el enlace cuántico. Puedo responder a consultas de medidas oficiales, cotizar cuadros personalizados o enlazarle directamente con nuestro asesor Andrés por WhatsApp.'
         }
       ]);
     } finally {
@@ -302,7 +337,30 @@ export default function JarvisAgent({
   };
 
   const handleQuickPrompt = (promptText) => {
+    if (isTyping) return;
     handleSendMessage(promptText);
+  };
+
+  const handleQuickAddMedium = (poster) => {
+    const mediumSize = OFFICIAL_SIZES.find(s => s.id === 'MEDIANO') || {
+      id: 'MEDIANO',
+      name: 'Mediano',
+      dimensions: '30 x 45 cm',
+      price: 65.00
+    };
+
+    if (onAddToCart) {
+      onAddToCart({
+        poster,
+        size: mediumSize,
+        material: 'mdf',
+        price: 65.00,
+        quantity: 1
+      });
+      if (soundEnabled) playTechSound('blip');
+      setAddedPosterId(poster.id);
+      setTimeout(() => setAddedPosterId(null), 1800);
+    }
   };
 
   if (!isOpen) return null;
@@ -531,7 +589,8 @@ export default function JarvisAgent({
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '10px',
-                  maxWidth: isJarvis ? '92%' : '85%',
+                  maxWidth: isJarvis ? (msg.actions && msg.actions.length > 0 ? '98%' : '90%') : '85%',
+                  width: msg.actions && msg.actions.length > 0 ? '98%' : 'auto',
                   flexDirection: isJarvis ? 'row' : 'row-reverse'
                 }}>
                   {/* Sender Avatar */}
@@ -559,7 +618,8 @@ export default function JarvisAgent({
                     padding: '12px 16px',
                     fontSize: '0.88rem',
                     lineHeight: '1.45',
-                    boxShadow: isJarvis ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0, 242, 254, 0.3)'
+                    boxShadow: isJarvis ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0, 242, 254, 0.3)',
+                    width: msg.actions && msg.actions.length > 0 ? '100%' : 'auto'
                   }}>
                     <div style={{ wordBreak: 'break-word' }}>
                       {renderCleanMessageText(msg.text)}
@@ -570,105 +630,217 @@ export default function JarvisAgent({
                       if (act.type === 'catalog_matches' && act.posters && act.posters.length > 0) {
                         return (
                           <div key={actIdx} style={{
-                            marginTop: '12px',
+                            marginTop: '14px',
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                            gap: '10px',
-                            whiteSpace: 'normal'
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                            gap: '16px',
+                            whiteSpace: 'normal',
+                            width: '100%'
                           }}>
-                            {act.posters.map((p) => (
-                              <div
-                                key={p.id}
-                                style={{
-                                  background: 'rgba(6, 10, 18, 0.95)',
-                                  border: '1px solid rgba(0, 242, 254, 0.35)',
-                                  borderRadius: '10px',
-                                  overflow: 'hidden',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.5)'
-                                }}
-                              >
-                                <div style={{ position: 'relative', width: '100%', height: '115px', background: '#090d16' }}>
-                                  <img
-                                    src={p.thumb || p.image}
-                                    alt={p.title}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                    onError={(e) => {
-                                      if (p.image && e.target.src !== p.image) {
-                                        e.target.src = p.image;
-                                      }
-                                    }}
-                                  />
-                                  <span style={{
-                                    position: 'absolute',
-                                    bottom: '6px',
-                                    left: '6px',
-                                    background: 'rgba(0, 0, 0, 0.75)',
-                                    color: 'var(--accent-cyan)',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.66rem',
-                                    fontWeight: 800,
-                                    border: '1px solid rgba(0, 242, 254, 0.3)'
+                            {act.posters.map((p) => {
+                              const posterTitle = p.title || p.titulo || 'Póster Deco Vintage';
+                              const posterSubtitle = p.subtitle || p.subtitulo || 'Póster Rígido en Madera MDF 5.5mm';
+                              const posterCategory = p.category || p.categoria || 'COLECCIÓN';
+                              const posterImg = p.image || p.imageUrl || p.thumb || p.thumbUrl;
+                              const posterThumb = p.thumb || p.thumbUrl || p.image || p.imageUrl;
+                              const posterPrice = p.priceDisplay || p.precioDisplay || 'Desde Q 25.00';
+
+                              return (
+                                <div
+                                  key={p.id}
+                                  style={{
+                                    background: 'linear-gradient(180deg, rgba(9, 15, 28, 0.96) 0%, rgba(4, 7, 15, 0.98) 100%)',
+                                    border: '1px solid rgba(0, 242, 254, 0.4)',
+                                    borderRadius: '14px',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 242, 254, 0.12)',
+                                    transition: 'transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease'
+                                  }}
+                                >
+                                  {/* High-Impact Poster Frame (260px uncropped ratio) */}
+                                  <div style={{
+                                    position: 'relative',
+                                    width: '100%',
+                                    height: '260px',
+                                    background: 'radial-gradient(circle at center, #121c33 0%, #060a14 100%)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '8px'
                                   }}>
-                                    {p.category}
-                                  </span>
-                                </div>
-                                <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
-                                    {p.title}
-                                  </div>
-                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                    {p.subtitle || 'Póster Rígido MDF 5.5mm'}
-                                  </div>
-                                  <div style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', fontWeight: 800, marginTop: '2px' }}>
-                                    {p.priceDisplay || 'Desde Q 25.00'}
-                                  </div>
-                                  <div style={{ display: 'flex', gap: '6px', marginTop: 'auto', paddingTop: '8px' }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (onOpenProductModal) onOpenProductModal(p);
-                                        onClose();
-                                      }}
+                                    <img
+                                      src={posterThumb}
+                                      alt={posterTitle}
+                                      onLoad={() => scrollToBottom(true)}
                                       style={{
-                                        flex: 1,
-                                        padding: '6px 4px',
-                                        background: 'rgba(0, 242, 254, 0.15)',
-                                        border: '1px solid rgba(0, 242, 254, 0.4)',
-                                        color: '#00f2fe',
+                                        maxWidth: '100%',
+                                        maxHeight: '100%',
+                                        objectFit: 'contain',
                                         borderRadius: '6px',
-                                        fontSize: '0.72rem',
-                                        fontWeight: 800,
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '4px'
+                                        boxShadow: '0 6px 18px rgba(0, 0, 0, 0.7)',
+                                        transition: 'transform 0.3s ease'
                                       }}
-                                    >
-                                      <Eye size={12} />
-                                      <span>Ver Obra</span>
-                                    </button>
+                                      onError={(e) => {
+                                        if (posterImg && e.target.src !== posterImg) {
+                                          e.target.src = posterImg;
+                                        }
+                                      }}
+                                    />
+                                    {/* Category Pill */}
+                                    <span style={{
+                                      position: 'absolute',
+                                      top: '10px',
+                                      left: '10px',
+                                      background: 'rgba(4, 8, 16, 0.88)',
+                                      backdropFilter: 'blur(6px)',
+                                      color: '#00f2fe',
+                                      padding: '3px 8px',
+                                      borderRadius: '6px',
+                                      fontSize: '0.68rem',
+                                      fontWeight: 800,
+                                      border: '1px solid rgba(0, 242, 254, 0.4)',
+                                      letterSpacing: '0.04em',
+                                      textTransform: 'uppercase'
+                                    }}>
+                                      {posterCategory}
+                                    </span>
+                                    {/* Quick Price Tag */}
+                                    <span style={{
+                                      position: 'absolute',
+                                      bottom: '10px',
+                                      right: '10px',
+                                      background: 'rgba(0, 245, 160, 0.95)',
+                                      color: '#040812',
+                                      padding: '3px 9px',
+                                      borderRadius: '6px',
+                                      fontSize: '0.74rem',
+                                      fontWeight: 900,
+                                      boxShadow: '0 2px 10px rgba(0, 245, 160, 0.45)'
+                                    }}>
+                                      {posterPrice}
+                                    </span>
+                                  </div>
+
+                                  {/* Poster Description & Features */}
+                                  <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                                    <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#ffffff', lineHeight: 1.25 }}>
+                                      {posterTitle}
+                                    </div>
+                                    <div style={{ fontSize: '0.76rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                                      {posterSubtitle}
+                                    </div>
+
+                                    {/* Technical Badges */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                                      <span style={{ fontSize: '0.66rem', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', padding: '2px 6px', borderRadius: '4px' }}>
+                                        🪵 MDF 5.5mm
+                                      </span>
+                                      <span style={{ fontSize: '0.66rem', background: 'rgba(0, 242, 254, 0.1)', color: '#00f2fe', padding: '2px 6px', borderRadius: '4px' }}>
+                                        🎨 HP Látex UV
+                                      </span>
+                                      <span style={{ fontSize: '0.66rem', background: 'rgba(0, 245, 160, 0.1)', color: '#00f5a0', padding: '2px 6px', borderRadius: '4px' }}>
+                                        ✨ Cinta Tesa Incluida
+                                      </span>
+                                    </div>
+
+                                    {/* Dual Action Buttons (Titanium Commercial Integration) */}
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '10px' }}>
+                                      {/* Direct Add to Cart Button (Mediano 30x45 Q65) */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuickAddMedium(p)}
+                                        style={{
+                                          flex: 1.2,
+                                          padding: '9px 6px',
+                                          background: addedPosterId === p.id 
+                                            ? 'linear-gradient(135deg, #00f5a0 0%, #00d2ff 100%)' 
+                                            : 'linear-gradient(135deg, rgba(0, 245, 160, 0.2) 0%, rgba(0, 210, 255, 0.3) 100%)',
+                                          border: addedPosterId === p.id 
+                                            ? '1px solid #00f5a0' 
+                                            : '1px solid rgba(0, 245, 160, 0.6)',
+                                          color: addedPosterId === p.id ? '#040812' : '#00f5a0',
+                                          borderRadius: '8px',
+                                          fontSize: '0.76rem',
+                                          fontWeight: 800,
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          gap: '5px',
+                                          transition: 'all 0.2s ease',
+                                          boxShadow: addedPosterId === p.id ? '0 0 14px rgba(0, 245, 160, 0.5)' : 'none'
+                                        }}
+                                        title="Agregar tamaño Mediano (30x45cm) por Q65 al carrito"
+                                      >
+                                        {addedPosterId === p.id ? (
+                                          <>
+                                            <CheckCircle2 size={13} />
+                                            <span>¡Agregado!</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <ShoppingBag size={13} />
+                                            <span>+ Carrito (Q65)</span>
+                                          </>
+                                        )}
+                                      </button>
+
+                                      {/* View Product Details Modal Button */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (onOpenProductModal) onOpenProductModal(p);
+                                          onClose();
+                                        }}
+                                        style={{
+                                          flex: 0.9,
+                                          padding: '9px 6px',
+                                          background: 'rgba(0, 242, 254, 0.12)',
+                                          border: '1px solid rgba(0, 242, 254, 0.4)',
+                                          color: '#00f2fe',
+                                          borderRadius: '8px',
+                                          fontSize: '0.76rem',
+                                          fontWeight: 800,
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          gap: '5px',
+                                          transition: 'all 0.2s ease'
+                                        }}
+                                        title="Explorar medidas, materiales y detalles de esta obra"
+                                      >
+                                        <Eye size={13} />
+                                        <span>Ver Obra</span>
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         );
                       }
 
                       if (act.type === 'custom_quote') {
-                        const q = act.quote || {
-                          width: act.ancho || act.width || 30,
-                          height: act.alto || act.height || 45,
-                          area: (act.ancho || act.width || 30) * (act.alto || act.height || 45),
-                          material: act.material || 'Madera MDF 5.5mm',
-                          price: act.precio || act.price || 65,
-                          advance: act.anticipo || act.advance || Math.round((act.precio || act.price || 65) / 2)
+                        const rawQ = act.quote || act;
+                        const w = rawQ.width || rawQ.ancho || rawQ.anchoCm || 30;
+                        const h = rawQ.height || rawQ.alto || rawQ.altoCm || 45;
+                        const area = rawQ.areaCm2 || rawQ.area || (w * h);
+                        const mat = rawQ.material || 'Madera MDF 5.5mm (Estándar)';
+                        const totalPrice = rawQ.totalPrice ?? rawQ.precio ?? rawQ.price ?? 65;
+                        const advance = rawQ.deposit50 ?? rawQ.anticipo ?? rawQ.advance ?? Math.round(totalPrice / 2);
+
+                        const q = {
+                          width: w,
+                          height: h,
+                          area,
+                          material: mat,
+                          price: totalPrice,
+                          advance
                         };
-                        const waQuoteText = encodeURIComponent(`Hola Deco Vintage Guate, J.A.R.V.I.S. me ha cotizado un cuadro personalizado:\n• Medida: ${q.width}x${q.height} cm (${q.area} cm²)\n• Material: ${q.material}\n• Precio Total: Q ${q.price}.00\n• 50% de Anticipo: Q ${q.advance}.00\n\n*Deseo enviar mi imagen para iniciar fabricación.*`);
                         return (
                           <div key={actIdx} style={{
                             marginTop: '12px',
@@ -689,11 +861,11 @@ export default function JarvisAgent({
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem', color: '#e6edf3', marginBottom: '10px' }}>
                               <div><strong>Dimensiones:</strong> {q.width} x {q.height} cm</div>
                               <div><strong>Material:</strong> {q.material}</div>
-                              <div><strong>Precio Total:</strong> <span style={{ color: '#00f5a0', fontWeight: 800 }}>Q {q.price}.00</span></div>
-                              <div><strong>50% Anticipo:</strong> <span style={{ color: '#00f2fe', fontWeight: 800 }}>Q {q.advance}.00</span></div>
+                              <div><strong>Precio Total:</strong> <span style={{ color: '#00f5a0', fontWeight: 800 }}>Q {Number(q.price).toFixed(2)}</span></div>
+                              <div><strong>50% Anticipo:</strong> <span style={{ color: '#00f2fe', fontWeight: 800 }}>Q {Number(q.advance).toFixed(2)}</span></div>
                             </div>
                             <a
-                              href={generateWhatsAppLink(`Hola Deco Vintage Guate, J.A.R.V.I.S. me ha cotizado un cuadro personalizado:\n• Medida: ${q.width}x${q.height} cm (${q.area} cm²)\n• Material: ${q.material}\n• Precio Total: Q ${q.price}.00\n• 50% de Anticipo: Q ${q.advance}.00\n\n*Deseo enviar mi imagen para iniciar fabricación.*`)}
+                              href={generateWhatsAppLink(`Hola Deco Vintage Guate, J.A.R.V.I.S. me ha cotizado un cuadro personalizado:\n• Medida: ${q.width}x${q.height} cm (${q.area} cm²)\n• Material: ${q.material}\n• Precio Total: Q ${Number(q.price).toFixed(2)}\n• 50% de Anticipo: Q ${Number(q.advance).toFixed(2)}\n\n*Deseo enviar mi imagen para iniciar fabricación.*`)}
                               target="_blank"
                               rel="noreferrer"
                               style={{
@@ -751,7 +923,6 @@ export default function JarvisAgent({
 
                       if (act.type === 'workshop_status' && act.order) {
                         const ord = act.order;
-                        const waTrackingText = encodeURIComponent(`Hola Deco Vintage Guate, consulto sobre el avance de mi orden #${ord.ordenId}.`);
                         return (
                           <div key={actIdx} style={{
                             marginTop: '12px',
@@ -823,6 +994,67 @@ export default function JarvisAgent({
 
                       return null;
                     })}
+
+                    {/* 4. Human Handoff Bridge with Andres (Titanium Resilience Shield - Solo en contingencia real) */}
+                    {isJarvis && (msg.isHandoff || msg.id.startsWith('err-')) && (
+                      <div style={{
+                        marginTop: '12px',
+                        background: 'linear-gradient(135deg, rgba(4, 20, 15, 0.95) 0%, rgba(6, 12, 28, 0.95) 100%)',
+                        border: '1px solid rgba(0, 245, 160, 0.5)',
+                        borderRadius: '12px',
+                        padding: '12px 14px',
+                        boxShadow: '0 0 25px rgba(0, 245, 160, 0.15)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#00f5a0', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <MessageSquare size={14} color="#00f5a0" />
+                            PUENTE DE ATENCIÓN HUMANA • ANDRÉS
+                          </span>
+                          <span style={{
+                            background: 'rgba(0, 245, 160, 0.2)',
+                            color: '#00f5a0',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            fontSize: '0.64rem',
+                            fontWeight: 800
+                          }}>
+                            VENTAS 1-CLIC
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.76rem', color: '#cbd5e1', lineHeight: '1.35' }}>
+                          ¿Deseas coordinar directamente con nuestro asesor? Andrés te ayuda de inmediato con pedidos, cotizaciones especiales y entregas.
+                        </div>
+                        <a
+                          href={generateWhatsAppLink(
+                            `Hola Andrés 👋, estuve conversando con J.A.R.V.I.S. en la tienda web sobre: "${msg.contextPrompt || lastUserPrompt || 'información sobre cuadros y medidas'}" y me gustaría que me asesores para coordinar mi pedido.`
+                          )}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            background: 'linear-gradient(90deg, #00f5a0 0%, #00d2ff 100%)',
+                            color: '#040812',
+                            padding: '9px 14px',
+                            borderRadius: '8px',
+                            fontWeight: 800,
+                            fontSize: '0.80rem',
+                            textDecoration: 'none',
+                            boxShadow: '0 4px 14px rgba(0, 245, 160, 0.35)',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <MessageSquare size={15} />
+                          <span>Continuar Pedido con Andrés por WhatsApp</span>
+                          <ExternalLink size={13} />
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -880,18 +1112,20 @@ export default function JarvisAgent({
             <button
               key={qp.id || idx}
               type="button"
+              disabled={isTyping}
               onClick={() => handleQuickPrompt(qp.prompt || qp.label)}
               style={{
                 background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(5, 12, 24, 0.85) 100%)',
                 border: '1px solid rgba(0, 242, 254, 0.35)',
                 boxShadow: 'inset 0 0 8px rgba(0, 242, 254, 0.08), 0 2px 8px rgba(0,0,0,0.3)',
-                color: '#e6edf3',
+                color: isTyping ? '#64748b' : '#e6edf3',
                 padding: '6px 13px',
                 borderRadius: '6px',
                 fontSize: '0.74rem',
                 fontWeight: 700,
                 letterSpacing: '0.03em',
-                cursor: 'pointer',
+                cursor: isTyping ? 'not-allowed' : 'pointer',
+                opacity: isTyping ? 0.5 : 1,
                 whiteSpace: 'nowrap',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'inline-flex',
@@ -900,6 +1134,7 @@ export default function JarvisAgent({
                 position: 'relative'
               }}
               onMouseEnter={(e) => {
+                if (isTyping) return;
                 e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 242, 254, 0.22) 0%, rgba(10, 25, 48, 0.95) 100%)';
                 e.currentTarget.style.borderColor = '#00f2fe';
                 e.currentTarget.style.color = '#ffffff';
@@ -907,6 +1142,7 @@ export default function JarvisAgent({
                 e.currentTarget.style.transform = 'translateY(-1px)';
               }}
               onMouseLeave={(e) => {
+                if (isTyping) return;
                 e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(5, 12, 24, 0.85) 100%)';
                 e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.35)';
                 e.currentTarget.style.color = '#e6edf3';
@@ -918,8 +1154,8 @@ export default function JarvisAgent({
                 width: '5px',
                 height: '5px',
                 borderRadius: '1px',
-                background: '#00f2fe',
-                boxShadow: '0 0 6px #00f2fe',
+                background: isTyping ? '#64748b' : '#00f2fe',
+                boxShadow: isTyping ? 'none' : '0 0 6px #00f2fe',
                 flexShrink: 0
               }} />
               <span>{qp.label}</span>
@@ -927,7 +1163,7 @@ export default function JarvisAgent({
           ))}
         </div>
 
-        {/* 5. Input de Entrada con Micrófono y Envío */}
+        {/* 5. Input de Entrada con Micrófono y Envío (Anti-Stress Shield) */}
         <div style={{
           padding: '12px 20px 16px 20px',
           background: 'rgba(6, 10, 18, 0.98)',
@@ -940,18 +1176,20 @@ export default function JarvisAgent({
           {/* Voice Input Button */}
           <button
             type="button"
+            disabled={isTyping}
             onClick={toggleSpeechRecognition}
             style={{
-              background: isListening ? '#ef4444' : 'rgba(255, 255, 255, 0.06)',
+              background: isListening ? '#ef4444' : isTyping ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.06)',
               border: isListening ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.12)',
-              color: isListening ? '#ffffff' : 'var(--accent-cyan)',
+              color: isListening ? '#ffffff' : isTyping ? '#64748b' : 'var(--accent-cyan)',
               width: '42px',
               height: '42px',
               borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
+              cursor: isTyping ? 'not-allowed' : 'pointer',
+              opacity: isTyping ? 0.5 : 1,
               flexShrink: 0,
               boxShadow: isListening ? '0 0 16px rgba(239, 68, 68, 0.6)' : 'none',
               transition: 'all 0.2s ease'
@@ -961,27 +1199,36 @@ export default function JarvisAgent({
             {isListening ? <MicOff size={18} /> : <Mic size={18} />}
           </button>
 
-          {/* Text Input */}
+          {/* Text Input with Anti-Panic Lock */}
           <input
             type="text"
             autoFocus
+            disabled={isTyping}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSendMessage();
+              if (e.key === 'Enter' && !isTyping) handleSendMessage();
             }}
-            placeholder={isListening ? 'Escuchando tu voz...' : 'Escribe tu consulta a J.A.R.V.I.S. (ej: recomiéndame cuadros de anime...)'}
+            placeholder={
+              isTyping 
+                ? 'J.A.R.V.I.S. está procesando tu consulta...' 
+                : isListening 
+                  ? 'Escuchando tu voz...' 
+                  : 'Escribe tu consulta a J.A.R.V.I.S. (ej: recomiéndame cuadros de anime...)'
+            }
             style={{
               flex: 1,
               minWidth: 0,
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(0, 242, 254, 0.3)',
+              background: isTyping ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.04)',
+              border: isTyping ? '1px solid rgba(0, 242, 254, 0.15)' : '1px solid rgba(0, 242, 254, 0.3)',
               borderRadius: '10px',
               padding: '11px 16px',
-              color: '#ffffff',
+              color: isTyping ? '#94a3b8' : '#ffffff',
               fontSize: '0.88rem',
               outline: 'none',
-              boxSizing: 'border-box'
+              cursor: isTyping ? 'not-allowed' : 'text',
+              boxSizing: 'border-box',
+              transition: 'all 0.2s ease'
             }}
           />
 
@@ -998,7 +1245,8 @@ export default function JarvisAgent({
               borderRadius: '10px',
               justifyContent: 'center',
               flexShrink: 0,
-              opacity: !inputText.trim() || isTyping ? 0.4 : 1
+              opacity: !inputText.trim() || isTyping ? 0.4 : 1,
+              cursor: !inputText.trim() || isTyping ? 'not-allowed' : 'pointer'
             }}
             title="Enviar mensaje"
           >
