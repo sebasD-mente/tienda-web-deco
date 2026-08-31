@@ -8,6 +8,12 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
+# Generate Prisma Client BEFORE building — el cliente generado (.prisma/client/)
+# viaja dentro de node_modules al stage production via COPY --from=build.
+# Sin este paso, `new PrismaClient()` lanza un error fatal al arrancar Node.
+COPY prisma/ ./prisma/
+RUN npx prisma generate
+
 COPY . .
 RUN npm run build
 
