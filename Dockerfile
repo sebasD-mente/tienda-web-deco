@@ -26,6 +26,7 @@ COPY config/ ./config/
 COPY middleware/ ./middleware/
 COPY routes/ ./routes/
 COPY services/ ./services/
+COPY utils/ ./utils/
 
 # Copy repo data as SEED ONLY (read-only bootstrap for first run on a cold volume).
 # The real runtime data lives in the persistent volume mounted at /app/data by Dokploy.
