@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyD1yGG4BNDKB4ubEiLt8P45j1ZqCabtev0",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "tienda-web-deco-vintage.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "tienda-web-deco-vintage",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "tienda-web-deco-vintage.firebasestorage.app",
