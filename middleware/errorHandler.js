@@ -1,4 +1,4 @@
-﻿/**
+/**
  * middleware/errorHandler.js
  * Manejador de errores centralizado para Express.
  *
@@ -8,7 +8,7 @@
  * Express identifica un error-handler por su firma de 4 argumentos: (err, req, res, next).
  */
 
-import { AppError } from '../utils/AppError.js';
+import { AppError } from '../utils/app-error.js';
 
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
