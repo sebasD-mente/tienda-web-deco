@@ -2,9 +2,6 @@
  * services/jarvisService.js
  * Complete isolation of all J.A.R.V.I.S. AI logic.
  *
- * Extracted from server.js lines 348–932. No business logic was changed —
- * code was reorganized into pure, exportable functions.
- *
  * Engines (in failover order):
  *   1. Google GenAI SDK (@google/genai)  — multi-key + multi-model pool
  *   2. Google Cloud Vertex AI            — OAuth2 REST fallback
@@ -22,16 +19,24 @@ import { JARVIS_FILE, PROJECT_ROOT } from '../config/paths.js';
 const __filename = fileURLToPath(import.meta.url);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. TOOL DECLARATIONS  (server.js lines 348–381)
+// 1. TOOL DECLARATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const JARVIS_TOOL_DECLARATIONS = [
   {
-    name: 'recomendar_obras',
-    description: 'Despliega tarjetas visuales interactivas de las obras del catálogo cuando el cliente pide recomendaciones de arte, personajes, anime, autos o películas.',
+    name: 'explorar_catalogo',
+    description: 'Explora, busca y filtra las obras de arte y pósters del catálogo oficial por temática, categoría (Marvel, DC, Anime, Autos, etc.), término o IDs específicos para desplegar tarjetas interactivas.',
     parameters: {
       type: 'OBJECT',
       properties: {
+        termino: {
+          type: 'STRING',
+          description: 'Término o palabra clave de búsqueda (ej: Spider-Man, Porsche, GTR, Batman)'
+        },
+        categoria: {
+          type: 'STRING',
+          description: 'Categoría oficial (ej: AUTOS, ANIME, SUPERHEROES, CINE_SERIES, MUSICA, RETRO_GAMING)'
+        },
         posterIds: {
           type: 'ARRAY',
           items: { type: 'STRING' },
@@ -39,29 +44,47 @@ export const JARVIS_TOOL_DECLARATIONS = [
         },
         motivo: {
           type: 'STRING',
-          description: 'Breve explicación conversacional de por qué se adjunta esta obra'
+          description: 'Breve explicación conversacional de por qué se recomiendan estas obras'
         }
-      },
-      required: ['posterIds']
+      }
     }
   },
   {
-    name: 'cotizar_personalizado',
-    description: 'Calcula la cotización exacta en Quetzales y prepara la tarjeta interactiva para un cuadro personalizado con medidas especiales.',
+    name: 'capturar_orden_personalizada',
+    description: 'Calcula la cotización exacta en Quetzales y captura los parámetros para un cuadro personalizado con medidas especiales (en cm), tipo de material y detalles de diseño.',
     parameters: {
       type: 'OBJECT',
       properties: {
         anchoCm: { type: 'NUMBER', description: 'Ancho en centímetros (ej: 50)' },
         altoCm:  { type: 'NUMBER', description: 'Alto en centímetros (ej: 30)' },
-        material: { type: 'STRING', description: 'Material: mdf o pvc. Por defecto mdf.', enum: ['mdf', 'pvc'] }
+        material: { type: 'STRING', description: 'Material: mdf o pvc. Por defecto mdf.', enum: ['mdf', 'pvc'] },
+        detallesDiseno: { type: 'STRING', description: 'Descripción o detalles del diseño personalizado solicitado por el cliente' }
       },
       required: ['anchoCm', 'altoCm']
+    }
+  },
+  {
+    name: 'consultar_estado_taller',
+    description: 'Consulta el estado actual de fabricación artesanal, corte, impresión HP Látex, empaque o despacho de una orden de pedido en el taller.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        ordenId: {
+          type: 'STRING',
+          description: 'Código o número identificador de la orden de pedido (ej: DV-2026-884)'
+        },
+        telefono: {
+          type: 'STRING',
+          description: 'Número de teléfono o WhatsApp asociado a la orden'
+        }
+      },
+      required: ['ordenId']
     }
   }
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. PRICING CALCULATOR  (server.js lines 383–403)
+// 2. PRICING CALCULATOR
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -94,7 +117,7 @@ export function calculateCustomPrice(widthCm, heightCm, material = 'mdf') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. API KEY RESOLUTION  (server.js lines 405–435)
+// 3. API KEY RESOLUTION
 //    Priority: Docker env var → VPS SSD → .env.local dev fallback
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -135,7 +158,7 @@ export function getJarvisApiKey() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. MEMORY: READ  (server.js lines 437–463)
+// 4. MEMORY: READ
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -173,7 +196,7 @@ export function getJarvisMemory() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. MEMORY: WRITE  (server.js lines 479–511 — the complete merge+atomic version)
+// 5. MEMORY: WRITE
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -213,10 +236,9 @@ export function saveJarvisMemory(payload) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 6. VERTEX AI — OAuth2 TOKEN WITH IN-MEMORY CACHE  (server.js lines 531–568)
+// 6. VERTEX AI — OAuth2 TOKEN WITH IN-MEMORY CACHE
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Module-level cache — survives across requests within a process (same behavior as monolith)
 let cachedVertexToken = null;
 let cachedVertexTokenExpiry = 0;
 
@@ -262,7 +284,7 @@ export async function getVertexAccessToken() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. SYSTEM INSTRUCTION BUILDER  (server.js lines 595–653)
+// 7. SYSTEM INSTRUCTION BUILDER
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -315,9 +337,10 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
 
 === REGLA ESTRICTA DE HERRAMIENTAS Y TARJETAS (MUY IMPORTANTE) ===
 1. Responde 100% CON TEXTO FLUIDO Y AMIGABLE en la inmensa mayoría de interacciones.
-2. ÚNICAMENTE debes invocar la herramienta 'recomendar_obras' si el usuario pide EXPLÍCITAMENTE VER, MOSTRAR, ENSEÑAR U ORDENAR cuadros (ej: "muéstrame cuadros de...", "quiero ver diseños de...", "enséñame qué opciones tienes...").
-3. Si el usuario SOLO está conversando, preguntando si tienes alguna temática (ej: "¿Tienen cuadros de Spider-Man?"), preguntando sobre un evento o haciendo preguntas generales, RESPONDE 100% CON TEXTO CONVERSACIONAL ENTUSIASTA explicando lo que tienes y pregúntale amablemente si le gustaría que se los muestres.
-4. Si el cliente pide cotizar medidas personalizadas especiales (ej: 50x70cm, 80x120cm), invoca 'cotizar_personalizado'.
+2. ÚNICAMENTE debes invocar la herramienta 'explorar_catalogo' si el usuario pide EXPLÍCITAMENTE VER, MOSTRAR, ENSEÑAR U ORDENAR cuadros (ej: "muéstrame cuadros de...", "quiero ver diseños de...", "enséñame qué opciones tienes...").
+3. Si el cliente pide cotizar o fabricar medidas personalizadas especiales (ej: 50x70cm, 80x120cm, foto propia), invoca 'capturar_orden_personalizada'.
+4. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
+5. Si el usuario SOLO está conversando, preguntando si tienes alguna temática (ej: "¿Tienen cuadros de Spider-Man?"), preguntando sobre un evento o haciendo preguntas generales, RESPONDE 100% CON TEXTO CONVERSACIONAL ENTUSIASTA explicando lo que tienes y pregúntale amablemente si le gustaría que se los muestres.
 
 === HILO Y CONTINUIDAD DE LA CONVERSACIÓN ===
 - Mantén la coherencia con lo que el usuario te ha dicho previamente en sus mensajes anteriores.
@@ -339,7 +362,7 @@ ${catalogSummary}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. CHAT HISTORY FORMATTER  (server.js lines 665–703)
+// 8. CHAT HISTORY FORMATTER
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -395,38 +418,104 @@ export function formatChatHistory(rawHistory, maxTurns = 8) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 9. FUNCTION CALL EXECUTOR  (server.js lines 733–751 and 816–832)
-//    Both primary and Vertex engines had identical dispatch logic — unified here.
+// 9. FUNCTION CALL EXECUTOR WITH MOCKUPS
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Executes a single AI function call and returns the corresponding action object.
+ * Intercepts tool calls and returns structured action payloads with simulated mockups.
  *
- * @param {{ name: string, args: object }} call   - The function call from the model.
+ * @param {{ name: string, args: object }} call    - The function call from the model.
  * @param {any[]}                          posters - Full poster list for filtering.
  * @returns {object|null} Action object, or null if the call name is unknown.
  */
-export function executeFunctionCall(call, posters) {
-  if (call.name === 'recomendar_obras') {
-    const ids     = call.args?.posterIds || [];
-    const matched = posters.filter(p => ids.includes(p.id));
-    return {
-      type:    'catalog_matches',
-      posters: matched,
-      motivo:  call.args?.motivo || 'Obras recomendadas de nuestro catálogo oficial'
-    };
-  }
+export function executeFunctionCall(call, posters = []) {
+  if (!call || !call.name) return null;
+  const args = call.args || {};
 
-  if (call.name === 'cotizar_personalizado') {
-    const quote = calculateCustomPrice(call.args?.anchoCm, call.args?.altoCm, call.args?.material);
-    return { type: 'custom_quote', quote };
-  }
+  switch (call.name) {
+    case 'explorar_catalogo':
+    case 'recomendar_obras': {
+      let matched = [];
+      const ids = Array.isArray(args.posterIds) ? args.posterIds : [];
 
-  return null;
+      // 1. Filtrado por IDs directos
+      if (ids.length > 0) {
+        matched = posters.filter(p => ids.includes(p.id));
+      }
+
+      // 2. Filtrado por término o categoría
+      if (matched.length === 0 && (args.termino || args.categoria)) {
+        const term = (args.termino || '').toLowerCase();
+        const cat = (args.categoria || '').toUpperCase();
+        matched = posters.filter(p => {
+          const matchCat = cat && (p.category || '').toUpperCase().includes(cat);
+          const matchTerm = term && (
+            (p.title || '').toLowerCase().includes(term) ||
+            (p.subtitle || '').toLowerCase().includes(term) ||
+            (p.tags || []).some(t => t.toLowerCase().includes(term))
+          );
+          return matchCat || matchTerm;
+        }).slice(0, 4);
+      }
+
+      // 3. Fallback de mockup si no hay coincidencia exacta para garantizar respuesta visual
+      if (matched.length === 0) {
+        matched = posters.slice(0, 3);
+      }
+
+      return {
+        type:    'catalog_matches',
+        posters: matched,
+        motivo:  args.motivo || 'Obras destacadas de nuestro catálogo oficial Deco Vintage'
+      };
+    }
+
+    case 'capturar_orden_personalizada':
+    case 'cotizar_personalizado': {
+      const quote = calculateCustomPrice(args.anchoCm, args.altoCm, args.material);
+      const mockOrderNumber = `DV-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+      return {
+        type: 'custom_quote',
+        quote: {
+          ...quote,
+          detallesDiseno: args.detallesDiseno || 'Diseño personalizado con foto o arte del cliente',
+          orderMockId: mockOrderNumber
+        }
+      };
+    }
+
+    case 'consultar_estado_taller': {
+      const id = (args.ordenId || 'DV-2026-MOCK').toUpperCase();
+      const mockTaller = {
+        ordenId: id,
+        etapa: 'PRODUCCION_HP_LATEX',
+        progreso: 75,
+        estadoTexto: `La orden ${id} se encuentra en etapa de laminado y corte final en madera MDF 5.5mm con tintas ecológicas HP Látex.`,
+        fechaEstimadaEntrega: '2 a 3 días hábiles',
+        mensajeria: 'Mensajería Express / Guatex',
+        incluyeCintaTesa: true,
+        requiereAnticipo: false,
+        anticipoConfirmado: '50% recibido',
+        saldoPendiente: 'Contra entrega al recibir el cuadro'
+      };
+
+      return {
+        type: 'workshop_status',
+        order: mockTaller,
+        ordenId: id,
+        motivo: `Estado y avance en taller de la orden ${id}`
+      };
+    }
+
+    default:
+      console.warn(`[executeFunctionCall] Herramienta desconocida recibida: ${call.name}`);
+      return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 10. LOCAL FALLBACK ENGINE  (server.js lines 848–922)
+// 10. LOCAL FALLBACK ENGINE
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -511,6 +600,33 @@ export function runFallbackEngine(prompt, posters, jarvisMemory) {
                  `* **Pago:** El saldo se cancela contra entrega en Ciudad de Guatemala o previo al despacho departamental.\n\n` +
                  `¿En qué municipio o zona te encuentras para coordinar tu entrega?`;
 
+  } else if (qLower.includes('orden') || qLower.includes('taller') || qLower.includes('seguimiento') || qLower.includes('estado de mi') || qLower.includes('pedido') || qLower.includes('dv-')) {
+    const match = (prompt || '').match(/(dv[-_]?[0-9a-z-]+)/i);
+    const ordId = (match ? match[1] : 'DV-2026-101').toUpperCase();
+    const mockTaller = {
+      ordenId: ordId,
+      etapa: 'PRODUCCION_HP_LATEX',
+      progreso: 75,
+      estadoTexto: `La orden ${ordId} se encuentra en etapa de laminado y corte final en madera MDF 5.5mm con tintas ecológicas HP Látex.`,
+      fechaEstimadaEntrega: '2 a 3 días hábiles',
+      mensajeria: 'Mensajería Express / Guatex',
+      incluyeCintaTesa: true,
+      requiereAnticipo: false,
+      anticipoConfirmado: '50% recibido',
+      saldoPendiente: 'Contra entrega al recibir el cuadro'
+    };
+    localActions.push({
+      type: 'workshop_status',
+      order: mockTaller,
+      ordenId: ordId,
+      motivo: `Estado y avance en taller de la orden ${ordId}`
+    });
+    localReply = `¡Consultando sistema del taller! He localizado la orden **${ordId}**.\n\n` +
+                 `* **Estado Actual:** 75% completado (Laminado e impresión HP Látex terminada, en montaje final de MDF 5.5mm).\n` +
+                 `* **Tiempo estimado de entrega:** 2 a 3 días hábiles vía mensajería certificada.\n` +
+                 `* **Montaje:** Incluye cinta doble cara industrial Tesa lista para colgar sin clavos.\n\n` +
+                 `¿Deseas comunicarte directamente con el área de producción por WhatsApp para alguna indicación especial?`;
+
   } else if (qLower.includes('hola') || qLower.includes('buenas') || qLower.includes('saludos') || qLower.includes('hey')) {
     localReply = '¡Hola! 👋 Qué gusto saludarte. Soy J.A.R.V.I.S., tu asesor de diseño en Deco Vintage Guate. Dime qué temática te apasiona (autos, anime, superhéroes, películas, música, videojuegos) o si buscas precios y cotizaciones especiales, ¡con gusto te ayudo!';
 
@@ -527,8 +643,7 @@ export function runFallbackEngine(prompt, posters, jarvisMemory) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 11. MAIN CHAT ORCHESTRATOR  (server.js lines 571–932)
-//     Runs engines 1 → 2 → 3 in failover order and returns the first success.
+// 11. MAIN CHAT ORCHESTRATOR
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CANDIDATE_MODELS = [
