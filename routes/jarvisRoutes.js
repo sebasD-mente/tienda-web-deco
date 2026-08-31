@@ -14,7 +14,11 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { rateLimitAI } from '../middleware/rateLimit.js';
-import { getCatalogData } from '../services/catalogService.js';
+import {
+  getCatalogData,
+  getAllPosters,
+  formatPosterForClient
+} from '../services/catalogService.js';
 import {
   getJarvisApiKey,
   getJarvisMemory,
@@ -38,13 +42,20 @@ router.get('/version', (req, res) => {
 
 // ── GET /api/health ──────────────────────────────────────────────────────────
 // (server.js lines 977–987)
-router.get('/health', (req, res) => {
-  const catalog = getCatalogData();
+router.get('/health', async (req, res) => {
+  let postersCount = 0;
+  try {
+    const livePosters = await getAllPosters({ includeUnpublished: true });
+    postersCount = livePosters.length;
+  } catch (e) {
+    const catalog = getCatalogData();
+    postersCount = catalog.posters?.length || 0;
+  }
   res.json({
     status:       'ok',
     vps:          true,
     storage:      '100 GB SSD Hostinger',
-    postersCount: catalog.posters?.length || 0,
+    postersCount,
     timestamp:    new Date().toISOString()
   });
 });
@@ -109,8 +120,8 @@ router.post('/jarvis/save-key', requireAuth, (req, res) => {
 // (server.js lines 571–932)
 router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
   try {
-    const { prompt, history } = req.body;
-    const clientKey      = req.headers['x-gemini-key'] || req.body.apiKey;
+    const { prompt, history } = req.body || {};
+    const clientKey      = req.headers['x-gemini-key'] || req.body?.apiKey;
     const masterServerKey = getJarvisApiKey();
 
     // Build candidate key pool — server key takes priority over client-provided key
@@ -122,15 +133,47 @@ router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
       candidateKeys.push(clientKey.trim());
     }
 
-    const catalog      = getCatalogData();
+    // 1. Obtener inventario en VIVO directamente desde PostgreSQL via Prisma
+    let livePosters = [];
+    try {
+      livePosters = await getAllPosters();
+    } catch (dbErr) {
+      console.warn('[Deco J.A.R.V.I.S.] Advertencia leyendo pósters de Prisma en vivo:', dbErr.message);
+      const fallbackCatalog = getCatalogData();
+      livePosters = (fallbackCatalog.posters || []).map(formatPosterForClient);
+    }
+
+    const legacyCatalog = getCatalogData();
+    const liveCatalog = {
+      categories: legacyCatalog.categories || [],
+      franchises: legacyCatalog.franchises || [],
+      settings:   legacyCatalog.settings || {},
+      posters:    livePosters || []
+    };
+
     const jarvisMemory = getJarvisMemory();
 
-    const result = await chatWithJarvis(prompt, history, candidateKeys, catalog, jarvisMemory);
+    const result = await chatWithJarvis(prompt, history, candidateKeys, liveCatalog, jarvisMemory);
+
+    if (!result || typeof result !== 'object') {
+      return res.status(200).json({
+        replyText: '¡Hola! Con gusto te asisto con las colecciones de Deco Vintage. ¿Qué diseño o temática estás buscando?',
+        actions: [],
+        poweredBy: 'Deco Safe Fallback'
+      });
+    }
+
     return res.status(200).json(result);
 
   } catch (err) {
     console.error('[API Error] POST /api/jarvis/chat:', err);
-    return res.status(500).json({ error: 'Error procesando consulta de J.A.R.V.I.S.: ' + err.message });
+    // Retornamos un status 200 con mensaje explicativo para que el frontend nunca sufra un cuelgue infinito
+    return res.status(200).json({
+      replyText: 'Disculpa, ocurrió un inconveniente temporal al consultar el inventario, pero con gusto te asisto. ¿Qué temática de cuadros te gustaría ver?',
+      actions: [],
+      poweredBy: 'Deco Safe Error Recovery',
+      error: err.message
+    });
   }
 });
 

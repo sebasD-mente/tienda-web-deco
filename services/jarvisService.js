@@ -15,6 +15,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { JARVIS_FILE, PROJECT_ROOT } from '../config/paths.js';
+import {
+  getAllPosters,
+  formatPosterForClient,
+  getCatalogData
+} from './catalogService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -295,9 +300,9 @@ export async function getVertexAccessToken() {
  * @param {object} jarvisMemory - Merged memory object from getJarvisMemory().
  * @returns {string} Complete system instruction.
  */
-export function buildSystemInstruction(catalog, jarvisMemory) {
-  const posters    = catalog.posters    || [];
-  const settings   = catalog.settings   || {};
+export function buildSystemInstruction(catalog, jarvisMemory = {}) {
+  const posters    = (catalog && Array.isArray(catalog.posters)) ? catalog.posters.filter(Boolean) : [];
+  const settings   = catalog?.settings || {};
   const waPhone    = settings.whatsappPhone || '50238375078';
 
   const ownerDirectives = (jarvisMemory.ownerDirectives || [
@@ -324,9 +329,16 @@ export function buildSystemInstruction(catalog, jarvisMemory) {
     }
   ]).map(doc => `[DOCUMENTO / EVENTO: ${doc.title}]\nCategoría: ${doc.category || 'General'}\nContenido: ${doc.content}`).join('\n\n');
 
-  const catalogSummary = posters.map(p =>
-    `- ID: "${p.id}", Título: "${p.title}", Subtítulo: "${p.subtitle || ''}", Categoría: "${p.category}", Descripción: "${p.description || ''}", Tags: "${(p.tags || []).join(', ')}", Precio: "${p.priceDisplay || 'Desde Q25.00'}"`
-  ).join('\n');
+  const catalogSummary = posters.map(p => {
+    const id = p.id || '';
+    const title = p.title || p.titulo || 'Póster';
+    const subtitle = p.subtitle || p.subtitulo || '';
+    const category = p.category || p.categoria || 'AUTOS';
+    const description = p.description || p.descripcion || '';
+    const tags = Array.isArray(p.tags) ? p.tags.join(', ') : '';
+    const price = p.priceDisplay || (p.minPrice ? `Desde Q${p.minPrice}.00` : 'Desde Q25.00');
+    return `- ID: "${id}", Título: "${title}", Subtítulo: "${subtitle}", Categoría: "${category}", Descripción: "${description}", Tags: "${tags}", Precio: "${price}"`;
+  }).join('\n');
 
   return `Eres J.A.R.V.I.S. (Just A Rather Very Intelligent System), el asesor de inteligencia artificial exclusivo de Deco Vintage Guate (tienda en Guatemala de cuadros rígidos y pósters decorativos de colección en madera MDF de 5.5mm con tecnología HP Látex).
 WhatsApp Oficial de Atención al Cliente: +${waPhone}
@@ -432,85 +444,98 @@ export function formatChatHistory(rawHistory, maxTurns = 8) {
 export function executeFunctionCall(call, posters = []) {
   if (!call || !call.name) return null;
   const args = call.args || {};
+  const cleanPosters = Array.isArray(posters) ? posters.filter(Boolean) : [];
 
-  switch (call.name) {
-    case 'explorar_catalogo':
-    case 'recomendar_obras': {
-      let matched = [];
-      const ids = Array.isArray(args.posterIds) ? args.posterIds : [];
+  try {
+    switch (call.name) {
+      case 'explorar_catalogo':
+      case 'recomendar_obras': {
+        let matched = [];
+        const ids = Array.isArray(args.posterIds) ? args.posterIds.filter(Boolean) : [];
 
-      // 1. Filtrado por IDs directos
-      if (ids.length > 0) {
-        matched = posters.filter(p => ids.includes(p.id));
-      }
-
-      // 2. Filtrado por término o categoría
-      if (matched.length === 0 && (args.termino || args.categoria)) {
-        const term = (args.termino || '').toLowerCase();
-        const cat = (args.categoria || '').toUpperCase();
-        matched = posters.filter(p => {
-          const matchCat = cat && (p.category || '').toUpperCase().includes(cat);
-          const matchTerm = term && (
-            (p.title || '').toLowerCase().includes(term) ||
-            (p.subtitle || '').toLowerCase().includes(term) ||
-            (p.tags || []).some(t => t.toLowerCase().includes(term))
-          );
-          return matchCat || matchTerm;
-        }).slice(0, 4);
-      }
-
-      // 3. Fallback de mockup si no hay coincidencia exacta para garantizar respuesta visual
-      if (matched.length === 0) {
-        matched = posters.slice(0, 3);
-      }
-
-      return {
-        type:    'catalog_matches',
-        posters: matched,
-        motivo:  args.motivo || 'Obras destacadas de nuestro catálogo oficial Deco Vintage'
-      };
-    }
-
-    case 'capturar_orden_personalizada':
-    case 'cotizar_personalizado': {
-      const quote = calculateCustomPrice(args.anchoCm, args.altoCm, args.material);
-      const mockOrderNumber = `DV-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
-      return {
-        type: 'custom_quote',
-        quote: {
-          ...quote,
-          detallesDiseno: args.detallesDiseno || 'Diseño personalizado con foto o arte del cliente',
-          orderMockId: mockOrderNumber
+        // 1. Filtrado por IDs directos (garantiza que solo se elijan obras que existen en la BD actual de PostgreSQL)
+        if (ids.length > 0) {
+          matched = cleanPosters.filter(p => p && p.id && ids.includes(p.id));
         }
-      };
+
+        // 2. Filtrado por término o categoría si no hubo match por IDs
+        if (matched.length === 0 && (args.termino || args.categoria)) {
+          const term = (args.termino || '').toLowerCase().trim();
+          const cat = (args.categoria || '').toUpperCase().trim();
+          matched = cleanPosters.filter(p => {
+            if (!p) return false;
+            const pCat = (p.category || p.categoria || '').toUpperCase();
+            const matchCat = cat && pCat.includes(cat);
+            const pTitle = (p.title || p.titulo || '').toLowerCase();
+            const pSub = (p.subtitle || p.subtitulo || '').toLowerCase();
+            const pDesc = (p.description || p.descripcion || '').toLowerCase();
+            const pTags = Array.isArray(p.tags) ? p.tags : [];
+            const matchTerm = term && (
+              pTitle.includes(term) ||
+              pSub.includes(term) ||
+              pDesc.includes(term) ||
+              pTags.some(t => String(t).toLowerCase().includes(term))
+            );
+            return matchCat || matchTerm;
+          }).slice(0, 4);
+        }
+
+        // 3. Fallback de mockup si no hay coincidencia exacta para garantizar respuesta visual segura
+        if (matched.length === 0 && cleanPosters.length > 0) {
+          matched = cleanPosters.slice(0, 3);
+        }
+
+        return {
+          type:    'catalog_matches',
+          posters: matched.filter(Boolean),
+          motivo:  args.motivo || 'Obras destacadas de nuestro catálogo oficial Deco Vintage'
+        };
+      }
+
+      case 'capturar_orden_personalizada':
+      case 'cotizar_personalizado': {
+        const quote = calculateCustomPrice(args.anchoCm, args.altoCm, args.material);
+        const mockOrderNumber = `DV-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+        return {
+          type: 'custom_quote',
+          quote: {
+            ...quote,
+            detallesDiseno: args.detallesDiseno || 'Diseño personalizado con foto o arte del cliente',
+            orderMockId: mockOrderNumber
+          }
+        };
+      }
+
+      case 'consultar_estado_taller': {
+        const id = (args.ordenId || 'DV-2026-MOCK').toUpperCase();
+        const mockTaller = {
+          ordenId: id,
+          etapa: 'PRODUCCION_HP_LATEX',
+          progreso: 75,
+          estadoTexto: `La orden ${id} se encuentra en etapa de laminado y corte final en madera MDF 5.5mm con tintas ecológicas HP Látex.`,
+          fechaEstimadaEntrega: '2 a 3 días hábiles',
+          mensajeria: 'Mensajería Express / Guatex',
+          incluyeCintaTesa: true,
+          requiereAnticipo: false,
+          anticipoConfirmado: '50% recibido',
+          saldoPendiente: 'Contra entrega al recibir el cuadro'
+        };
+
+        return {
+          type: 'workshop_status',
+          order: mockTaller,
+          ordenId: id,
+          motivo: `Estado y avance en taller de la orden ${id}`
+        };
+      }
+
+      default:
+        console.warn(`[executeFunctionCall] Herramienta desconocida recibida: ${call.name}`);
+        return null;
     }
-
-    case 'consultar_estado_taller': {
-      const id = (args.ordenId || 'DV-2026-MOCK').toUpperCase();
-      const mockTaller = {
-        ordenId: id,
-        etapa: 'PRODUCCION_HP_LATEX',
-        progreso: 75,
-        estadoTexto: `La orden ${id} se encuentra en etapa de laminado y corte final en madera MDF 5.5mm con tintas ecológicas HP Látex.`,
-        fechaEstimadaEntrega: '2 a 3 días hábiles',
-        mensajeria: 'Mensajería Express / Guatex',
-        incluyeCintaTesa: true,
-        requiereAnticipo: false,
-        anticipoConfirmado: '50% recibido',
-        saldoPendiente: 'Contra entrega al recibir el cuadro'
-      };
-
-      return {
-        type: 'workshop_status',
-        order: mockTaller,
-        ordenId: id,
-        motivo: `Estado y avance en taller de la orden ${id}`
-      };
-    }
-
-    default:
-      console.warn(`[executeFunctionCall] Herramienta desconocida recibida: ${call.name}`);
-      return null;
+  } catch (fnErr) {
+    console.error(`[executeFunctionCall] Error ejecutando acción ${call.name}:`, fnErr);
+    return null;
   }
 }
 
@@ -667,8 +692,25 @@ const CANDIDATE_MODELS = [
  * @returns {Promise<{ replyText: string, actions: any[], poweredBy: string }>}
  */
 export async function chatWithJarvis(prompt, history, candidateKeys, catalog, jarvisMemory) {
-  const posters        = catalog.posters || [];
-  const systemInstruction = buildSystemInstruction(catalog, jarvisMemory);
+  // 1. Asegurar que siempre tengamos la lista de pósters en vivo desde PostgreSQL
+  let livePosters = (catalog && Array.isArray(catalog.posters)) ? catalog.posters.filter(Boolean) : [];
+  if (livePosters.length === 0) {
+    try {
+      livePosters = await getAllPosters();
+    } catch (dbErr) {
+      console.warn('[Deco J.A.R.V.I.S.] Warning fetching live PostgreSQL posters in orchestrator:', dbErr.message);
+      const fallbackCatalog = getCatalogData();
+      livePosters = (fallbackCatalog.posters || []).map(formatPosterForClient);
+    }
+  }
+
+  const liveCatalog = {
+    ...(catalog || getCatalogData()),
+    posters: livePosters
+  };
+
+  const posters           = livePosters;
+  const systemInstruction = buildSystemInstruction(liveCatalog, jarvisMemory);
   const chatHistory       = formatChatHistory(history);
   let   lastError         = null;
 
@@ -707,8 +749,12 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
 
         if (functionCalls && functionCalls.length > 0) {
           for (const call of functionCalls) {
-            const action = executeFunctionCall(call, posters);
-            if (action) executedActions.push(action);
+            try {
+              const action = executeFunctionCall(call, posters);
+              if (action) executedActions.push(action);
+            } catch (fnErr) {
+              console.error('[Deco J.A.R.V.I.S.] Error executing function call:', fnErr);
+            }
           }
         }
 
@@ -779,8 +825,12 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
               replyText += part.text;
             }
             if (part.functionCall) {
-              const action = executeFunctionCall(part.functionCall, posters);
-              if (action) executedActions.push(action);
+              try {
+                const action = executeFunctionCall(part.functionCall, posters);
+                if (action) executedActions.push(action);
+              } catch (fnErr) {
+                console.error('[Deco J.A.R.V.I.S. Vertex] Error executing function call:', fnErr);
+              }
             }
           }
 

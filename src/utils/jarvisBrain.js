@@ -96,12 +96,12 @@ export async function askJarvis(queryOrOptions, history = []) {
     let replyText = serverResponse.replyText || '';
     let executedActions = serverResponse.actions || [];
 
-    // If server returned matching IDs, hydrate them with client poster objects
+    // If server returned matching posters, ensure they preserve full live DB properties
     for (const action of executedActions) {
       if (action.type === 'catalog_matches' && Array.isArray(action.posters)) {
         action.posters = action.posters.map(p => {
-          const found = posters.find(local => local.id === p.id);
-          return found || p;
+          const found = (posters || []).find(local => local && local.id === p.id);
+          return { ...(found || {}), ...p };
         });
       }
     }
