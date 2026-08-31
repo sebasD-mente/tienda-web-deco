@@ -5,6 +5,7 @@
  */
 
 import { Router } from 'express';
+import crypto from 'crypto';
 import {
   ADMIN_USER,
   ADMIN_PASS,
@@ -21,7 +22,12 @@ router.post('/auth/login', (req, res) => {
     return res.status(400).json({ success: false, error: 'Usuario y contraseña requeridos.' });
   }
 
-  if (username.trim() === ADMIN_USER && password.trim() === ADMIN_PASS) {
+  const userMatches = typeof username === 'string' && username.trim() === ADMIN_USER;
+  const passBuffer = Buffer.from(typeof password === 'string' ? password.trim() : '', 'utf8');
+  const adminPassBuffer = Buffer.from(ADMIN_PASS || '', 'utf8');
+  const passMatches = passBuffer.length === adminPassBuffer.length && crypto.timingSafeEqual(passBuffer, adminPassBuffer);
+
+  if (userMatches && passMatches) {
     const token = generateAuthToken();
     console.log(`[Deco Auth] Admin "${username}" authenticated successfully.`);
     return res.status(200).json({

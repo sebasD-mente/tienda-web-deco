@@ -1,18 +1,22 @@
 /**
  * middleware/auth.js
- * Stateless HMAC Token System — survives server restarts and container reloads.
- * Extracted from server.js lines 57–93.
+ * Stateless HMAC Token System — Zero-Trust hardened with Fail-Fast checks and timingSafeEqual.
  */
 
 import crypto from 'crypto';
 
-// ── Secrets ──────────────────────────────────────────────────────────────────
-const ADMIN_USER  = process.env.ADMIN_USER     || 'SebasDmente';
-const ADMIN_PASS  = process.env.ADMIN_PASSWORD || '4214294880101';
-const AUTH_SECRET = process.env.ADMIN_SECRET   || 'deco_vintage_guate_secret_2026_master_key';
+// ── Secrets & Environment Validation (Fail-Fast Zero-Trust Pattern) ───────────
+const ADMIN_USER  = process.env.ADMIN_USER || 'SebasDmente';
+const ADMIN_PASS  = process.env.ADMIN_PASSWORD;
+const AUTH_SECRET = process.env.ADMIN_SECRET;
+
+if (!AUTH_SECRET || !ADMIN_PASS) {
+  console.error('❌ [FATAL SECURITY ERROR] Blindaje Zero-Trust: ADMIN_SECRET o ADMIN_PASSWORD no están configurados en las variables de entorno.');
+  process.exit(1);
+}
 
 // Export credentials so other modules (e.g. authRoutes) can validate login
-export { ADMIN_USER, ADMIN_PASS };
+export { ADMIN_USER, ADMIN_PASS, AUTH_SECRET };
 
 // ── Token generation ─────────────────────────────────────────────────────────
 
@@ -30,7 +34,7 @@ export function generateAuthToken() {
 // ── Token verification ───────────────────────────────────────────────────────
 
 /**
- * Verifies a token's signature and expiry.
+ * Verifies a token's signature using constant-time comparison (timingSafeEqual) and checks expiry.
  * @param {string} token
  * @returns {boolean}
  */
@@ -40,9 +44,17 @@ export function verifyAuthToken(token) {
   if (parts.length !== 2) return false;
   const b64 = parts[0];
   const sig = parts[1];
-  const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('hex');
-  if (sig !== expectedSig) return false;
+
   try {
+    const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('hex');
+    const sigBuffer = Buffer.from(sig, 'utf8');
+    const expectedSigBuffer = Buffer.from(expectedSig, 'utf8');
+
+    // Constant-time signature comparison to prevent timing attacks
+    if (sigBuffer.length !== expectedSigBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedSigBuffer)) {
+      return false;
+    }
+
     const payload = JSON.parse(Buffer.from(b64, 'hex').toString('utf8'));
     if (payload.exp && Date.now() > payload.exp) return false;
     return payload && payload.user === ADMIN_USER;
