@@ -1,5 +1,6 @@
 # Production Dockerfile for Deco Vintage Guate (Node.js + Express + Sharp Engine)
-FROM node:20-slim AS build
+# node:20-bookworm-slim fija Debian Bookworm (glibc 2.36) en ambas etapas.
+FROM node:20-bookworm-slim AS build
 
 WORKDIR /app
 
@@ -11,12 +12,23 @@ COPY . .
 RUN npm run build
 
 # Production Runtime
-FROM node:20-slim AS production
+# DEBE ser la misma imagen base que build para que los binarios nativos (sharp) coincidan.
+FROM node:20-bookworm-slim AS production
 
 WORKDIR /app
 
+# Dependencias de sistema requeridas por Sharp (libvips) en runtime.
+# Sin estas librerías, sharp falla al cargar su binding nativo con dlopen,
+# causando logs completamente vacíos y 502 Bad Gateway.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libvips42 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
-RUN npm install --omit=dev
+
+# Copiar node_modules directamente desde build: los binarios nativos (sharp)
+# son idénticos porque ambas etapas usan la misma imagen base bookworm-slim.
+COPY --from=build /app/node_modules ./node_modules
 
 # Copy compiled frontend and backend server
 COPY --from=build /app/dist ./dist
