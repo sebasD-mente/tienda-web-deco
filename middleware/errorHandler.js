@@ -19,6 +19,10 @@ function handleJsonParseError(err) {
   return new AppError('JSON malformado en el cuerpo de la peticion.', 400);
 }
 
+function handleEntityTooLargeError(err) {
+  return new AppError('El cuerpo de la peticion excede el limite permitido (2MB).', 413);
+}
+
 function handleJWTError() {
   return new AppError('Token invalido. Por favor inicia sesion de nuevo.', 401);
 }
@@ -88,6 +92,7 @@ export function errorHandler(err, req, res, next) {
   let error = err;
 
   if (err.type === 'entity.parse.failed')           error = handleJsonParseError(err);
+  if (err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413) error = handleEntityTooLargeError(err);
   if (err.name === 'JsonWebTokenError')             error = handleJWTError();
   if (err.name === 'TokenExpiredError')             error = handleJWTExpiredError();
   if (err.name === 'ValidationError')               error = handleValidationError(err);

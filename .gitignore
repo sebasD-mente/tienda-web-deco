@@ -36,3 +36,6 @@ Thumbs.db
 /*.jpeg
 *.mp4
 *.mov
+
+# Scratch & Temporary Testing Files
+scratch/

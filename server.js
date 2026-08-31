@@ -18,6 +18,7 @@
 console.log('[Boot] Vaciando cache de Docker...');
 
 import express from 'express';
+import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 import fs from 'fs';
@@ -42,17 +43,26 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Enable Helmet for robust HTTP security headers (Zero-Trust protection)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
 // Enable HTTP Gzip/Brotli compression for ultra-fast payload delivery
 app.use(compression());
 
 // Trust reverse proxy (Dokploy / Traefik / Nginx) for accurate client IP rate limiting
 app.set('trust proxy', 1);
 
-app.use(cors({ origin: true, credentials: true }));
+// Restrict CORS exclusively to the official domain
+app.use(cors({
+  origin: 'https://decovintage.online',
+  credentials: true
+}));
 
-// High body limit for image uploads
-app.use(express.json({ limit: '60mb' }));
-app.use(express.urlencoded({ extended: true, limit: '60mb' }));
+// Global payload limit reduced to 2mb (Zero-Trust protection against DoS/memory flooding)
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // ── Static image files (served directly from VPS disk with 30-day cache) ─────
 app.use('/posters/uploads', express.static(UPLOADS_DIR,                                    { maxAge: '30d' }));
