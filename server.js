@@ -50,9 +50,15 @@ app.set('trust proxy', 1);
 
 app.use(cors({ origin: true, credentials: true }));
 
-// High body limit for image uploads
-app.use(express.json({ limit: '60mb' }));
-app.use(express.urlencoded({ extended: true, limit: '60mb' }));
+// ── Granular Body Parsing (CWE-400 DoS Mitigation) ───────────────────────────
+// Elevated limit strictly for admin image upload / catalog persist endpoints
+app.use('/api/catalog/upload', express.json({ limit: '50mb' }));
+app.use('/api/catalog/save', express.json({ limit: '50mb' }));
+app.use('/api/catalog/posters', express.json({ limit: '50mb' }));
+
+// Reduced global body limit for all public and general API routes
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // ── Static image files (served directly from VPS disk with 30-day cache) ─────
 app.use('/posters/uploads', express.static(UPLOADS_DIR,                                    { maxAge: '30d' }));

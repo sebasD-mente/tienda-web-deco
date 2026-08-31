@@ -8,6 +8,7 @@ import { Router } from 'express';
 import {
   ADMIN_USER,
   ADMIN_PASS,
+  safeCompare,
   generateAuthToken,
   verifyAuthToken
 } from '../middleware/auth.js';
@@ -21,9 +22,12 @@ router.post('/auth/login', (req, res) => {
     return res.status(400).json({ success: false, error: 'Usuario y contraseña requeridos.' });
   }
 
-  if (username.trim() === ADMIN_USER && password.trim() === ADMIN_PASS) {
+  const userMatch = safeCompare(username.trim(), ADMIN_USER);
+  const passMatch = safeCompare(password.trim(), ADMIN_PASS);
+
+  if (userMatch && passMatch) {
     const token = generateAuthToken();
-    console.log(`[Deco Auth] Admin "${username}" authenticated successfully.`);
+    console.log('[Deco Auth] Admin authenticated successfully.');
     return res.status(200).json({
       success: true,
       token,

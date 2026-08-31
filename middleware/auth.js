@@ -6,13 +6,33 @@
 
 import crypto from 'crypto';
 
-// ── Secrets ──────────────────────────────────────────────────────────────────
-const ADMIN_USER  = process.env.ADMIN_USER     || 'SebasDmente';
-const ADMIN_PASS  = process.env.ADMIN_PASSWORD || '4214294880101';
-const AUTH_SECRET = process.env.ADMIN_SECRET   || 'deco_vintage_guate_secret_2026_master_key';
+// ── Secrets (Zero-Trust: Strictly from process.env — no hardcoded fallbacks CWE-798) ──
+const ADMIN_USER  = process.env.ADMIN_USER     || '';
+const ADMIN_PASS  = process.env.ADMIN_PASSWORD || '';
+const AUTH_SECRET = process.env.ADMIN_SECRET   || '';
 
 // Export credentials so other modules (e.g. authRoutes) can validate login
 export { ADMIN_USER, ADMIN_PASS };
+
+/**
+ * Compares two strings in constant time using crypto.timingSafeEqual (CWE-208 mitigation).
+ * @param {string} a
+ * @param {string} b
+ * @returns {boolean}
+ */
+export function safeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+
+  if (bufA.length === 0 || bufB.length === 0) return false;
+
+  const equalLength = bufA.length === bufB.length;
+  const bufToCompare = equalLength ? bufB : bufA;
+  const isEqual = crypto.timingSafeEqual(bufA, bufToCompare);
+
+  return equalLength && isEqual;
+}
 
 // ── Token generation ─────────────────────────────────────────────────────────
 
@@ -21,6 +41,9 @@ export { ADMIN_USER, ADMIN_PASS };
  * @returns {string} hex-encoded token in the form `<payload>.<signature>`
  */
 export function generateAuthToken() {
+  if (!AUTH_SECRET || !ADMIN_USER) {
+    throw new Error('AUTH_SECRET and ADMIN_USER environment variables must be set.');
+  }
   const payload = JSON.stringify({ user: ADMIN_USER, exp: Date.now() + 30 * 24 * 60 * 60 * 1000 });
   const b64 = Buffer.from(payload).toString('hex');
   const sig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('hex');
@@ -30,22 +53,28 @@ export function generateAuthToken() {
 // ── Token verification ───────────────────────────────────────────────────────
 
 /**
- * Verifies a token's signature and expiry.
+ * Verifies a token's signature and expiry using constant-time safeCompare (CWE-208 mitigation).
  * @param {string} token
  * @returns {boolean}
  */
 export function verifyAuthToken(token) {
+  if (!AUTH_SECRET || !ADMIN_USER) return false;
   if (!token || typeof token !== 'string' || !token.includes('.')) return false;
   const parts = token.split('.');
   if (parts.length !== 2) return false;
   const b64 = parts[0];
   const sig = parts[1];
   const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(b64).digest('hex');
-  if (sig !== expectedSig) return false;
+
+  // Constant-time comparison for HMAC signature (CWE-208)
+  if (!safeCompare(sig, expectedSig)) return false;
+
   try {
     const payload = JSON.parse(Buffer.from(b64, 'hex').toString('utf8'));
     if (payload.exp && Date.now() > payload.exp) return false;
-    return payload && payload.user === ADMIN_USER;
+
+    // Constant-time comparison for user name (CWE-208)
+    return payload && safeCompare(payload.user, ADMIN_USER);
   } catch (e) {
     return false;
   }
