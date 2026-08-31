@@ -15,7 +15,8 @@ import {
   getPosterById,
   upsertPosterFromAdmin,
   updatePosterStatus,
-  deletePoster
+  deletePoster,
+  formatPosterForClient
 } from '../services/catalogService.js';
 import { processImageBuffer, dataUrlToBuffer } from '../services/imageService.js';
 import { PROJECT_ROOT } from '../config/paths.js';
@@ -43,7 +44,8 @@ router.get('/catalog', async (req, res) => {
     }
 
     const catalog = getCatalogData();
-    return res.status(200).json(catalog);
+    const posters = (catalog.posters || []).map(formatPosterForClient);
+    return res.status(200).json({ ...catalog, posters });
   } catch (err) {
     console.error('[API Error] GET /api/catalog:', err);
     return res.status(500).json({ error: 'Error al obtener el catálogo.', details: err.message });

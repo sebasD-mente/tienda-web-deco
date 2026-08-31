@@ -79,6 +79,81 @@ export function normalizeCategory(catStr) {
   return 'AUTOS';
 }
 
+/**
+ * Normaliza un póster de PostgreSQL / Prisma para que sea 100% compatible
+ * con el frontend existente de React (que consume propiedades en inglés)
+ * y con cualquier controlador que espere los campos en español.
+ *
+ * @param {object} poster
+ * @returns {object|null}
+ */
+export function formatPosterForClient(poster) {
+  if (!poster) return null;
+
+  const rawSizes = poster.sizes || [];
+  const mappedSizes = Array.isArray(rawSizes) ? rawSizes.map(s => ({
+    id:          s.sizeId || s.id,
+    sizeId:      s.sizeId || s.id,
+    name:        s.nombre || s.name || s.sizeId || s.id,
+    nombre:      s.nombre || s.name || s.sizeId || s.id,
+    dimensions:  s.dimensiones || s.dimensions || '',
+    dimensiones: s.dimensiones || s.dimensions || '',
+    widthCm:     s.anchoCm != null ? Number(s.anchoCm) : (s.widthCm != null ? Number(s.widthCm) : null),
+    anchoCm:     s.anchoCm != null ? Number(s.anchoCm) : (s.widthCm != null ? Number(s.widthCm) : null),
+    heightCm:    s.altoCm != null ? Number(s.altoCm) : (s.heightCm != null ? Number(s.heightCm) : null),
+    altoCm:      s.altoCm != null ? Number(s.altoCm) : (s.heightCm != null ? Number(s.heightCm) : null),
+    price:       s.precio != null ? Number(s.precio) : (s.price != null ? Number(s.price) : 25),
+    precio:      s.precio != null ? Number(s.precio) : (s.price != null ? Number(s.price) : 25),
+    badge:       s.badge || null,
+    isActive:    s.isActive !== false,
+  })) : [];
+
+  const availableSizes = mappedSizes.length > 0
+    ? mappedSizes.filter(s => s.isActive !== false).map(s => s.id)
+    : (Array.isArray(poster.availableSizes) && poster.availableSizes.length > 0
+        ? poster.availableSizes
+        : ['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE']);
+
+  const finalMinPrice = poster.precioMinimo != null
+    ? Number(poster.precioMinimo)
+    : (poster.minPrice != null ? Number(poster.minPrice) : (poster.price != null ? Number(poster.price) : 25));
+
+  const finalPriceDisplay = poster.precioDisplay || poster.priceDisplay || (finalMinPrice ? `Desde Q ${finalMinPrice.toFixed(2)}` : 'Desde Q 25.00');
+
+  const franchiseSlug = poster.franchise?.slug || (typeof poster.franchise === 'string' ? poster.franchise : null) || poster.franchiseId || null;
+
+  return {
+    ...poster,
+    // ── Propiedades canónicas en inglés (requeridas por la UI de React) ──────
+    title:          poster.titulo || poster.title || '',
+    subtitle:       poster.subtitulo ?? poster.subtitle ?? null,
+    description:    poster.descripcion ?? poster.description ?? '',
+    category:       poster.categoria || poster.category || 'AUTOS',
+    franchise:      franchiseSlug,
+    image:          poster.imageUrl || poster.image || null,
+    thumb:          poster.thumbUrl || poster.thumb || null,
+    minPrice:       finalMinPrice,
+    price:          finalMinPrice,
+    priceDisplay:   finalPriceDisplay,
+    availableSizes,
+    sizes:          mappedSizes,
+
+    // ── Propiedades en español de PostgreSQL (compatibilidad backend) ─────────
+    titulo:         poster.titulo || poster.title || '',
+    subtitulo:      poster.subtitulo ?? poster.subtitle ?? null,
+    descripcion:    poster.descripcion ?? poster.description ?? '',
+    categoria:      poster.categoria || poster.category || 'AUTOS',
+    imageUrl:       poster.imageUrl || poster.image || null,
+    thumbUrl:       poster.thumbUrl || poster.thumb || null,
+    precioMinimo:   finalMinPrice,
+    precioDisplay:  finalPriceDisplay,
+    rating:         poster.rating != null ? Number(poster.rating) : 5.0,
+    reviewsCount:   poster.reviewsCount != null ? Number(poster.reviewsCount) : 0,
+    isFeatured:     Boolean(poster.isFeatured),
+    isPublished:    poster.isPublished !== false,
+  };
+}
+
 // =============================================================================
 //  SECCION 1 — API PRISMA (PostgreSQL) — Async
 // =============================================================================
@@ -93,16 +168,16 @@ export function normalizeCategory(catStr) {
  * @param {boolean} [opts.includeUnpublished] - Incluir no publicados (admin)
  * @param {'titulo'|'createdAt'|'precioMinimo'} [opts.orderBy='createdAt']
  * @param {'asc'|'desc'} [opts.order='desc']
- * @returns {Promise<import('@prisma/client').Poster[]>}
+ * @returns {Promise<object[]>}
  */
 export async function getAllPosters(opts = {}) {
   const {
     categoria,
     franchiseId,
-    onlyFeatured    = false,
+    onlyFeatured       = false,
     includeUnpublished = false,
-    orderBy         = 'createdAt',
-    order           = 'desc',
+    orderBy            = 'createdAt',
+    order              = 'desc',
   } = opts;
 
   const where = {
@@ -110,16 +185,18 @@ export async function getAllPosters(opts = {}) {
     ...(!includeUnpublished && { isPublished: true }),
     // Estado excluye descontinuados del catalogo publico
     ...(!includeUnpublished && { estado: { not: 'DESCONTINUADO' } }),
-    ...(categoria    && { categoria }),
+    ...(categoria    && { categoria: normalizeCategory(categoria) }),
     ...(franchiseId  && { franchiseId }),
     ...(onlyFeatured && { isFeatured: true }),
   };
 
-  return prisma.poster.findMany({
+  const posters = await prisma.poster.findMany({
     where,
     include: POSTER_INCLUDE_FULL,
     orderBy: { [orderBy]: order },
   });
+
+  return posters.map(formatPosterForClient);
 }
 
 /**
@@ -127,7 +204,7 @@ export async function getAllPosters(opts = {}) {
  * Acepta cualquiera de los dos formatos para no romper las URLs del frontend.
  *
  * @param {string} idOrLegacyId
- * @returns {Promise<import('@prisma/client').Poster | null>}
+ * @returns {Promise<object | null>}
  */
 export async function getPosterById(idOrLegacyId) {
   if (!idOrLegacyId) return null;
@@ -135,18 +212,21 @@ export async function getPosterById(idOrLegacyId) {
   // Intentamos primero por UUID nativo (36 chars con guiones)
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrLegacyId);
 
+  let poster = null;
   if (isUUID) {
-    return prisma.poster.findUnique({
+    poster = await prisma.poster.findUnique({
       where:   { id: idOrLegacyId },
+      include: POSTER_INCLUDE_FULL,
+    });
+  } else {
+    // Si no es UUID, buscamos por legacyId (ej: "deco-mtdamr8z-px9v")
+    poster = await prisma.poster.findUnique({
+      where:   { legacyId: idOrLegacyId },
       include: POSTER_INCLUDE_FULL,
     });
   }
 
-  // Si no es UUID, buscamos por legacyId (ej: "deco-mtdamr8z-px9v")
-  return prisma.poster.findUnique({
-    where:   { legacyId: idOrLegacyId },
-    include: POSTER_INCLUDE_FULL,
-  });
+  return formatPosterForClient(poster);
 }
 
 /**
@@ -155,7 +235,7 @@ export async function getPosterById(idOrLegacyId) {
  *
  * @param {string} id - UUID del poster en la BD
  * @param {import('@prisma/client').PosterStatus} newStatus
- * @returns {Promise<import('@prisma/client').Poster>}
+ * @returns {Promise<object>}
  */
 export async function updatePosterStatus(id, newStatus) {
   const VALID_STATUSES = [
@@ -169,11 +249,13 @@ export async function updatePosterStatus(id, newStatus) {
     throw err;
   }
 
-  return prisma.poster.update({
+  const updated = await prisma.poster.update({
     where:   { id },
     data:    { estado: newStatus, updatedAt: new Date() },
     include: POSTER_INCLUDE_LIGHT,
   });
+
+  return formatPosterForClient(updated);
 }
 
 /**
@@ -250,7 +332,7 @@ export async function upsertPosterFromAdmin(data) {
 
   if (existingPoster) {
     // Si se actualiza, se usa transacción para renovar tamaños si vienen especificados
-    return prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx) => {
       if (sizesData.length > 0) {
         await tx.posterSize.deleteMany({ where: { posterId: existingPoster.id } });
       }
@@ -281,10 +363,11 @@ export async function upsertPosterFromAdmin(data) {
         include: POSTER_INCLUDE_FULL,
       });
     });
+    return formatPosterForClient(updated);
   }
 
   // Crear nuevo póster
-  return prisma.poster.create({
+  const created = await prisma.poster.create({
     data: {
       legacyId:     finalLegacyId,
       titulo:       finalTitle,
@@ -306,6 +389,7 @@ export async function upsertPosterFromAdmin(data) {
     },
     include: POSTER_INCLUDE_FULL,
   });
+  return formatPosterForClient(created);
 }
 
 function isUUID(str) {
