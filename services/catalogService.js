@@ -1,54 +1,33 @@
 /**
  * services/catalogService.js
- * Fuente de verdad del catalogo — ahora sobre PostgreSQL via Prisma.
- *
- * ┌─────────────────────────────────────────────────────────────────┐
- * │  API PUBLICA                                                    │
- * │                                                                 │
- * │  [PRISMA — async]                                               │
- * │    getAllPosters(opts)          → Poster[] con sizes + franchise │
- * │    getPosterById(idOrLegacyId) → Poster | null                  │
- * │    updatePosterStatus(id, st)  → Poster actualizado             │
- * │    upsertPosterFromAdmin(data) → Poster creado o actualizado    │
- * │    deletePoster(id)            → void                           │
- * │                                                                 │
- * │  [JSON legacy — sync, para rutas admin y settings]              │
- * │    getCatalogData()            → objeto catalogo completo       │
- * │    saveCatalog(dataObject)     → persiste JSON atomicamente     │
- * └─────────────────────────────────────────────────────────────────┘
+ * Fuente de verdad del catálogo — 100% PostgreSQL vía Prisma Client.
+ * Cero Split-Brain (sin catalogStore.json) y Cero I/O Bloqueante.
  */
 
-import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
-import { CATALOG_FILE } from '../config/paths.js';
 
-// ── Singleton Prisma ──────────────────────────────────────────────────────────
-// Una sola instancia compartida por toda la vida del proceso Node.
-// Esto evita saturar el pool de conexiones de PostgreSQL.
+// ── Singleton Prisma Client ───────────────────────────────────────────────────
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development'
-    ? ['query', 'warn', 'error']   // En dev: muestra todas las queries SQL
-    : ['warn', 'error'],           // En prod: solo errores y advertencias
+    ? ['query', 'warn', 'error']
+    : ['warn', 'error'],
 });
 
-// ── Includes reutilizables ────────────────────────────────────────────────────
-// Centralizar los `include` evita inconsistencias entre funciones.
-
-/** Include completo: sizes ordenados + franchise. Usado en lecturas publicas. */
+/** Include completo: sizes ordenados por precio ascendente + franchise. */
 const POSTER_INCLUDE_FULL = {
   sizes: {
     where:   { isActive: true },
-    orderBy: { precio: 'asc' },    // MINI → GIGANTE por precio ascendente
+    orderBy: { precio: 'asc' },
   },
   franchise: true,
 };
 
-/** Include ligero: solo franchise, sin sizes. Usado en listados de admin. */
+/** Include ligero: solo franchise, sin sizes. Usado en operaciones admin. */
 const POSTER_INCLUDE_LIGHT = {
   franchise: true,
 };
 
-/** Mapeo y normalización de categoría a enum de Prisma Category */
+/** Categorías oficiales enum */
 const VALID_CATEGORIES = [
   'AUTOS',
   'SUPERHEROES',
@@ -65,7 +44,6 @@ export function normalizeCategory(catStr) {
   const clean = String(catStr).toUpperCase().replace(/[^A-Z]/g, '');
   if (VALID_CATEGORIES.includes(clean)) return clean;
 
-  // Mapeos comunes por si viene en minúsculas, con espacios o tildes
   const lower = String(catStr).toLowerCase();
   if (lower.includes('auto') || lower.includes('car')) return 'AUTOS';
   if (lower.includes('superh') || lower.includes('hero')) return 'SUPERHEROES';
@@ -80,10 +58,7 @@ export function normalizeCategory(catStr) {
 }
 
 /**
- * Normaliza un póster de PostgreSQL / Prisma para que sea 100% compatible
- * con el frontend existente de React (que consume propiedades en inglés)
- * y con cualquier controlador que espere los campos en español.
- *
+ * Normaliza un póster de PostgreSQL / Prisma para compatibilidad con la UI de React.
  * @param {object} poster
  * @returns {object|null}
  */
@@ -124,7 +99,6 @@ export function formatPosterForClient(poster) {
 
   return {
     ...poster,
-    // ── Propiedades canónicas en inglés (requeridas por la UI de React) ──────
     title:          poster.titulo || poster.title || '',
     subtitle:       poster.subtitulo ?? poster.subtitle ?? null,
     description:    poster.descripcion ?? poster.description ?? '',
@@ -138,7 +112,6 @@ export function formatPosterForClient(poster) {
     availableSizes,
     sizes:          mappedSizes,
 
-    // ── Propiedades en español de PostgreSQL (compatibilidad backend) ─────────
     titulo:         poster.titulo || poster.title || '',
     subtitulo:      poster.subtitulo ?? poster.subtitle ?? null,
     descripcion:    poster.descripcion ?? poster.description ?? '',
@@ -155,19 +128,22 @@ export function formatPosterForClient(poster) {
 }
 
 // =============================================================================
-//  SECCION 1 — API PRISMA (PostgreSQL) — Async
+//  PRISMA POSTGRESQL API (100% Async & Non-blocking)
 // =============================================================================
 
 /**
- * Retorna todos los posters publicados con sus sizes y franchise.
+ * Retorna pósters de PostgreSQL con soporte para filtrado y paginación Prisma (take, cursor, skip).
  *
  * @param {object} opts
- * @param {string}  [opts.categoria]   - Filtrar por categoria (enum Category)
- * @param {string}  [opts.franchiseId] - Filtrar por franchise ID
- * @param {boolean} [opts.onlyFeatured] - Solo posters destacados
- * @param {boolean} [opts.includeUnpublished] - Incluir no publicados (admin)
+ * @param {string}  [opts.categoria]
+ * @param {string}  [opts.franchiseId]
+ * @param {boolean} [opts.onlyFeatured]
+ * @param {boolean} [opts.includeUnpublished]
  * @param {'titulo'|'createdAt'|'precioMinimo'} [opts.orderBy='createdAt']
  * @param {'asc'|'desc'} [opts.order='desc']
+ * @param {number|string} [opts.take] - Cantidad de registros a retornar (paginación)
+ * @param {string}  [opts.cursor] - ID del cursor para paginación basada en cursor
+ * @param {number|string} [opts.skip] - Registros a omitir (offset)
  * @returns {Promise<object[]>}
  */
 export async function getAllPosters(opts = {}) {
@@ -178,38 +154,48 @@ export async function getAllPosters(opts = {}) {
     includeUnpublished = false,
     orderBy            = 'createdAt',
     order              = 'desc',
+    take,
+    cursor,
+    skip,
   } = opts;
 
   const where = {
-    // Por defecto solo mostramos posters publicados al publico
     ...(!includeUnpublished && { isPublished: true }),
-    // Estado excluye descontinuados del catalogo publico
     ...(!includeUnpublished && { estado: { not: 'DESCONTINUADO' } }),
     ...(categoria    && { categoria: normalizeCategory(categoria) }),
     ...(franchiseId  && { franchiseId }),
     ...(onlyFeatured && { isFeatured: true }),
   };
 
-  const posters = await prisma.poster.findMany({
+  const takeNum = take != null ? Math.max(1, Math.min(200, parseInt(take, 10))) : undefined;
+  const skipNum = skip != null ? parseInt(skip, 10) : undefined;
+
+  let cursorObj = undefined;
+  if (cursor) {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cursor);
+    cursorObj = isUUID ? { id: cursor } : { legacyId: cursor };
+  }
+
+  const queryOptions = {
     where,
     include: POSTER_INCLUDE_FULL,
     orderBy: { [orderBy]: order },
-  });
+    ...(takeNum != null && { take: takeNum }),
+    ...(skipNum != null && { skip: skipNum }),
+    ...(cursorObj && { cursor: cursorObj, skip: cursorObj ? 1 : skipNum }),
+  };
 
+  const posters = await prisma.poster.findMany(queryOptions);
   return posters.map(formatPosterForClient);
 }
 
 /**
- * Busca un poster por UUID (id) o por legacyId (el ID del JSON original).
- * Acepta cualquiera de los dos formatos para no romper las URLs del frontend.
- *
+ * Busca un póster por UUID o legacyId en PostgreSQL.
  * @param {string} idOrLegacyId
  * @returns {Promise<object | null>}
  */
 export async function getPosterById(idOrLegacyId) {
   if (!idOrLegacyId) return null;
-
-  // Intentamos primero por UUID nativo (36 chars con guiones)
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrLegacyId);
 
   let poster = null;
@@ -219,7 +205,6 @@ export async function getPosterById(idOrLegacyId) {
       include: POSTER_INCLUDE_FULL,
     });
   } else {
-    // Si no es UUID, buscamos por legacyId (ej: "deco-mtdamr8z-px9v")
     poster = await prisma.poster.findUnique({
       where:   { legacyId: idOrLegacyId },
       include: POSTER_INCLUDE_FULL,
@@ -230,10 +215,8 @@ export async function getPosterById(idOrLegacyId) {
 }
 
 /**
- * Actualiza el estado de produccion/venta de un poster.
- * Valida que el estado sea un valor permitido antes de persistir.
- *
- * @param {string} id - UUID del poster en la BD
+ * Actualiza el estado de producción/venta de un póster en PostgreSQL.
+ * @param {string} id
  * @param {import('@prisma/client').PosterStatus} newStatus
  * @returns {Promise<object>}
  */
@@ -259,18 +242,9 @@ export async function updatePosterStatus(id, newStatus) {
 }
 
 /**
- * Crea o actualiza un poster desde el panel de administracion.
- * Si `legacyId` ya existe en BD → actualiza. Si no → crea nuevo.
- *
- * @param {object} data - Datos del poster tal como vienen del admin
- * @returns {Promise<import('@prisma/client').Poster>}
- */
-/**
- * Crea o actualiza un poster en PostgreSQL usando Prisma.
- * Maneja tanto la clave primaria UUID `id` como `legacyId`.
- *
- * @param {object} data - Datos del poster tal como vienen del admin o cliente
- * @returns {Promise<import('@prisma/client').Poster>}
+ * Crea o actualiza un póster en PostgreSQL usando Prisma.
+ * @param {object} data
+ * @returns {Promise<object>}
  */
 export async function upsertPosterFromAdmin(data) {
   const {
@@ -312,7 +286,6 @@ export async function upsertPosterFromAdmin(data) {
   const finalPriceDisplay = priceDisplay || precioDisplay || (finalMinPrice ? `Desde Q ${parseFloat(finalMinPrice).toFixed(2)}` : 'Desde Q 25.00');
   const finalLegacyId = inputLegacyId || (inputId && !isUUID(inputId) ? inputId : null);
 
-  // Resuelve el franchiseId
   let finalFranchiseId = inputFranchiseId || null;
   if (!finalFranchiseId && franchise) {
     const fr = await prisma.franchise.findUnique({ where: { slug: franchise } });
@@ -321,7 +294,6 @@ export async function upsertPosterFromAdmin(data) {
 
   const sizesData = buildSizesForUpsert(sizes, availableSizes);
 
-  // Determina si existe por id (UUID) o por legacyId
   let existingPoster = null;
   if (inputId && isUUID(inputId)) {
     existingPoster = await prisma.poster.findUnique({ where: { id: inputId } });
@@ -331,7 +303,6 @@ export async function upsertPosterFromAdmin(data) {
   }
 
   if (existingPoster) {
-    // Si se actualiza, se usa transacción para renovar tamaños si vienen especificados
     const updated = await prisma.$transaction(async (tx) => {
       if (sizesData.length > 0) {
         await tx.posterSize.deleteMany({ where: { posterId: existingPoster.id } });
@@ -366,7 +337,6 @@ export async function upsertPosterFromAdmin(data) {
     return formatPosterForClient(updated);
   }
 
-  // Crear nuevo póster
   const created = await prisma.poster.create({
     data: {
       legacyId:     finalLegacyId,
@@ -397,18 +367,66 @@ function isUUID(str) {
 }
 
 /**
- * Elimina un poster y sus sizes (Cascade definido en el schema).
- *
- * @param {string} id - UUID del poster
+ * Elimina un póster de PostgreSQL.
+ * @param {string} id
  * @returns {Promise<void>}
  */
 export async function deletePoster(id) {
   await prisma.poster.delete({ where: { id } });
 }
 
-// ── Helper privado ────────────────────────────────────────────────────────────
+// ── Franchises & Categories API (100% Prisma) ─────────────────────────────────
 
-/** Tabla de precios base por tamano (mirror de migrateCatalog.js). */
+export async function getAllFranchises() {
+  return prisma.franchise.findMany({
+    orderBy: { name: 'asc' }
+  });
+}
+
+export async function getAllCategories() {
+  return [
+    { id: 'AUTOS', name: 'Autos & Motor' },
+    { id: 'SUPERHEROES', name: 'Superhéroes Marvel & DC' },
+    { id: 'ANIME', name: 'Anime & Manga' },
+    { id: 'MUSICA', name: 'Música & Álbumes' },
+    { id: 'SERIESYPELICULAS', name: 'Series & Películas' },
+    { id: 'OBRASDEARTE', name: 'Obras de Arte' },
+    { id: 'INFANTILYDIBUJOSANIMADOS', name: 'Infantil & Dibujos Animados' },
+    { id: 'CINE', name: 'Cine Clásico' }
+  ];
+}
+
+// ── Store Settings API (100% Prisma - Zero JSON Split Brain) ──────────────────
+
+export async function getStoreSettings() {
+  try {
+    const settings = await prisma.storeSettings.findUnique({ where: { id: 'default' } });
+    if (settings) {
+      return { whatsappPhone: settings.whatsappPhone, updatedAt: settings.updatedAt.toISOString() };
+    }
+  } catch (e) {
+    console.warn('[Prisma StoreSettings] Warning fetching settings from DB:', e.message);
+  }
+  return { whatsappPhone: '50238375078' };
+}
+
+export async function saveStoreSettings(whatsappPhone) {
+  const cleanPhone = (whatsappPhone || '50238375078').replace(/[^0-9]/g, '');
+  try {
+    const settings = await prisma.storeSettings.upsert({
+      where:  { id: 'default' },
+      update: { whatsappPhone: cleanPhone },
+      create: { id: 'default', whatsappPhone: cleanPhone },
+    });
+    return { whatsappPhone: settings.whatsappPhone, updatedAt: settings.updatedAt.toISOString() };
+  } catch (e) {
+    console.warn('[Prisma StoreSettings] Warning saving settings to DB:', e.message);
+    return { whatsappPhone: cleanPhone };
+  }
+}
+
+// ── Helper de tamaños ─────────────────────────────────────────────────────────
+
 const DEFAULT_SIZE_CATALOG = {
   MINI:          { nombre: 'Mini',          dimensiones: '14 x 21 cm',  anchoCm: 14,  altoCm: 21,  precio: 25,  badge: 'Ideal para coleccionar y escritorios' },
   PEQUENO:       { nombre: 'Pequeño',       dimensiones: '21 x 27 cm',  anchoCm: 21,  altoCm: 27,  precio: 35,  badge: 'Espacios reducidos y cabeceras' },
@@ -439,43 +457,4 @@ function buildSizesForUpsert(sizes, availableSizes) {
   return [];
 }
 
-// =============================================================================
-//  SECCION 2 — API JSON LEGACY (sincrona)
-//  Mantenida para: settingsRoutes y catalogRoutes POST /save
-//  mientras se completa la migracion del panel admin.
-// =============================================================================
-
-/**
- * Lee y parsea catalogStore.json desde el SSD del VPS.
- * Maneja BOM (0xFEFF) y retorna un objeto seguro si el archivo falta o esta corrupto.
- *
- * @returns {{ categories: any[], franchises: any[], posters: any[], settings: object }}
- */
-export function getCatalogData() {
-  if (fs.existsSync(CATALOG_FILE)) {
-    try {
-      let raw = fs.readFileSync(CATALOG_FILE, 'utf-8');
-      if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
-      return JSON.parse(raw.trim());
-    } catch (err) {
-      console.error('[Deco Catalog] Error parsing catalog JSON:', err.message);
-    }
-  }
-  return { categories: [], franchises: [], posters: [], settings: { whatsappPhone: '50238375078' } };
-}
-
-/**
- * Persiste atomicamente un objeto catalogo en disco (tmp → rename).
- * Garantiza que el archivo nunca quede en estado corrupto/parcial.
- *
- * @param {object} dataObject - Catalogo completo a guardar.
- * @returns {void}
- */
-export function saveCatalog(dataObject) {
-  const tmpFile = `${CATALOG_FILE}.tmp`;
-  fs.writeFileSync(tmpFile, JSON.stringify(dataObject, null, 2), 'utf-8');
-  fs.renameSync(tmpFile, CATALOG_FILE);
-}
-
-// ── Exportar cliente Prisma para uso directo si fuera necesario ────────────────
 export { prisma };

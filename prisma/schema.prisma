@@ -97,3 +97,10 @@ model PosterSize {
   @@index([posterId])
   @@map("poster_sizes")
 }
+
+model StoreSettings {
+  id            String   @id @default("default")
+  whatsappPhone String   @default("50238375078")
+  updatedAt     DateTime @updatedAt
+  @@map("store_settings")
+}

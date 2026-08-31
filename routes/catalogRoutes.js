@@ -1,7 +1,7 @@
 /**
  * routes/catalogRoutes.js
- * Catalog and image management endpoints.
- * Extracted from server.js lines 184–308 (catalog CRUD) and line 935–950 (delete-image).
+ * Catalog and image management endpoints — 100% Prisma (PostgreSQL).
+ * Zero Split-Brain (catalogStore.json removed) and non-blocking I/O.
  */
 
 import { Router } from 'express';
@@ -9,58 +9,59 @@ import fs from 'fs';
 import path from 'path';
 import { requireAuth } from '../middleware/auth.js';
 import {
-  getCatalogData,
-  saveCatalog,
   getAllPosters,
   getPosterById,
   upsertPosterFromAdmin,
   updatePosterStatus,
   deletePoster,
-  formatPosterForClient
+  getAllCategories,
+  getAllFranchises,
+  getStoreSettings,
+  saveStoreSettings
 } from '../services/catalogService.js';
 import { processImageBuffer, dataUrlToBuffer } from '../services/imageService.js';
 import { PROJECT_ROOT } from '../config/paths.js';
 
 const router = Router();
 
-// ── GET /api/catalog (Public — central source of truth) ──────────────────────
+// ── GET /api/catalog (Public — central source of truth from PostgreSQL) ──────
 router.get('/catalog', async (req, res) => {
   try {
-    // Intenta servir pósters desde PostgreSQL via Prisma
-    try {
-      const dbPosters = await getAllPosters({ includeUnpublished: true });
-      if (dbPosters && dbPosters.length > 0) {
-        const legacyCatalog = getCatalogData();
-        return res.status(200).json({
-          categories: legacyCatalog.categories || [],
-          franchises: legacyCatalog.franchises || [],
-          settings:   legacyCatalog.settings || {},
-          posters:    dbPosters,
-          updatedAt:  new Date().toISOString()
-        });
-      }
-    } catch (dbErr) {
-      console.warn('[API Warning] GET /api/catalog fallback to JSON:', dbErr.message);
-    }
+    const { take, cursor, skip, categoria, franchiseId } = req.query;
+    const [posters, categories, franchises, settings] = await Promise.all([
+      getAllPosters({ includeUnpublished: true, take, cursor, skip, categoria, franchiseId }),
+      getAllCategories(),
+      getAllFranchises(),
+      getStoreSettings()
+    ]);
 
-    const catalog = getCatalogData();
-    const posters = (catalog.posters || []).map(formatPosterForClient);
-    return res.status(200).json({ ...catalog, posters });
+    return res.status(200).json({
+      categories,
+      franchises,
+      settings,
+      posters,
+      updatedAt: new Date().toISOString()
+    });
   } catch (err) {
     console.error('[API Error] GET /api/catalog:', err);
     return res.status(500).json({ error: 'Error al obtener el catálogo.', details: err.message });
   }
 });
 
-// ── GET /api/catalog/posters (Public / Admin listing) ────────────────────────
+// ── GET /api/catalog/posters (Public / Admin listing with Prisma Pagination) ─
 router.get('/catalog/posters', async (req, res) => {
   try {
-    const { categoria, franchiseId, onlyFeatured, includeUnpublished } = req.query;
+    const { categoria, franchiseId, onlyFeatured, includeUnpublished, take, cursor, skip, orderBy, order } = req.query;
     const posters = await getAllPosters({
       categoria,
       franchiseId,
       onlyFeatured: onlyFeatured === 'true',
       includeUnpublished: includeUnpublished === 'true',
+      take,
+      cursor,
+      skip,
+      orderBy,
+      order
     });
     return res.status(200).json({ success: true, count: posters.length, posters });
   } catch (err) {
@@ -91,7 +92,6 @@ router.post('/catalog/posters', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'El título del póster es obligatorio.' });
     }
 
-    // Procesa imagen base64 si está presente
     let image = posterData.image || posterData.imageUrl;
     let thumb = posterData.thumb || posterData.thumbUrl;
 
@@ -108,21 +108,6 @@ router.post('/catalog/posters', requireAuth, async (req, res) => {
       image,
       thumb,
     });
-
-    // Sincronización secundaria con catalogStore.json
-    try {
-      const currentCatalog = getCatalogData();
-      const posters = currentCatalog.posters || [];
-      const idx = posters.findIndex(p => p.id === savedPoster.id || p.id === savedPoster.legacyId);
-      if (idx >= 0) {
-        posters[idx] = { ...posters[idx], ...savedPoster };
-      } else {
-        posters.unshift(savedPoster);
-      }
-      saveCatalog({ ...currentCatalog, posters, updatedAt: new Date().toISOString() });
-    } catch (jsonErr) {
-      console.warn('[API Warning] Sync to JSON failed:', jsonErr.message);
-    }
 
     return res.status(201).json({
       success: true,
@@ -164,19 +149,6 @@ router.put('/catalog/posters/:id', requireAuth, async (req, res) => {
       image,
       thumb,
     });
-
-    // Sincronización secundaria con catalogStore.json
-    try {
-      const currentCatalog = getCatalogData();
-      const posters = currentCatalog.posters || [];
-      const idx = posters.findIndex(p => p.id === updatedPoster.id || p.id === updatedPoster.legacyId || p.id === id);
-      if (idx >= 0) {
-        posters[idx] = { ...posters[idx], ...updatedPoster };
-        saveCatalog({ ...currentCatalog, posters, updatedAt: new Date().toISOString() });
-      }
-    } catch (jsonErr) {
-      console.warn('[API Warning] Sync to JSON failed:', jsonErr.message);
-    }
 
     return res.status(200).json({
       success: true,
@@ -234,15 +206,6 @@ router.delete('/catalog/posters/:id', requireAuth, async (req, res) => {
 
     await deletePoster(existing.id);
 
-    // Sincronización secundaria con catalogStore.json
-    try {
-      const currentCatalog = getCatalogData();
-      const posters = (currentCatalog.posters || []).filter(p => p.id !== existing.id && p.id !== existing.legacyId && p.id !== id);
-      saveCatalog({ ...currentCatalog, posters, updatedAt: new Date().toISOString() });
-    } catch (jsonErr) {
-      console.warn('[API Warning] Sync deletion to JSON failed:', jsonErr.message);
-    }
-
     return res.status(200).json({
       success: true,
       message: 'Póster eliminado correctamente de PostgreSQL.'
@@ -254,21 +217,18 @@ router.delete('/catalog/posters/:id', requireAuth, async (req, res) => {
 });
 
 // ── POST /api/catalog/save (Protected Admin) ─────────────────────────────────
-// Persists the entire catalog to VPS SSD and PostgreSQL via Prisma.
+// Persists catalog items directly to PostgreSQL via Prisma.
 router.post('/catalog/save', requireAuth, async (req, res) => {
   try {
-    const { categories, posters, franchises, settings } = req.body;
+    const { posters, settings } = req.body;
     if (!Array.isArray(posters)) {
       return res.status(400).json({ error: 'posters must be an array' });
     }
 
-    // Auto-process and sanitize images: convert base64 to WebP files on disk
-    // and fix any truncated extensions
     const processedPosters = await Promise.all(posters.map(async (p) => {
       const cleanPoster = { ...p };
       const cleanId = (cleanPoster.id || 'obra-' + Date.now()).toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-      // Auto-correct truncated .web extension
       if (cleanPoster.thumb && cleanPoster.thumb.endsWith('.web')) {
         cleanPoster.thumb = cleanPoster.thumb + 'p';
       }
@@ -276,7 +236,6 @@ router.post('/catalog/save', requireAuth, async (req, res) => {
         cleanPoster.image = cleanPoster.image + 'p';
       }
 
-      // Convert full image base64 if present
       if (cleanPoster.image && cleanPoster.image.startsWith('data:image/')) {
         try {
           const buffer = dataUrlToBuffer(cleanPoster.image);
@@ -288,44 +247,24 @@ router.post('/catalog/save', requireAuth, async (req, res) => {
         }
       }
 
-      // Normalize poster schema fields to match master standard
-      cleanPoster.availableSizes = (Array.isArray(cleanPoster.availableSizes) && cleanPoster.availableSizes.length > 0)
-        ? cleanPoster.availableSizes
-        : ['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE'];
-      cleanPoster.tags        = Array.isArray(cleanPoster.tags) ? cleanPoster.tags : [cleanPoster.category];
-      cleanPoster.description = cleanPoster.description || '';
-      cleanPoster.priceDisplay = cleanPoster.priceDisplay || 'Desde Q 25.00';
-
-      // Persistir cada póster en PostgreSQL usando Prisma de forma asíncrona
       try {
-        await upsertPosterFromAdmin(cleanPoster);
+        return await upsertPosterFromAdmin(cleanPoster);
       } catch (prismaErr) {
         console.warn(`[Prisma Sync] Failed to upsert poster ${cleanPoster.id} to PostgreSQL:`, prismaErr.message);
+        return cleanPoster;
       }
-
-      return cleanPoster;
     }));
 
-    const currentCatalog = getCatalogData();
-    const dataToSave = {
-      updatedAt:  new Date().toISOString(),
-      categories: categories || currentCatalog.categories || [],
-      franchises: franchises || currentCatalog.franchises || [],
-      posters:    processedPosters,
-      settings: {
-        ...currentCatalog.settings,
-        ...(settings || {}),
-        updatedAt: new Date().toISOString()
-      }
-    };
+    if (settings && settings.whatsappPhone) {
+      await saveStoreSettings(settings.whatsappPhone);
+    }
 
-    saveCatalog(dataToSave);
-    console.log(`[VPS Disk & DB] Atomic persist of ${processedPosters.length} posters to PostgreSQL & SSD.`);
+    console.log(`[PostgreSQL DB] Atomic persist of ${processedPosters.length} posters via Prisma.`);
     return res.status(200).json({
       success:   true,
       count:     processedPosters.length,
-      updatedAt: dataToSave.updatedAt,
-      catalog:   dataToSave
+      updatedAt: new Date().toISOString(),
+      posters:   processedPosters
     });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/save:', err);
@@ -334,7 +273,6 @@ router.post('/catalog/save', requireAuth, async (req, res) => {
 });
 
 // ── POST /api/catalog/upload (Protected Admin) ───────────────────────────────
-// Converts a base64 data URL to physical WebP files on the VPS SSD.
 router.post('/catalog/upload', requireAuth, async (req, res) => {
   try {
     const { dataUrl, posterId } = req.body;
@@ -354,18 +292,18 @@ router.post('/catalog/upload', requireAuth, async (req, res) => {
 });
 
 // ── POST /api/catalog/delete-image (Protected Admin) ────────────────────────
-// Removes physical WebP files from the VPS SSD. (server.js lines 935–950)
-router.post('/catalog/delete-image', requireAuth, (req, res) => {
+// Non-blocking async file deletion
+router.post('/catalog/delete-image', requireAuth, async (req, res) => {
   try {
     const { imagePath, thumbPath } = req.body;
 
     if (imagePath && imagePath.startsWith('/posters/uploads/')) {
       const fullFile = path.resolve(PROJECT_ROOT, 'public', imagePath.replace(/^\//, ''));
-      if (fs.existsSync(fullFile)) fs.unlinkSync(fullFile);
+      try { await fs.promises.unlink(fullFile); } catch (e) {}
     }
     if (thumbPath && thumbPath.startsWith('/posters/uploads/')) {
       const thumbFile = path.resolve(PROJECT_ROOT, 'public', thumbPath.replace(/^\//, ''));
-      if (fs.existsSync(thumbFile)) fs.unlinkSync(thumbFile);
+      try { await fs.promises.unlink(thumbFile); } catch (e) {}
     }
 
     return res.status(200).json({ success: true });
