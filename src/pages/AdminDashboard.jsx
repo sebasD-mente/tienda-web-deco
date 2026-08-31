@@ -16,6 +16,7 @@ import {
   deleteCategoryById,
   syncCatalogFromServer
 } from '../utils/catalogStorage';
+import { apiAdminVerify } from '../utils/apiClient';
 
 // Modular Subcomponents
 import AdminInventoryTab    from '../components/admin/AdminInventoryTab';
@@ -26,6 +27,7 @@ import AdminJarvisTab       from '../components/admin/AdminJarvisTab';
 import AdminSettingsTab     from '../components/admin/AdminSettingsTab';
 
 export default function AdminDashboard({ onNavigate, onLogout }) {
+  const [isVerifyingAuth, setIsVerifyingAuth] = useState(true);
   const [activeTab,     setActiveTab]     = useState('inventory');
   const [posters,       setPosters]       = useState([]);
   const [categories,    setCategories]    = useState([]);
@@ -52,12 +54,46 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
   };
 
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    async function verifySession() {
+      const isValid = await apiAdminVerify();
+      if (!isMounted) return;
+      if (!isValid) {
+        if (onLogout) onLogout();
+        return;
+      }
+      setIsVerifyingAuth(false);
+      loadData();
+    }
+    verifySession();
+
     // Escuchar actualizaciones del catálogo (emitidas por catalogStorage tras mutaciones)
     const handleCatalogUpdate = () => loadData();
     window.addEventListener('deco-catalog-updated', handleCatalogUpdate);
-    return () => window.removeEventListener('deco-catalog-updated', handleCatalogUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('deco-catalog-updated', handleCatalogUpdate);
+    };
   }, []);
+
+  if (isVerifyingAuth) {
+    return (
+      <div style={{
+        minHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '16px',
+        color: 'var(--accent-cyan, #00f0ff)'
+      }}>
+        <ArcReactor size={48} pulse />
+        <span style={{ fontSize: '0.9rem', letterSpacing: '0.08em', opacity: 0.85 }}>
+          Verificando credenciales de administrador...
+        </span>
+      </div>
+    );
+  }
 
   // ── Poster Actions ────────────────────────────────────────────────────────────
   const handleSavePoster = async (posterData) => {

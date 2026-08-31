@@ -8,10 +8,12 @@ import JarvisAgent from './components/JarvisAgent';
 import ArcReactor from './components/ArcReactor';
 import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
-import { Bot, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { getStoredPosters, getStoredCategories, getStoredFranchises, syncCatalogFromServer } from './utils/catalogStorage';
-import { getAuthToken, clearAuthToken } from './utils/apiClient';
+import { getAuthToken, clearAuthToken, apiAdminVerify } from './utils/apiClient';
 import { generateWhatsAppLink } from './config/constants';
+
+const CART_STORAGE_KEY = 'deco_vintage_cart_v1';
 
 // Code-Splitting: Lazy load with automatic retry on new deployment chunk changes
 function lazyWithRetry(componentImport) {
@@ -63,16 +65,28 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'catalog' | 'category' | 'franchise' | 'about' | 'custom' | 'admin'
   const [selectedCategoryId, setSelectedCategoryId] = useState('AUTOS');
   const [selectedFranchiseId, setSelectedFranchiseId] = useState('avengers');
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isJarvisOpen, setIsJarvisOpen] = useState(false);
   const [selectedPosterForModal, setSelectedPosterForModal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Admin authentication state (strictly validated against active token)
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    return !!getAuthToken();
-  });
+  // Persist cart changes to localStorage for resilience against page reloads/closing tab
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } catch (e) {}
+  }, [cart]);
+
+  // Admin authentication state (default false — estrictamente verificado con el backend)
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
 
   // Dynamic state for posters, categories, and franchises
@@ -80,9 +94,22 @@ export default function App() {
   const [categories, setCategories] = useState(getStoredCategories());
   const [franchises, setFranchises] = useState(getStoredFranchises());
 
-  // Listen to catalog updates from Admin & sync on initial mount
+  // Listen to catalog updates from Admin & sync on initial mount + verificar sesión admin
   useEffect(() => {
     syncCatalogFromServer();
+
+    // Verificación asíncrona de sesión admin inicial
+    async function verifyInitialAdminSession() {
+      const token = getAuthToken();
+      if (token) {
+        const isValid = await apiAdminVerify();
+        setIsAdminAuthenticated(isValid);
+        if (!isValid) clearAuthToken();
+      } else {
+        setIsAdminAuthenticated(false);
+      }
+    }
+    verifyInitialAdminSession();
 
     const handleUpdate = () => {
       setPosters(getStoredPosters());
@@ -178,10 +205,22 @@ export default function App() {
     }
   };
 
-  const handleNavigate = (page, categoryId = null) => {
-    if (page === 'admin' && !isAdminAuthenticated) {
-      handleOpenAdminLogin();
-      return;
+  const handleNavigate = async (page, categoryId = null) => {
+    if (page === 'admin') {
+      const token = getAuthToken();
+      if (!token) {
+        setIsAdminAuthenticated(false);
+        handleOpenAdminLogin();
+        return;
+      }
+      const isValid = await apiAdminVerify();
+      if (!isValid) {
+        setIsAdminAuthenticated(false);
+        clearAuthToken();
+        handleOpenAdminLogin();
+        return;
+      }
+      setIsAdminAuthenticated(true);
     }
     if (page === 'category' && categoryId) {
       setSelectedCategoryId(categoryId);
@@ -202,7 +241,6 @@ export default function App() {
 
   const handleAdminLoginSuccess = () => {
     setIsAdminAuthenticated(true);
-    sessionStorage.setItem('deco_admin_auth', 'true');
     setShowAdminLoginModal(false);
     window.history.pushState({ type: 'page', page: 'admin' }, '');
     setCurrentPage('admin');
@@ -212,7 +250,6 @@ export default function App() {
   const handleAdminLogout = () => {
     setIsAdminAuthenticated(false);
     clearAuthToken();
-    sessionStorage.removeItem('deco_admin_auth');
     window.history.pushState({ type: 'page', page: 'home' }, '');
     setCurrentPage('home');
     window.scrollTo(0, 0);
@@ -385,8 +422,69 @@ export default function App() {
             isAdminAuthenticated ? (
               <AdminDashboard onNavigate={handleNavigate} onLogout={handleAdminLogout} />
             ) : (
-              <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                Acceso protegido. Por favor inicie sesión.
+              <div style={{
+                minHeight: '75vh',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '20px',
+                textAlign: 'center',
+                padding: '40px 20px'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: 'rgba(0, 242, 254, 0.1)',
+                  border: '1px solid rgba(0, 242, 254, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.8rem'
+                }}>
+                  🔒
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: '700', marginBottom: '8px', color: '#fff' }}>
+                    Panel de Administración Protegido
+                  </h2>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '380px' }}>
+                    Esta sección requiere credenciales autorizadas de administrador para continuar.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={handleOpenAdminLogin}
+                    style={{
+                      padding: '10px 24px',
+                      background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
+                      color: '#070b12',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: '700',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 15px rgba(0, 242, 254, 0.3)'
+                    }}
+                  >
+                    Iniciar Sesión
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('home')}
+                    style={{
+                      padding: '10px 20px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      color: 'var(--text-muted)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '10px',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Volver al Inicio
+                  </button>
+                </div>
               </div>
             )
           )}

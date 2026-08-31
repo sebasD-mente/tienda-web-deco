@@ -7,6 +7,7 @@ import {
 import ArcReactor from '../ArcReactor';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../utils/jarvisBrain';
+import { getAuthToken } from '../../utils/apiClient';
 import { 
   getStoreKnowledge, 
   saveStoreKnowledge, 
@@ -210,7 +211,7 @@ export default function AdminJarvisTab({ onShowToast }) {
     saveGeminiApiKey(key);
     
     // Also persist to VPS SSD backend
-    const token = sessionStorage.getItem('deco_admin_token');
+    const token = getAuthToken();
     try {
       await fetch('/api/jarvis/save-key', {
         method: 'POST',

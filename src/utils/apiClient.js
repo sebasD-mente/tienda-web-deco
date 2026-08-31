@@ -36,9 +36,10 @@ const TOKEN_KEY = 'deco_admin_auth_token_v1';
 
 export function getAuthToken() {
   try {
-    if (typeof localStorage !== 'undefined') {
-      const tok = localStorage.getItem(TOKEN_KEY);
-      if (tok) return tok;
+    // Purgar claves residuales de localStorage si existiesen
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(TOKEN_KEY)) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('deco_admin_auth');
     }
     if (typeof sessionStorage !== 'undefined') {
       return sessionStorage.getItem(TOKEN_KEY) || '';
@@ -50,15 +51,25 @@ export function getAuthToken() {
 export function setAuthToken(token) {
   try {
     if (typeof localStorage !== 'undefined') {
-      token ? localStorage.setItem(TOKEN_KEY, token) : localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('deco_admin_auth');
+      localStorage.removeItem('deco_admin_token');
     }
     if (typeof sessionStorage !== 'undefined') {
-      token ? sessionStorage.setItem(TOKEN_KEY, token) : sessionStorage.removeItem(TOKEN_KEY);
+      if (token) {
+        sessionStorage.setItem(TOKEN_KEY, token);
+      } else {
+        sessionStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem('deco_admin_auth');
+        sessionStorage.removeItem('deco_admin_token');
+      }
     }
   } catch (e) {}
 }
 
-export function clearAuthToken() { setAuthToken(''); }
+export function clearAuthToken() {
+  setAuthToken('');
+}
 
 function getHeaders(isJson = true) {
   const headers = {};
@@ -271,13 +282,22 @@ export async function apiAdminVerify() {
   const token = getAuthToken();
   if (!token) return false;
   try {
-    const res  = await fetch('/api/auth/verify', {
+    const res = await fetch('/api/auth/verify', {
       method:  'POST',
       headers: getHeaders(true)
     });
+    if (!res.ok) {
+      clearAuthToken();
+      return false;
+    }
     const data = await res.json();
-    return data.valid === true;
+    if (data.valid === true) {
+      return true;
+    }
+    clearAuthToken();
+    return false;
   } catch (e) {
+    clearAuthToken();
     return false;
   }
 }
@@ -291,20 +311,45 @@ export async function apiAdminVerify() {
  * @returns {Promise<{ replyText: string, actions: Array }>}
  */
 export async function apiAskJarvis(prompt, history = []) {
+  const targetUrl = '/api/jarvis/chat';
+  console.log(`[J.A.R.V.I.S. Network] 📡 Enviando consulta a: "${targetUrl}" (Proxy local: http://localhost:3000/api/jarvis/chat) | Prompt: "${prompt?.slice(0, 50)}..."`);
+
   try {
-    const res = await fetch('/api/jarvis/chat', {
+    const res = await fetch(targetUrl, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ prompt, history })
+      body:    JSON.stringify({ prompt, history }),
+      signal:  AbortSignal.timeout(30000)
     });
+
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `HTTP ${res.status}`);
+      const errorMsg = errData.error || errData.message || `HTTP ${res.status} (${res.statusText})`;
+      console.error(`[ERROR CRÍTICO J.A.R.V.I.S. HTTP ${res.status}] ❌ Falló el endpoint ${targetUrl}:`, {
+        status: res.status,
+        statusText: res.statusText,
+        error: errorMsg,
+        url: res.url
+      });
+      throw new Error(errorMsg);
     }
-    return res.json();
+
+    const data = await res.json();
+    console.log(`[J.A.R.V.I.S. Network] ✅ Respuesta exitosa 200 OK recibida (${data.poweredBy || 'Motor IA'}):`, data);
+    return data;
+
   } catch (err) {
-    console.error('[API Client] Jarvis API error:', err);
+    const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
+    console.error('[ERROR CRÍTICO J.A.R.V.I.S.] 💥 Causa real de la desconexión:', {
+      errorName: err.name,
+      errorMessage: err.message,
+      targetUrl,
+      isTimeout,
+      stack: err.stack
+    });
+
     return {
+      isFallback: true,
       replyText: 'No pude conectar con el cerebro principal en este momento. Por favor escríbenos directamente a WhatsApp.',
       actions: []
     };
