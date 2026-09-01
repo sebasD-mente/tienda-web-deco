@@ -225,6 +225,14 @@ router.put('/catalog/posters/:id', requireAuth, async (req, res) => {
       thumb = processed.thumb;
     }
 
+    // Si la imagen cambió, eliminamos la anterior de Google Cloud Storage
+    if (existing.imageUrl && image && existing.imageUrl !== image) {
+      await deleteFromGCS(existing.imageUrl);
+    }
+    if (existing.thumbUrl && thumb && existing.thumbUrl !== thumb) {
+      await deleteFromGCS(existing.thumbUrl);
+    }
+
     const updatedPoster = await upsertPosterFromAdmin({
       ...posterData,
       id: existing.id,
@@ -427,6 +435,64 @@ router.post('/catalog/delete-image', requireAuth, async (req, res) => {
     return res.status(200).json({ success: true });
   } catch (e) {
     return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── POST /api/catalog/clean-orphans (Protected Admin) ────────────────────────
+// Audits GCS bucket against PostgreSQL posters table and deletes unreferenced orphan files.
+router.post('/catalog/clean-orphans', requireAuth, async (req, res) => {
+  try {
+    const { getStorageClient, BUCKET_NAME } = await import('../services/gcsService.js');
+    const { prisma } = await import('../services/catalogService.js');
+
+    const client = getStorageClient();
+    if (!client) {
+      return res.status(500).json({ error: 'Google Cloud Storage client not configured.' });
+    }
+
+    // 1. Obtener todas las URLs de imágenes y thumbnails activas en la BD
+    const activePosters = await prisma.poster.findMany({
+      select: { imageUrl: true, thumbUrl: true }
+    });
+    const activeFranchises = await prisma.franchise.findMany({
+      select: { imageUrl: true }
+    });
+
+    const activeSet = new Set();
+    activePosters.forEach(p => {
+      if (p.imageUrl) activeSet.add(p.imageUrl);
+      if (p.thumbUrl) activeSet.add(p.thumbUrl);
+    });
+    activeFranchises.forEach(f => {
+      if (f.imageUrl) activeSet.add(f.imageUrl);
+    });
+
+    // 2. Listar todos los archivos en GCS
+    const bucket = client.bucket(BUCKET_NAME);
+    const [files] = await bucket.getFiles({ prefix: 'posters/' });
+
+    let deletedCount = 0;
+    const deletedFiles = [];
+
+    for (const file of files) {
+      const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${file.name}`;
+      if (!activeSet.has(publicUrl)) {
+        await file.delete();
+        deletedCount++;
+        deletedFiles.push(file.name);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      scannedFiles: files.length,
+      deletedCount,
+      deletedFiles,
+      message: `Higienización completada. Se eliminaron ${deletedCount} archivos huérfanos de Google Cloud Storage.`
+    });
+  } catch (err) {
+    console.error('[API Error] POST /api/catalog/clean-orphans:', err);
+    return res.status(500).json({ error: 'Error al limpiar archivos huérfanos.', details: err.message });
   }
 });
 

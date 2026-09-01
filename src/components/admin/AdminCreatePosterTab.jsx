@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { OFFICIAL_SIZES } from '../../data/catalogData';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
-import { apiUploadPosterImage } from '../../utils/apiClient';
+import { apiUploadPosterImage, apiDeletePosterImage } from '../../utils/apiClient';
 
 export default function AdminCreatePosterTab({
   editingPoster = null,
@@ -152,6 +152,12 @@ export default function AdminCreatePosterTab({
 
       // PASO 2: Subida al VPS con Sharp
       setIsUploading(true);
+
+      // Si ya se había subido una imagen temporal en esta sesión que no era la original, purgarla de GCS
+      if (imageUrl && (!editingPoster || (imageUrl !== editingPoster.image && imageUrl !== editingPoster.imageUrl))) {
+        apiDeletePosterImage(imageUrl, thumbUrl).catch(() => {});
+      }
+
       // Usamos el UUID de PG si existe (modo edición), o generamos un ID temporal
       const uploadId = pgId
         ? pgId
@@ -259,6 +265,14 @@ export default function AdminCreatePosterTab({
   const isImageReady = !!(imageUrl || _base64Full);
   const imagePreviewSrc = thumbUrl || imageUrl || _base64Full;
 
+  const handleCancelForm = () => {
+    if (imageUrl && (!editingPoster || (imageUrl !== editingPoster.image && imageUrl !== editingPoster.imageUrl))) {
+      apiDeletePosterImage(imageUrl, thumbUrl).catch(() => {});
+    }
+    resetForm();
+    if (onCancel) onCancel();
+  };
+
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
       <div className="glass-card" style={{ padding: 'clamp(18px, 4vw, 32px)', marginBottom: '30px' }}>
@@ -284,7 +298,7 @@ export default function AdminCreatePosterTab({
           {isEditMode && (
             <button
               type="button"
-              onClick={onCancel}
+              onClick={handleCancelForm}
               className="btn-secondary"
               style={{ padding: '6px 14px', fontSize: '0.78rem' }}
             >
