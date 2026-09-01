@@ -1,7 +1,7 @@
 /**
  * routes/catalogRoutes.js
  * Catalog and image management endpoints — 100% Prisma (PostgreSQL).
- * Zero Split-Brain (catalogStore.json removed) and non-blocking I/O.
+ * Zero Split-Brain (catalogStore.json removed), non-blocking I/O, and batch processing.
  */
 
 import { Router } from 'express';
@@ -216,8 +216,7 @@ router.delete('/catalog/posters/:id', requireAuth, async (req, res) => {
   }
 });
 
-// ── POST /api/catalog/save (Protected Admin) ─────────────────────────────────
-// Persists catalog items directly to PostgreSQL via Prisma.
+// ── POST /api/catalog/save (Protected Admin - Batch Processing BATCH_SIZE = 3) ─
 router.post('/catalog/save', requireAuth, async (req, res) => {
   try {
     const { posters, settings } = req.body;
@@ -225,41 +224,48 @@ router.post('/catalog/save', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'posters must be an array' });
     }
 
-    const processedPosters = await Promise.all(posters.map(async (p) => {
-      const cleanPoster = { ...p };
-      const cleanId = (cleanPoster.id || 'obra-' + Date.now()).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const BATCH_SIZE = 3;
+    const processedPosters = [];
 
-      if (cleanPoster.thumb && cleanPoster.thumb.endsWith('.web')) {
-        cleanPoster.thumb = cleanPoster.thumb + 'p';
-      }
-      if (cleanPoster.image && cleanPoster.image.endsWith('.web')) {
-        cleanPoster.image = cleanPoster.image + 'p';
-      }
+    for (let i = 0; i < posters.length; i += BATCH_SIZE) {
+      const batch = posters.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(batch.map(async (p) => {
+        const cleanPoster = { ...p };
+        const cleanId = (cleanPoster.id || 'obra-' + Date.now()).toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-      if (cleanPoster.image && cleanPoster.image.startsWith('data:image/')) {
-        try {
-          const buffer = dataUrlToBuffer(cleanPoster.image);
-          const { image, thumb } = await processImageBuffer(buffer, cleanId);
-          cleanPoster.image = image;
-          cleanPoster.thumb = thumb;
-        } catch (e) {
-          console.warn('[Deco Storage] Failed to convert base64 image:', e.message);
+        if (cleanPoster.thumb && cleanPoster.thumb.endsWith('.web')) {
+          cleanPoster.thumb = cleanPoster.thumb + 'p';
         }
-      }
+        if (cleanPoster.image && cleanPoster.image.endsWith('.web')) {
+          cleanPoster.image = cleanPoster.image + 'p';
+        }
 
-      try {
-        return await upsertPosterFromAdmin(cleanPoster);
-      } catch (prismaErr) {
-        console.warn(`[Prisma Sync] Failed to upsert poster ${cleanPoster.id} to PostgreSQL:`, prismaErr.message);
-        return cleanPoster;
-      }
-    }));
+        if (cleanPoster.image && cleanPoster.image.startsWith('data:image/')) {
+          try {
+            const buffer = dataUrlToBuffer(cleanPoster.image);
+            const { image, thumb } = await processImageBuffer(buffer, cleanId);
+            cleanPoster.image = image;
+            cleanPoster.thumb = thumb;
+          } catch (e) {
+            console.warn('[Deco Storage] Failed to convert base64 image:', e.message);
+          }
+        }
+
+        try {
+          return await upsertPosterFromAdmin(cleanPoster);
+        } catch (prismaErr) {
+          console.warn(`[Prisma Sync] Failed to upsert poster ${cleanPoster.id} to PostgreSQL:`, prismaErr.message);
+          return cleanPoster;
+        }
+      }));
+      processedPosters.push(...batchResults);
+    }
 
     if (settings && settings.whatsappPhone) {
       await saveStoreSettings(settings.whatsappPhone);
     }
 
-    console.log(`[PostgreSQL DB] Atomic persist of ${processedPosters.length} posters via Prisma.`);
+    console.log(`[PostgreSQL DB] Batch persist of ${processedPosters.length} posters via Prisma (BATCH_SIZE=3).`);
     return res.status(200).json({
       success:   true,
       count:     processedPosters.length,
@@ -292,7 +298,6 @@ router.post('/catalog/upload', requireAuth, async (req, res) => {
 });
 
 // ── POST /api/catalog/delete-image (Protected Admin) ────────────────────────
-// Non-blocking async file deletion
 router.post('/catalog/delete-image', requireAuth, async (req, res) => {
   try {
     const { imagePath, thumbPath } = req.body;

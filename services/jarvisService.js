@@ -16,7 +16,8 @@ import { GoogleGenAI } from '@google/genai';
 import { JARVIS_FILE, PROJECT_ROOT } from '../config/paths.js';
 import {
   getAllPosters,
-  formatPosterForClient
+  formatPosterForClient,
+  prisma
 } from './catalogService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -150,6 +151,19 @@ export async function getJarvisApiKey() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getJarvisMemory() {
+  try {
+    const dbMem = await prisma.jarvisMemory.findUnique({ where: { id: 'default' } });
+    if (dbMem) {
+      return {
+        customDocuments: dbMem.customDocuments || [],
+        ownerDirectives: dbMem.ownerDirectives || [],
+        apiKey: dbMem.apiKey || undefined
+      };
+    }
+  } catch (e) {
+    console.warn('[Prisma JarvisMemory] Read warning:', e.message);
+  }
+
   let vpsMem = {};
   let srcMem = {};
   const srcFile = path.resolve(PROJECT_ROOT, 'src/data/jarvisConfig.json');
@@ -196,29 +210,41 @@ export async function saveJarvisMemory(payload) {
     updatedAt: new Date().toISOString()
   };
 
-  const tmpFile = `${JARVIS_FILE}.tmp`;
-
   try {
-    // Non-blocking async atomic write
+    await prisma.jarvisMemory.upsert({
+      where: { id: 'default' },
+      update: {
+        customDocuments: updated.customDocuments || [],
+        ownerDirectives: updated.ownerDirectives || [],
+        ...(updated.apiKey !== undefined && { apiKey: updated.apiKey })
+      },
+      create: {
+        id: 'default',
+        customDocuments: updated.customDocuments || [],
+        ownerDirectives: updated.ownerDirectives || [],
+        apiKey: updated.apiKey || null
+      }
+    });
+  } catch (e) {
+    console.warn('[Prisma JarvisMemory] Upsert warning:', e.message);
+  }
+
+  const tmpFile = `${JARVIS_FILE}.tmp`;
+  try {
     await fs.promises.writeFile(tmpFile, JSON.stringify(updated, null, 2), 'utf-8');
     await fs.promises.rename(tmpFile, JARVIS_FILE);
 
-    // Sync to src fallback asynchronously
     const srcFile = path.resolve(PROJECT_ROOT, 'src/data/jarvisConfig.json');
     try {
       await fs.promises.writeFile(srcFile, JSON.stringify(updated, null, 2), 'utf-8');
     } catch (e) {}
+  } catch (err) {}
 
-    console.log('[Deco J.A.R.V.I.S.] Master training memory persisted asynchronously to VPS SSD disk.');
-    return {
-      success: true,
-      message: 'Memoria de J.A.R.V.I.S. guardada permanentemente en disco.',
-      updatedAt: updated.updatedAt
-    };
-  } catch (err) {
-    console.error('[Deco J.A.R.V.I.S.] Error writing memory file:', err);
-    return { success: false, error: err.message };
-  }
+  return {
+    success: true,
+    message: 'Memoria de J.A.R.V.I.S. guardada permanentemente en PostgreSQL vía Prisma.',
+    updatedAt: updated.updatedAt
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

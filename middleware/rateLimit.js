@@ -1,18 +1,24 @@
 /**
  * middleware/rateLimit.js
  * In-memory rate limiter for the AI /api/jarvis/chat endpoint.
- * Max 30 requests per minute per IP.
- * Extracted from server.js lines 95–115.
+ * Max 30 requests per minute per IP with unref() cleanup interval (CWE-400 mitigation).
  */
 
-// ── State (module-level, survives across requests within a process) ───────────
 const ipRequestCounts = new Map();
 
-// ── Express middleware ───────────────────────────────────────────────────────
+// Periodic cleanup interval to prevent memory leaks in long-running Node processes
+const cleanupInterval = setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of ipRequestCounts.entries()) {
+    if (now > record.resetTime + 60000) {
+      ipRequestCounts.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
+cleanupInterval.unref(); // Prevents timer from holding the Node Event Loop open
 
 /**
  * Rate-limits requests to a maximum of 30 per minute per IP address.
- * Resets the counter automatically after each 60-second window.
  */
 export function rateLimitAI(req, res, next) {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';

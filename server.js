@@ -49,9 +49,20 @@ app.use(compression());
 // Trust reverse proxy (Dokploy / Traefik / Nginx) for accurate client IP rate limiting
 app.set('trust proxy', 1);
 
-// Helmet security headers (CWE-693 Mitigation)
+// Helmet security headers with explicit Cloud CSP Directives (CWE-693 Mitigation)
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://storage.googleapis.com", "https://*.googleusercontent.com"],
+      connectSrc: ["'self'", "https://storage.googleapis.com", "https://generativelanguage.googleapis.com", "https://oauth2.googleapis.com", "https://*.firebaseio.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    }
+  },
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 

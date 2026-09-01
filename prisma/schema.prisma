@@ -76,6 +76,8 @@ model Poster {
   @@index([estado])
   @@index([isFeatured])
   @@index([franchiseId])
+  @@index([createdAt])
+  @@index([precioMinimo])
   @@map("posters")
 }
 
@@ -103,4 +105,13 @@ model StoreSettings {
   whatsappPhone String   @default("50238375078")
   updatedAt     DateTime @updatedAt
   @@map("store_settings")
+}
+
+model JarvisMemory {
+  id              String   @id @default("default")
+  customDocuments Json     @default("[]")
+  ownerDirectives Json     @default("[]")
+  apiKey          String?
+  updatedAt       DateTime @updatedAt
+  @@map("jarvis_memory")
 }
