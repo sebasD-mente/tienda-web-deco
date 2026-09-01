@@ -343,11 +343,17 @@ export async function upsertPosterFromAdmin(data) {
   const finalPriceDisplay = priceDisplay || precioDisplay || (finalMinPrice ? `Desde Q ${parseFloat(finalMinPrice).toFixed(2)}` : 'Desde Q 25.00');
   const finalLegacyId = inputLegacyId || (inputId && !isUUID(inputId) ? inputId : null);
 
-  // Resuelve el franchiseId
-  let finalFranchiseId = inputFranchiseId || null;
-  if (!finalFranchiseId && franchise) {
-    const fr = await prisma.franchise.findUnique({ where: { slug: franchise } });
-    finalFranchiseId = fr?.id || null;
+  // Resuelve el franchiseId (soporta CUID directo o slug como 'dc', 'marvel')
+  let finalFranchiseId = null;
+  const rawFranchiseKey = inputFranchiseId || franchise || null;
+  if (rawFranchiseKey) {
+    const byId = await prisma.franchise.findUnique({ where: { id: rawFranchiseKey } });
+    if (byId) {
+      finalFranchiseId = byId.id;
+    } else {
+      const bySlug = await prisma.franchise.findUnique({ where: { slug: rawFranchiseKey } });
+      finalFranchiseId = bySlug?.id || null;
+    }
   }
 
   const sizesData = buildSizesForUpsert(sizes, availableSizes);

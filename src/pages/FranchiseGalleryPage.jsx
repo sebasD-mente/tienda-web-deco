@@ -24,17 +24,21 @@ export default function FranchiseGalleryPage({
     };
   }, [franchises, franchiseId]);
 
-  // Filter posters belonging to this franchise (flexible matching by franchise id, category, title or subtitle)
+  // Filter posters belonging strictly to this franchise (exact match by franchise id, slug or dbId)
   const franchisePosters = useMemo(() => {
     const fId = (currentFranchise.id || '').toLowerCase();
-    const fName = (currentFranchise.name || '').toLowerCase();
+    const fSlug = (currentFranchise.slug || '').toLowerCase();
+    const fDbId = (currentFranchise.dbId || '').toLowerCase();
     return posters.filter(p => {
-      if (p.franchise && p.franchise.toLowerCase() === fId) return true;
-      if (p.category && currentFranchise.category && p.category === currentFranchise.category) return true;
-      if (p.title && p.title.toLowerCase().includes(fId)) return true;
-      if (p.subtitle && (p.subtitle.toLowerCase().includes(fId) || p.subtitle.toLowerCase().includes(fName))) return true;
-      if (fName && p.title.toLowerCase().includes(fName)) return true;
-      return false;
+      if (!p.franchise && !p.franchiseId) return false;
+      const pF = String(p.franchise || '').toLowerCase();
+      const pFId = String(p.franchiseId || '').toLowerCase();
+      return (
+        (fId && pF === fId) ||
+        (fSlug && pF === fSlug) ||
+        (fDbId && (pFId === fDbId || pF === fDbId)) ||
+        (fId && pFId === fId)
+      );
     });
   }, [posters, currentFranchise]);
 
