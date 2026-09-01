@@ -70,6 +70,7 @@ model Poster {
   isFeatured    Boolean      @default(false)
   rating        Decimal?     @db.Decimal(2, 1)
   reviewsCount  Int          @default(0)
+  embedding     Float[]      @default([])
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   @@index([categoria])
