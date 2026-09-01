@@ -19,6 +19,7 @@ console.log('[Boot] Vaciando cache de Docker...');
 
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import compression from 'compression';
 import fs from 'fs';
 import path from 'path';
@@ -47,6 +48,12 @@ app.use(compression());
 
 // Trust reverse proxy (Dokploy / Traefik / Nginx) for accurate client IP rate limiting
 app.set('trust proxy', 1);
+
+// Helmet security headers (CWE-693 Mitigation)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
 app.use(cors({ origin: true, credentials: true }));
 
