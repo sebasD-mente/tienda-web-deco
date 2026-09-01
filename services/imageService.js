@@ -2,6 +2,7 @@
  * services/imageService.js
  * Image processing with Sharp and cloud storage via @google-cloud/storage (Factor VI).
  * Supports in-memory processing via multer.memoryStorage and zero hardcoded credentials (CWE-798).
+ * Fail-Fast Stateless Mode: Direct GCS uploads without silent local disk fallback.
  */
 
 import path from 'path';
@@ -73,11 +74,11 @@ export async function uploadBufferToGCS(buffer, destinationPath, contentType = '
   return `https://storage.googleapis.com/${gcs.bucketName}/${destinationPath}`;
 }
 
-// ── Core image processor ─────────────────────────────────────────────────────
+// ── Core image processor (Fail-Fast GCS Mode) ────────────────────────────────
 
 /**
  * Converts a raw image buffer into two WebP files (full resolution & thumbnail).
- * Uploads to Google Cloud Storage if configured, or falls back to VPS disk asynchronously.
+ * Uploads directly to Google Cloud Storage (Fail-Fast), or falls back to local SSD only if GCS is unconfigured.
  *
  * @param {Buffer} buffer  - Raw image data.
  * @param {string} cleanId - Sanitized identifier (e.g. "obra-dragon-ball-z").
@@ -97,26 +98,22 @@ export async function processImageBuffer(buffer, cleanId) {
     .webp({ quality: 78 })
     .toBuffer();
 
-  // 2. Try Google Cloud Storage (Factor VI Cloud Storage)
+  // 2. Google Cloud Storage (Factor VI Cloud Storage - Fail-Fast)
   const gcs = getGCSClient();
   if (gcs) {
-    try {
-      const fullPath  = `posters/uploads/full/${baseFileName}`;
-      const thumbPath = `posters/uploads/thumb/${baseFileName}`;
+    const fullPath  = `posters/uploads/full/${baseFileName}`;
+    const thumbPath = `posters/uploads/thumb/${baseFileName}`;
 
-      const [imageUrl, thumbUrl] = await Promise.all([
-        uploadBufferToGCS(fullBuffer, fullPath),
-        uploadBufferToGCS(thumbBuffer, thumbPath)
-      ]);
+    const [imageUrl, thumbUrl] = await Promise.all([
+      uploadBufferToGCS(fullBuffer, fullPath),
+      uploadBufferToGCS(thumbBuffer, thumbPath)
+    ]);
 
-      console.log(`[GCS Cloud Storage] Successfully uploaded WebP images to bucket ${gcs.bucketName}: ${baseFileName}`);
-      return { image: imageUrl, thumb: thumbUrl };
-    } catch (gcsErr) {
-      console.warn('[GCS Storage Fallback] GCS upload failed, falling back to local SSD:', gcsErr.message);
-    }
+    console.log(`[GCS Cloud Storage] Successfully uploaded WebP images to bucket ${gcs.bucketName}: ${baseFileName}`);
+    return { image: imageUrl, thumb: thumbUrl };
   }
 
-  // 3. Fallback: Local VPS SSD storage via non-blocking async operations
+  // 3. Fallback: Local VPS SSD storage ONLY if GCS is unconfigured
   await fs.promises.mkdir(UPLOADS_FULL, { recursive: true });
   await fs.promises.mkdir(UPLOADS_THUMB, { recursive: true });
 
