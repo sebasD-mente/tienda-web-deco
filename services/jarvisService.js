@@ -21,6 +21,7 @@ import {
   getFullCatalog,
   prisma
 } from './catalogService.js';
+import { findSimilarPosters } from './embeddingService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -356,8 +357,8 @@ export async function getVertexAccessToken() {
  * @param {object} jarvisMemory - Merged memory object from getJarvisMemory().
  * @returns {string} Complete system instruction.
  */
-export function buildSystemInstruction(catalog, jarvisMemory = {}) {
-  const posters    = (catalog && Array.isArray(catalog.posters)) ? catalog.posters.filter(Boolean) : [];
+export function buildSystemInstruction(catalog, jarvisMemory = {}, relevantPosters = []) {
+  const allPosters = (catalog && Array.isArray(catalog.posters)) ? catalog.posters.filter(Boolean) : [];
   const settings   = catalog?.settings || {};
   const waPhone    = settings.whatsappPhone || '50238375078';
 
@@ -385,7 +386,12 @@ export function buildSystemInstruction(catalog, jarvisMemory = {}) {
     }
   ]).map(doc => `[DOCUMENTO / EVENTO: ${doc.title}]\nCategoría: ${doc.category || 'General'}\nContenido: ${doc.content}`).join('\n\n');
 
-  const catalogSummary = posters.map(p => {
+  // Inyección Semántica RAG (Top-4 obras más relevantes del catálogo en lugar de volcar toda la BD)
+  const targetPosters = Array.isArray(relevantPosters) && relevantPosters.length > 0
+    ? relevantPosters
+    : allPosters.slice(0, 4);
+
+  const catalogSummary = targetPosters.map(p => {
     const id = p.id || '';
     const title = p.title || p.titulo || 'Póster';
     const subtitle = p.subtitle || p.subtitulo || '';
@@ -425,7 +431,7 @@ ${customDocs}
 - Solo Vinil Adhesivo: Impresión en vinil HP Látex al 50% de descuento (mitad de precio).
 Medidas estándar: Mini (14x21cm - Q25), Pequeño (21x27cm - Q35), Portada Álbum (30x30cm - Q55), Mediano (30x45cm - Q65), Grande (45x60cm - Q125), Gigante (60x100cm - Q210).
 
-=== CATÁLOGO COMPLETO DE OBRAS EN TIENDA ===
+=== OBRAS MÁS RELEVANTES PARA ESTA CONSULTA (RAG SEMÁNTICO) ===
 ${catalogSummary}`;
 }
 
@@ -497,7 +503,7 @@ export function formatChatHistory(rawHistory, maxTurns = 8) {
  * @param {any[]}                          posters - Full poster list for filtering.
  * @returns {object|null} Action object, or null if the call name is unknown.
  */
-export function executeFunctionCall(call, posters = []) {
+export function executeFunctionCall(call, posters = [], relevantPosters = []) {
   if (!call || !call.name) return null;
   const args = call.args || {};
   const cleanPosters = Array.isArray(posters) ? posters.filter(Boolean) : [];
@@ -536,8 +542,10 @@ export function executeFunctionCall(call, posters = []) {
           }).slice(0, 4);
         }
 
-        // 3. Fallback de mockup si no hay coincidencia exacta para garantizar respuesta visual segura
-        if (matched.length === 0 && cleanPosters.length > 0) {
+        // 3. Fallback de RAG semántico si no hay coincidencia exacta para garantizar respuesta visual precisa
+        if (matched.length === 0 && Array.isArray(relevantPosters) && relevantPosters.length > 0) {
+          matched = relevantPosters.slice(0, 3);
+        } else if (matched.length === 0 && cleanPosters.length > 0) {
           matched = cleanPosters.slice(0, 3);
         }
 
@@ -759,8 +767,20 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
     }
   }
 
-  const posters           = liveCatalog.posters || [];
-  const systemInstruction = buildSystemInstruction(liveCatalog, jarvisMemory);
+  const posters = liveCatalog.posters || [];
+
+  // 2. Búsqueda Semántica Vectorial previa (RAG) para inyectar únicamente el Top-4 relevante
+  let topRelevantPosters = [];
+  try {
+    const scoredMatches = await findSimilarPosters(prompt, 4, candidateKeys[0]);
+    if (scoredMatches && scoredMatches.length > 0) {
+      topRelevantPosters = scoredMatches.map((m) => m.poster);
+    }
+  } catch (ragErr) {
+    console.warn('[Deco J.A.R.V.I.S. RAG Warning] Semantic search fallback:', ragErr.message);
+  }
+
+  const systemInstruction = buildSystemInstruction(liveCatalog, jarvisMemory, topRelevantPosters);
   const chatHistory       = formatChatHistory(history);
   let   lastError         = null;
 
@@ -800,7 +820,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
         if (functionCalls && functionCalls.length > 0) {
           for (const call of functionCalls) {
             try {
-              const action = executeFunctionCall(call, posters);
+              const action = executeFunctionCall(call, posters, topRelevantPosters);
               if (action) executedActions.push(action);
             } catch (fnErr) {
               console.error('[Deco J.A.R.V.I.S.] Error executing function call:', fnErr);
@@ -876,7 +896,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
             }
             if (part.functionCall) {
               try {
-                const action = executeFunctionCall(part.functionCall, posters);
+                const action = executeFunctionCall(part.functionCall, posters, topRelevantPosters);
                 if (action) executedActions.push(action);
               } catch (fnErr) {
                 console.error('[Deco J.A.R.V.I.S. Vertex] Error executing function call:', fnErr);
