@@ -256,7 +256,11 @@ router.post('/catalog/save', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'posters must be an array' });
     }
 
-    const processedPosters = await Promise.all(posters.map(async (p) => {
+    // Procesamiento por lotes secuenciales (chunks de 3) para no saturar el Connection Pool de PostgreSQL
+    const BATCH_SIZE = 3;
+    const processedPosters = [];
+
+    const processSinglePoster = async (p) => {
       const cleanPoster = { ...p };
       const cleanId = (cleanPoster.id || 'obra-' + Date.now()).toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
@@ -278,7 +282,13 @@ router.post('/catalog/save', requireAuth, async (req, res) => {
         console.warn(`[Prisma Sync] Failed to upsert poster ${cleanPoster.id}:`, prismaErr.message);
         return cleanPoster;
       }
-    }));
+    };
+
+    for (let i = 0; i < posters.length; i += BATCH_SIZE) {
+      const batch = posters.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(batch.map(p => processSinglePoster(p)));
+      processedPosters.push(...batchResults);
+    }
 
     if (settings) {
       await updateStoreSettings(settings);
