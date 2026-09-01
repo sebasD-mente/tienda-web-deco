@@ -23,8 +23,9 @@ import {
 } from 'lucide-react';
 import { generateWhatsAppLink } from '../config/constants';
 import { OFFICIAL_SIZES } from '../data/catalogData';
+import { getStoredSettings } from '../utils/catalogStorage';
 
-export default function CustomPostersPage({ onNavigate }) {
+export default function CustomPostersPage({ onNavigate, settings }) {
   // Mode: 'standard' | 'custom'
   const [sizeMode, setSizeMode] = useState('standard');
   
@@ -51,11 +52,13 @@ export default function CustomPostersPage({ onNavigate }) {
   const hasBase = Boolean(baseMaterial);
   const isConfigured = hasSize && hasBase;
 
-  // Custom Area calculation
+  // Custom Area calculation (consumes dynamic customCm2Price, fallback 0.048)
+  const storeSettings = settings || getStoredSettings() || {};
+  const cm2Rate = Number(storeSettings.customCm2Price) || 0.048;
   const numericWidth = Number(customWidth) || 0;
   const numericHeight = Number(customHeight) || 0;
   const customArea = numericWidth * numericHeight;
-  const fullPriceForCustom = customArea * 0.05;
+  const fullPriceForCustom = customArea * cm2Rate;
 
   // Surcharge for PVC (Impermeable 5mm): +Q15.00
   const pvcSurcharge = 15.00;

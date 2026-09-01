@@ -149,7 +149,32 @@ if (fs.existsSync(DIST_DIR)) {
   });
 }
 
-// ── Start server ──────────────────────────────────────────────────────────────
-app.listen(PORT, '0.0.0.0', () => {
+// ── Process Resilience & Uncaught Exceptions Shield ───────────────────────────
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 [Unhandled Rejection Detectada]:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('💥 [Uncaught Exception Fatal]:', err);
+});
+
+// ── Start server & Graceful Shutdown ──────────────────────────────────────────
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 [Deco Vintage Server] Running on http://0.0.0.0:${PORT} on VPS Hostinger 100 GB SSD.`);
 });
+
+const shutdown = (signal) => {
+  console.log(`🛑 [Graceful Shutdown] Señal ${signal} recibida. Cerrando conexiones...`);
+  server.close(() => {
+    console.log('✅ Servidor HTTP cerrado limpiamente.');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.warn('⚠️ [Graceful Shutdown] Forzando salida tras timeout.');
+    process.exit(1);
+  }, 5000).unref();
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+

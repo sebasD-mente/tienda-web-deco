@@ -8,7 +8,10 @@ export default function OptimizedImage({
   style = {},
   objectFit = 'contain',
   priority = false,
-  fallbackSrc = ''
+  fallbackSrc = '',
+  aspectRatio = '3/4',
+  width,
+  height
 }) {
   const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -32,12 +35,15 @@ export default function OptimizedImage({
     }
   };
 
+  const effectiveAspectRatio = style.aspectRatio || aspectRatio;
+
   return (
     <div
       style={{
         position: 'relative',
-        width: '100%',
-        height: '100%',
+        width: width || '100%',
+        height: height || '100%',
+        aspectRatio: effectiveAspectRatio,
         overflow: 'hidden',
         backgroundColor: '#04060a',
         display: 'flex',
@@ -85,13 +91,16 @@ export default function OptimizedImage({
           alt={alt}
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
+          width={width || 480}
+          height={height || 640}
           onLoad={() => setLoaded(true)}
           onError={handleImageError}
           style={{
             maxWidth: '100%',
             maxHeight: '100%',
-            width: 'auto',
-            height: 'auto',
+            width: '100%',
+            height: '100%',
+            aspectRatio: effectiveAspectRatio,
             objectFit: objectFit,
             display: 'block',
             opacity: loaded ? 1 : 0,

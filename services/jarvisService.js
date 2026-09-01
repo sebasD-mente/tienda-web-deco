@@ -99,13 +99,14 @@ export const JARVIS_TOOL_DECLARATIONS = [
  * @param {number} widthCm
  * @param {number} heightCm
  * @param {'mdf'|'pvc'} material
+ * @param {number|null} customRate - Dynamic price per cm2 (defaults to 0.048)
  * @returns {{ width, height, material, totalPrice, deposit50, areaCm2 }}
  */
-export function calculateCustomPrice(widthCm, heightCm, material = 'mdf') {
+export function calculateCustomPrice(widthCm, heightCm, material = 'mdf', customRate = null) {
   const w = Math.max(10, Math.min(250, Number(widthCm) || 30));
   const h = Math.max(10, Math.min(250, Number(heightCm) || 45));
   const areaCm2 = w * h;
-  const baseRatePerCm2 = 0.046;
+  const baseRatePerCm2 = (customRate !== null && !isNaN(Number(customRate))) ? Number(customRate) : 0.048;
   const rawPrice = areaCm2 * baseRatePerCm2;
   const minPrice = 25.00;
   const rounded = Math.ceil(rawPrice / 5) * 5;
@@ -503,7 +504,7 @@ export function formatChatHistory(rawHistory, maxTurns = 8) {
  * @param {any[]}                          posters - Full poster list for filtering.
  * @returns {object|null} Action object, or null if the call name is unknown.
  */
-export function executeFunctionCall(call, posters = [], relevantPosters = []) {
+export function executeFunctionCall(call, posters = [], relevantPosters = [], catalog = null) {
   if (!call || !call.name) return null;
   const args = call.args || {};
   const cleanPosters = Array.isArray(posters) ? posters.filter(Boolean) : [];
@@ -558,7 +559,8 @@ export function executeFunctionCall(call, posters = [], relevantPosters = []) {
 
       case 'capturar_orden_personalizada':
       case 'cotizar_personalizado': {
-        const quote = calculateCustomPrice(args.anchoCm, args.altoCm, args.material);
+        const dynamicRate = catalog?.settings?.customCm2Price || 0.048;
+        const quote = calculateCustomPrice(args.anchoCm, args.altoCm, args.material, dynamicRate);
         const mockOrderNumber = `DV-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
         return {
           type: 'custom_quote',
@@ -616,7 +618,7 @@ export function executeFunctionCall(call, posters = [], relevantPosters = []) {
  * @param {object}  jarvisMemory  - Merged training memory.
  * @returns {{ replyText: string, actions: any[], poweredBy: string }}
  */
-export function runFallbackEngine(prompt, posters, jarvisMemory) {
+export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null) {
   const qLower     = (prompt || '').toLowerCase();
   let   localReply = '';
   const localActions = [];
@@ -639,7 +641,8 @@ export function runFallbackEngine(prompt, posters, jarvisMemory) {
     const w     = parseInt(dimMatch[1], 10);
     const h     = parseInt(dimMatch[2], 10);
     const isPvc = qLower.includes('pvc') || qLower.includes('impermeable');
-    const quote = calculateCustomPrice(w, h, isPvc ? 'pvc' : 'mdf');
+    const dynamicRate = catalog?.settings?.customCm2Price || 0.048;
+    const quote = calculateCustomPrice(w, h, isPvc ? 'pvc' : 'mdf', dynamicRate);
     localActions.push({ type: 'custom_quote', quote });
     localReply = `¡Con gusto! Para una medida personalizada de **${w}x${h}cm** en **${quote.material}**:\n\n` +
                  `* **Precio Total:** Q${quote.totalPrice}.00\n` +
@@ -796,21 +799,27 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
           { role: 'user', parts: [{ text: prompt || 'Hola' }] }
         ];
 
-        const callTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 25s timeout`)), 25000)
-        );
+        let timerId = null;
+        const callTimeout = new Promise((_, reject) => {
+          timerId = setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 25s timeout`)), 25000);
+        });
 
-        const resAI = await Promise.race([
-          ai.models.generateContent({
-            model:    modelName,
-            contents: contents,
-            config: {
-              systemInstruction: systemInstruction,
-              tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
-            }
-          }),
-          callTimeout
-        ]);
+        let resAI = null;
+        try {
+          resAI = await Promise.race([
+            ai.models.generateContent({
+              model:    modelName,
+              contents: contents,
+              config: {
+                systemInstruction: systemInstruction,
+                tools: [{ functionDeclarations: JARVIS_TOOL_DECLARATIONS }]
+              }
+            }),
+            callTimeout
+          ]);
+        } finally {
+          if (timerId) clearTimeout(timerId);
+        }
 
         let   replyText      = resAI.text || '';
         const executedActions = [];
@@ -819,7 +828,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
         if (functionCalls && functionCalls.length > 0) {
           for (const call of functionCalls) {
             try {
-              const action = executeFunctionCall(call, posters, topRelevantPosters);
+              const action = executeFunctionCall(call, posters, topRelevantPosters, liveCatalog);
               if (action) executedActions.push(action);
             } catch (fnErr) {
               console.error('[Deco J.A.R.V.I.S.] Error executing function call:', fnErr);
@@ -895,7 +904,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
             }
             if (part.functionCall) {
               try {
-                const action = executeFunctionCall(part.functionCall, posters, topRelevantPosters);
+                const action = executeFunctionCall(part.functionCall, posters, topRelevantPosters, liveCatalog);
                 if (action) executedActions.push(action);
               } catch (fnErr) {
                 console.error('[Deco J.A.R.V.I.S. Vertex] Error executing function call:', fnErr);
@@ -917,5 +926,5 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
 
   // ── Engine 3: Local High-Availability Fallback ────────────────────────────
   console.warn('[Gemini AI Offline / Fallback]: Activating Dynamic Local Knowledge Engine. Last error:', lastError?.message);
-  return runFallbackEngine(prompt, posters, jarvisMemory);
+  return runFallbackEngine(prompt, posters, jarvisMemory, liveCatalog);
 }
