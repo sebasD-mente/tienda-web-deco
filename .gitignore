@@ -31,6 +31,7 @@ ui-debug.log*
 Thumbs.db
 
 # Temporary Screenshots & debug images in root
+scratch/
 /*.png
 /*.jpg
 /*.jpeg

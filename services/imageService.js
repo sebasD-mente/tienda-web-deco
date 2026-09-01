@@ -141,6 +141,7 @@ export async function processImageBuffer(buffer, cleanId) {
  * @returns {Buffer}
  */
 export function dataUrlToBuffer(dataUrl) {
-  const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+  if (!dataUrl || typeof dataUrl !== 'string') return Buffer.alloc(0);
+  const base64Data = dataUrl.replace(/^data:[^;]+;base64,/, '');
   return Buffer.from(base64Data, 'base64');
 }
