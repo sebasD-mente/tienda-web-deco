@@ -163,9 +163,15 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 [Deco Vintage Server] Running on http://0.0.0.0:${PORT} on VPS Hostinger 100 GB SSD.`);
 });
 
+import { prisma } from './services/catalogService.js';
+
 const shutdown = (signal) => {
   console.log(`🛑 [Graceful Shutdown] Señal ${signal} recibida. Cerrando conexiones...`);
-  server.close(() => {
+  server.close(async () => {
+    try {
+      await prisma.$disconnect();
+      console.log('✅ Pool de PostgreSQL desconectado.');
+    } catch (_) {}
     console.log('✅ Servidor HTTP cerrado limpiamente.');
     process.exit(0);
   });

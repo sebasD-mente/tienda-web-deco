@@ -1,0 +1,14 @@
+﻿node_modules
+dist
+scratch
+reportes
+reportes_generales_deco
+docs del proyecto
+docs
+.git
+.github
+*.local
+.env*
+.firebase
+firebase-debug.log*
+*.md

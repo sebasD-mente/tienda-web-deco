@@ -79,6 +79,8 @@ model Poster {
   @@index([franchiseId])
   @@index([createdAt])
   @@index([precioMinimo])
+  @@index([isPublished, estado, categoria, createdAt])
+  @@index([isPublished, estado, createdAt])
   @@map("posters")
 }
 
