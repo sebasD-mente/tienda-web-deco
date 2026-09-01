@@ -16,6 +16,8 @@ import {
   updatePosterStatus,
   deletePoster,
   getFullCatalog,
+  getAllFranchises,
+  getAllCategories,
   updateStoreSettings,
 } from '../services/catalogService.js';
 import { processImageBuffer, dataUrlToBuffer } from '../services/imageService.js';
@@ -45,6 +47,28 @@ router.get('/catalog', async (req, res) => {
   } catch (err) {
     console.error('[API Error] GET /api/catalog:', err);
     return res.status(500).json({ error: 'Error al obtener el catálogo.', details: err.message });
+  }
+});
+
+// ── GET /api/catalog/franchises (Public — All official franchises) ───────────
+router.get('/catalog/franchises', async (req, res) => {
+  try {
+    const franchises = await getAllFranchises();
+    return res.status(200).json({ success: true, count: franchises.length, franchises });
+  } catch (err) {
+    console.error('[API Error] GET /api/catalog/franchises:', err);
+    return res.status(500).json({ error: 'Error al obtener las franquicias.', details: err.message });
+  }
+});
+
+// ── GET /api/catalog/categories (Public — All categories with count) ──────────
+router.get('/catalog/categories', async (req, res) => {
+  try {
+    const categories = await getAllCategories();
+    return res.status(200).json({ success: true, count: categories.length, categories });
+  } catch (err) {
+    console.error('[API Error] GET /api/catalog/categories:', err);
+    return res.status(500).json({ error: 'Error al obtener las categorías.', details: err.message });
   }
 });
 

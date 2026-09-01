@@ -63,14 +63,17 @@ async function seedEmbeddingsBatch() {
 
   console.log(`📊 Obras encontradas en PostgreSQL: ${posters.length}\n`);
 
-  const pendingPosters = posters.filter(p => !Array.isArray(p.embedding) || p.embedding.length !== EMBEDDING_DIMENSIONS);
-  const alreadyVectorized = posters.length - pendingPosters.length;
+  const forceReindex = process.argv.includes('--force');
+  const pendingPosters = forceReindex 
+    ? posters 
+    : posters.filter(p => !Array.isArray(p.embedding) || p.embedding.length !== EMBEDDING_DIMENSIONS);
+  const alreadyVectorized = forceReindex ? 0 : (posters.length - pendingPosters.length);
 
   console.log(`✅ Obras previamente vectorizadas: ${alreadyVectorized}`);
   console.log(`🔄 Obras pendientes de vectorizar: ${pendingPosters.length}\n`);
 
   if (pendingPosters.length === 0) {
-    console.log('🎉 ¡Todas las 32 obras ya se encuentran 100% vectorizadas en PostgreSQL!');
+    console.log(`🎉 ¡Todas las ${posters.length} obras ya se encuentran 100% vectorizadas en PostgreSQL!`);
     return;
   }
 

@@ -191,35 +191,22 @@ export function getStoreKnowledge() {
   return DEFAULT_STORE_KNOWLEDGE;
 }
 
-import { db, doc, getDoc, setDoc } from '../utils/firebase.js';
 import { getAuthToken } from '../utils/apiClient.js';
 
-// Auto-hydrate from Cloud Firestore & VPS SSD on startup
+// Auto-hydrate from VPS SSD / PostgreSQL backend on startup
 if (typeof window !== 'undefined') {
-  try {
-    const jarvisRef = doc(db, 'catalogStore', 'jarvisConfig');
-    getDoc(jarvisRef).then((snap) => {
-      if (snap.exists()) {
-        const remoteData = snap.data();
-        if (remoteData && Object.keys(remoteData).length > 0) {
-          localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(remoteData));
-          window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: remoteData }));
-          console.log('[Deco JARVIS] Memoria de entrenamiento sincronizada desde Cloud Firestore.');
-        }
-      }
-    }).catch(() => {});
-  } catch (e) {}
-
-  // Secondary sync from VPS SSD Server
   fetch('/api/jarvis')
     .then(r => r.ok ? r.json() : null)
     .then(serverData => {
       if (serverData && typeof serverData === 'object' && Object.keys(serverData).length > 0) {
         localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(serverData));
         window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: serverData }));
+        console.log('[Deco JARVIS] Memoria sincronizada desde backend PostgreSQL.');
       }
     })
-    .catch(() => {});
+    .catch((err) => {
+      console.warn('[Deco JARVIS] Fallback a memoria local:', err);
+    });
 }
 
 export function saveStoreKnowledge(knowledge) {
@@ -233,13 +220,7 @@ export function saveStoreKnowledge(knowledge) {
       localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(payload));
       window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: payload }));
 
-      // 1. Save to Cloud Firestore
-      try {
-        const jarvisRef = doc(db, 'catalogStore', 'jarvisConfig');
-        setDoc(jarvisRef, payload, { merge: true }).catch(() => {});
-      } catch (fsErr) {}
-
-      // 2. Save to VPS SSD
+      // Save to VPS Backend PostgreSQL
       const token = getAuthToken();
       fetch('/api/jarvis/save', {
         method: 'POST',
@@ -248,7 +229,9 @@ export function saveStoreKnowledge(knowledge) {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(payload)
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error('[storeKnowledge] Error guardando en backend:', err);
+      });
 
       return true;
     }
