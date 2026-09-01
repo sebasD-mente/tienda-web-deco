@@ -23,6 +23,7 @@ export default function HeroCarousel({
   franchises: propFranchises
 }) {
   const bestSellersScrollRef = useRef(null);
+  const franchiseScrollRef = useRef(null);
   const [internalFranchises, setInternalFranchises] = useState(() => getStoredFranchises());
   const franchises = (propFranchises && propFranchises.length > 0) ? propFranchises : internalFranchises;
 
@@ -141,6 +142,7 @@ export default function HeroCarousel({
           
           {/* Franchise Buttons Row (Pure Original Style: Borderless, Floating Logos with Glow Effect) */}
           <div
+            ref={franchiseScrollRef}
             className="franchise-track hide-scrollbar"
             style={{
               display: 'flex',

@@ -15,7 +15,7 @@ COPY prisma/ ./prisma/
 RUN npx prisma generate
 
 COPY . .
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
 # Production Runtime
 # DEBE ser la misma imagen base que build para que los binarios nativos (sharp) coincidan.

@@ -252,7 +252,7 @@ export default function CartDrawer({
 
                   return (
                     <div
-                      key={idx}
+                      key={`${item.poster?.id || 'poster'}-${item.size?.id || 'size'}-${item.material || 'mat'}-${idx}`}
                       style={{
                         display: 'flex',
                         gap: '12px',

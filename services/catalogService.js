@@ -288,13 +288,22 @@ export async function updatePosterStatus(id, newStatus) {
     throw err;
   }
 
-  const updated = await prisma.poster.update({
-    where:   { id },
-    data:    { estado: newStatus, updatedAt: new Date() },
-    include: POSTER_INCLUDE_LIGHT,
-  });
+  try {
+    const updated = await prisma.poster.update({
+      where:   { id },
+      data:    { estado: newStatus, updatedAt: new Date() },
+      include: POSTER_INCLUDE_LIGHT,
+    });
 
-  return formatPosterForClient(updated);
+    return formatPosterForClient(updated);
+  } catch (error) {
+    if (error.code === 'P2025') {
+      const err = new Error(`No se encontró la obra con ID "${id}".`);
+      err.statusCode = 404;
+      throw err;
+    }
+    throw error;
+  }
 }
 
 /**
@@ -436,7 +445,16 @@ export async function upsertPosterFromAdmin(data) {
  * @returns {Promise<void>}
  */
 export async function deletePoster(id) {
-  await prisma.poster.delete({ where: { id } });
+  try {
+    await prisma.poster.delete({ where: { id } });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      const err = new Error(`No se encontró la obra con ID "${id}".`);
+      err.statusCode = 404;
+      throw err;
+    }
+    throw error;
+  }
 }
 
 // ── Categorías y Franquicias en PostgreSQL ────────────────────────────────────

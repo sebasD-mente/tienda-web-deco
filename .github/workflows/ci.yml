@@ -18,3 +18,5 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run build
+      - name: Syntax & Server Validation
+        run: node --check server.js

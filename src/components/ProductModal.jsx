@@ -7,9 +7,11 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
-  const availableSizes = poster?.availableSizes && poster.availableSizes.length > 0
+  const availableSizes = Array.isArray(poster?.availableSizes) && poster.availableSizes.length > 0
     ? OFFICIAL_SIZES.filter(s => poster.availableSizes.includes(s.id))
-    : OFFICIAL_SIZES;
+    : (Array.isArray(poster?.sizes) && poster.sizes.length > 0
+        ? OFFICIAL_SIZES.filter(s => poster.sizes.some(ps => (ps.sizeId || ps.id) === s.id))
+        : OFFICIAL_SIZES);
 
   const [selectedSizeId, setSelectedSizeId] = useState(
     availableSizes.find(s => s.id === 'GRANDE')?.id || availableSizes[0]?.id || 'MEDIANO'
@@ -17,9 +19,11 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
 
   useEffect(() => {
     if (poster) {
-      const valid = poster.availableSizes && poster.availableSizes.length > 0
+      const valid = Array.isArray(poster.availableSizes) && poster.availableSizes.length > 0
         ? OFFICIAL_SIZES.filter(s => poster.availableSizes.includes(s.id))
-        : OFFICIAL_SIZES;
+        : (Array.isArray(poster.sizes) && poster.sizes.length > 0
+            ? OFFICIAL_SIZES.filter(s => poster.sizes.some(ps => (ps.sizeId || ps.id) === s.id))
+            : OFFICIAL_SIZES);
       if (!valid.some(s => s.id === selectedSizeId)) {
         setSelectedSizeId(valid.find(s => s.id === 'GRANDE')?.id || valid[0]?.id || 'MEDIANO');
       }

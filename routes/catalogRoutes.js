@@ -134,13 +134,44 @@ router.get('/catalog/posters/:id', async (req, res) => {
   }
 });
 
+function validateAndSanitizePosterInput(data) {
+  if (!data || typeof data !== 'object') {
+    const err = new Error('Cuerpo de la petición inválido.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const title = String(data.title || data.titulo || '').trim();
+  if (!title) {
+    const err = new Error('El título del póster es obligatorio.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return {
+    ...data,
+    title,
+    titulo: title,
+    subtitle: data.subtitle != null ? String(data.subtitle).trim() : null,
+    subtitulo: data.subtitulo != null ? String(data.subtitulo).trim() : (data.subtitle != null ? String(data.subtitle).trim() : null),
+    description: data.description != null ? String(data.description).trim() : '',
+    descripcion: data.descripcion != null ? String(data.descripcion).trim() : '',
+    category: data.category || data.categoria || 'AUTOS',
+    categoria: data.categoria || data.category || 'AUTOS',
+    minPrice: data.minPrice != null && !isNaN(Number(data.minPrice)) ? Number(data.minPrice) : (data.precioMinimo != null && !isNaN(Number(data.precioMinimo)) ? Number(data.precioMinimo) : null),
+    precioMinimo: data.precioMinimo != null && !isNaN(Number(data.precioMinimo)) ? Number(data.precioMinimo) : (data.minPrice != null && !isNaN(Number(data.minPrice)) ? Number(data.minPrice) : null),
+    isFeatured: Boolean(data.isFeatured),
+    isPublished: data.isPublished !== false,
+    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+    availableSizes: Array.isArray(data.availableSizes) ? data.availableSizes : undefined,
+    sizes: Array.isArray(data.sizes) ? data.sizes : undefined
+  };
+}
+
 // ── POST /api/catalog/posters (Protected Admin - Create Poster) ─────────────
 router.post('/catalog/posters', requireAuth, async (req, res) => {
   try {
-    const posterData = req.body;
-    if (!posterData || (!posterData.title && !posterData.titulo)) {
-      return res.status(400).json({ error: 'El título del póster es obligatorio.' });
-    }
+    const posterData = validateAndSanitizePosterInput(req.body);
 
     // Procesa imagen base64 si está presente
     let image = posterData.image || posterData.imageUrl;
@@ -167,7 +198,8 @@ router.post('/catalog/posters', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/posters:', err);
-    return res.status(500).json({ error: 'Error al crear el póster en la base de datos.', details: err.message });
+    const status = err.statusCode || 500;
+    return res.status(status).json({ error: err.message || 'Error al crear el póster en la base de datos.' });
   }
 });
 
@@ -175,7 +207,7 @@ router.post('/catalog/posters', requireAuth, async (req, res) => {
 router.put('/catalog/posters/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const posterData = req.body;
+    const posterData = validateAndSanitizePosterInput(req.body);
 
     const existing = await getPosterById(id);
     if (!existing) {
