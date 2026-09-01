@@ -76,6 +76,8 @@ model Poster {
   @@index([estado])
   @@index([isFeatured])
   @@index([franchiseId])
+  @@index([createdAt])
+  @@index([precioMinimo])
   @@map("posters")
 }
 
@@ -96,4 +98,28 @@ model PosterSize {
   @@unique([posterId, sizeId])
   @@index([posterId])
   @@map("poster_sizes")
+}
+
+model StoreSettings {
+  id              String   @id @default("default")
+  whatsappPhone   String   @default("50238375078")
+  storeName       String   @default("Deco Vintage Guate")
+  deliveryMinDays Int      @default(2)
+  deliveryMaxDays Int      @default(4)
+  customCm2Price  Decimal  @default(0.048) @db.Decimal(6, 4)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@map("store_settings")
+}
+
+model JarvisMemory {
+  id              String   @id @default("default")
+  apiKey          String?
+  systemPrompt    String?  @db.Text
+  ownerDirectives Json     @default("[]")
+  customDocuments Json     @default("[]")
+  faqEntries      Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@map("jarvis_memory")
 }

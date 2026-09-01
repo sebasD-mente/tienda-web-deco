@@ -211,7 +211,7 @@ export async function getAllPosters(opts = {}) {
     const queryArgs = {
       where,
       include: POSTER_INCLUDE_FULL,
-      orderBy: { [orderBy]: order },
+      orderBy: [{ [orderBy]: order }, { id: 'desc' }],
       take: takeNumber + 1, // Tomamos 1 extra para determinar hasMore
     };
 
@@ -237,7 +237,7 @@ export async function getAllPosters(opts = {}) {
   const posters = await prisma.poster.findMany({
     where,
     include: POSTER_INCLUDE_FULL,
-    orderBy: { [orderBy]: order },
+    orderBy: [{ [orderBy]: order }, { id: 'desc' }],
   });
 
   return posters.map(formatPosterForClient);
@@ -501,28 +501,69 @@ export async function getAllFranchises() {
   }));
 }
 
-// ── Configuraciones de Tienda (In-Memory + Database Extensible) ───────────────
-let _inMemorySettings = {
-  whatsappPhone: '50238375078',
-  storeName: 'Deco Vintage Guate',
-  deliveryMinDays: 2,
-  deliveryMaxDays: 4,
-  customCm2Price: 0.048,
-  updatedAt: new Date().toISOString()
-};
+// ── Configuraciones de Tienda (100% Persistidas en PostgreSQL vía Prisma) ──────
 
 export async function getStoreSettings() {
-  return { ..._inMemorySettings };
+  try {
+    let settings = await prisma.storeSettings.findUnique({ where: { id: 'default' } });
+    if (!settings) {
+      settings = await prisma.storeSettings.create({
+        data: { id: 'default' }
+      });
+    }
+    return {
+      whatsappPhone: settings.whatsappPhone,
+      storeName: settings.storeName,
+      deliveryMinDays: settings.deliveryMinDays,
+      deliveryMaxDays: settings.deliveryMaxDays,
+      customCm2Price: Number(settings.customCm2Price),
+      updatedAt: settings.updatedAt.toISOString()
+    };
+  } catch (err) {
+    console.warn('[StoreSettings] Fallback safe recovery:', err.message);
+    return {
+      whatsappPhone: '50238375078',
+      storeName: 'Deco Vintage Guate',
+      deliveryMinDays: 2,
+      deliveryMaxDays: 4,
+      customCm2Price: 0.048,
+      updatedAt: new Date().toISOString()
+    };
+  }
 }
 
 export async function updateStoreSettings(newSettings = {}) {
-  _inMemorySettings = {
-    ..._inMemorySettings,
-    ...newSettings,
-    whatsappPhone: (newSettings.whatsappPhone || _inMemorySettings.whatsappPhone).replace(/[^0-9]/g, ''),
-    updatedAt: new Date().toISOString()
-  };
-  return { ..._inMemorySettings };
+  try {
+    const updateData = {};
+    if (newSettings.whatsappPhone !== undefined) {
+      updateData.whatsappPhone = String(newSettings.whatsappPhone).replace(/[^0-9]/g, '');
+    }
+    if (newSettings.storeName !== undefined) updateData.storeName = String(newSettings.storeName);
+    if (newSettings.deliveryMinDays !== undefined) updateData.deliveryMinDays = parseInt(newSettings.deliveryMinDays, 10);
+    if (newSettings.deliveryMaxDays !== undefined) updateData.deliveryMaxDays = parseInt(newSettings.deliveryMaxDays, 10);
+    if (newSettings.customCm2Price !== undefined) updateData.customCm2Price = parseFloat(newSettings.customCm2Price);
+
+    const settings = await prisma.storeSettings.upsert({
+      where: { id: 'default' },
+      update: updateData,
+      create: {
+        id: 'default',
+        ...updateData,
+      }
+    });
+
+    return {
+      whatsappPhone: settings.whatsappPhone,
+      storeName: settings.storeName,
+      deliveryMinDays: settings.deliveryMinDays,
+      deliveryMaxDays: settings.deliveryMaxDays,
+      customCm2Price: Number(settings.customCm2Price),
+      updatedAt: settings.updatedAt.toISOString()
+    };
+  } catch (err) {
+    console.error('[StoreSettings Error] Failed updating store settings in PostgreSQL:', err.message);
+    throw err;
+  }
 }
 
 /**

@@ -18,7 +18,8 @@ import { JARVIS_FILE, PROJECT_ROOT } from '../config/paths.js';
 import {
   getAllPosters,
   formatPosterForClient,
-  getFullCatalog
+  getFullCatalog,
+  prisma
 } from './catalogService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -163,81 +164,136 @@ export function getJarvisApiKey() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. MEMORY: READ
+// 4. MEMORY: READ (100% PostgreSQL vía Prisma con Auto-Seeder Fail-Safe)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Merges training memory from VPS SSD (data/jarvisConfig.json) with the
- * src/data/jarvisConfig.json bundled fallback. VPS data takes precedence
- * for customDocuments and ownerDirectives.
- * @returns {object} Merged jarvisConfig object.
- */
-export function getJarvisMemory() {
-  let vpsMem = {};
-  let srcMem = {};
+function getSeedJarvisMemory() {
   const srcFile = path.resolve(PROJECT_ROOT, 'src/data/jarvisConfig.json');
-
-  if (fs.existsSync(JARVIS_FILE)) {
-    try { vpsMem = JSON.parse(fs.readFileSync(JARVIS_FILE, 'utf-8')); } catch (e) {}
-  }
   if (fs.existsSync(srcFile)) {
-    try { srcMem = JSON.parse(fs.readFileSync(srcFile, 'utf-8')); } catch (e) {}
+    try {
+      return JSON.parse(fs.readFileSync(srcFile, 'utf-8'));
+    } catch (e) {}
   }
-
-  const customDocs = (vpsMem.customDocuments && vpsMem.customDocuments.length > 0)
-    ? vpsMem.customDocuments
-    : (srcMem.customDocuments || []);
-
-  const ownerDirectives = (vpsMem.ownerDirectives && vpsMem.ownerDirectives.length > 0)
-    ? vpsMem.ownerDirectives
-    : (srcMem.ownerDirectives || []);
-
   return {
-    ...srcMem,
-    ...vpsMem,
-    customDocuments: customDocs,
-    ownerDirectives: ownerDirectives
+    company: {
+      name: "Deco Vintage Guate",
+      country: "Guatemala",
+      phone: "+502 5998-0504",
+      specialty: "Fabricación de pósters rígidos de colección y cuadros decorativos premium impresos en madera MDF de 5.5mm con tecnología HP Látex.",
+      motto: "El arte de decorar con tus pasiones: autos, anime, geek, cine y música con durabilidad para toda la vida."
+    },
+    initialGreeting: "¡Hola! 👋 Soy J.A.R.V.I.S., tu asesor en Deco Vintage. Estoy aquí para ayudarte a elegir el cuadro perfecto. ¿Qué tienes en mente para decorar hoy?",
+    quickPrompts: [],
+    customDocuments: [],
+    ownerDirectives: [],
+    faqEntries: []
   };
 }
 
+/**
+ * Retrieves J.A.R.V.I.S. training memory directly from PostgreSQL via Prisma.
+ * If the database table is empty (cold start), auto-seeds from bundled JSON.
+ * @returns {Promise<object>} Merged jarvisConfig object.
+ */
+export async function getJarvisMemory() {
+  const seed = getSeedJarvisMemory();
+
+  try {
+    let dbRecord = await prisma.jarvisMemory.findUnique({ where: { id: 'default' } });
+    if (!dbRecord) {
+      // Auto-seeding fail-safe: populate table from bundled seed
+      dbRecord = await prisma.jarvisMemory.create({
+        data: {
+          id: 'default',
+          apiKey: seed.apiKey || null,
+          systemPrompt: seed.systemPrompt || null,
+          ownerDirectives: seed.ownerDirectives || [],
+          customDocuments: seed.customDocuments || [],
+          faqEntries: seed.faqEntries || []
+        }
+      });
+      console.log('[Deco J.A.R.V.I.S.] Auto-seeded PostgreSQL jarvis_memory from JSON template.');
+    }
+
+    return {
+      ...seed,
+      apiKey: dbRecord.apiKey || seed.apiKey || '',
+      systemPrompt: dbRecord.systemPrompt || seed.systemPrompt || '',
+      ownerDirectives: Array.isArray(dbRecord.ownerDirectives) && dbRecord.ownerDirectives.length > 0
+        ? dbRecord.ownerDirectives
+        : (seed.ownerDirectives || []),
+      customDocuments: Array.isArray(dbRecord.customDocuments) && dbRecord.customDocuments.length > 0
+        ? dbRecord.customDocuments
+        : (seed.customDocuments || []),
+      faqEntries: Array.isArray(dbRecord.faqEntries) && dbRecord.faqEntries.length > 0
+        ? dbRecord.faqEntries
+        : (seed.faqEntries || []),
+      updatedAt: dbRecord.updatedAt.toISOString()
+    };
+  } catch (err) {
+    console.warn('[Deco J.A.R.V.I.S.] Fallback safe recovery from seed JSON:', err.message);
+    return {
+      ...seed,
+      updatedAt: new Date().toISOString()
+    };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. MEMORY: WRITE
+// 5. MEMORY: WRITE (100% PostgreSQL vía Prisma)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Atomically persists updated training memory to JARVIS_FILE and syncs
- * a copy to src/data/jarvisConfig.json.
+ * Persists updated training memory directly to PostgreSQL via Prisma.
  *
  * @param {object} payload - Partial or full jarvisConfig object to merge.
- * @returns {{ success: boolean, updatedAt: string, message?: string, error?: string }}
+ * @returns {Promise<{ success: boolean, updatedAt: string, message?: string, error?: string }>}
  */
-export function saveJarvisMemory(payload) {
+export async function saveJarvisMemory(payload) {
   if (!payload || typeof payload !== 'object') {
     return { success: false, error: 'Payload inválido.' };
   }
 
-  const current = getJarvisMemory();
-  const updated = {
-    ...current,
-    ...payload,
-    updatedAt: new Date().toISOString()
-  };
+  try {
+    const current = await getJarvisMemory();
+    const merged = {
+      ...current,
+      ...payload
+    };
 
-  // Atomic write to data/jarvisConfig.json (Docker volume)
-  const tmpFile = `${JARVIS_FILE}.tmp`;
-  fs.writeFileSync(tmpFile, JSON.stringify(updated, null, 2), 'utf-8');
-  fs.renameSync(tmpFile, JARVIS_FILE);
+    const updateData = {
+      apiKey: merged.apiKey !== undefined ? (merged.apiKey || '').trim() : undefined,
+      systemPrompt: merged.systemPrompt !== undefined ? merged.systemPrompt : undefined,
+      ownerDirectives: Array.isArray(merged.ownerDirectives) ? merged.ownerDirectives : undefined,
+      customDocuments: Array.isArray(merged.customDocuments) ? merged.customDocuments : undefined,
+      faqEntries: Array.isArray(merged.faqEntries) ? merged.faqEntries : undefined
+    };
 
-  // Also sync to src/data/jarvisConfig.json (bundled copy)
-  const srcFile = path.resolve(PROJECT_ROOT, 'src/data/jarvisConfig.json');
-  try { fs.writeFileSync(srcFile, JSON.stringify(updated, null, 2), 'utf-8'); } catch (e) {}
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
 
-  console.log('[Deco J.A.R.V.I.S.] Master training memory persisted to VPS SSD disk.');
-  return {
-    success: true,
-    message: 'Memoria de J.A.R.V.I.S. guardada permanentemente en disco.',
-    updatedAt: updated.updatedAt
-  };
+    const saved = await prisma.jarvisMemory.upsert({
+      where: { id: 'default' },
+      update: updateData,
+      create: {
+        id: 'default',
+        ...updateData
+      }
+    });
+
+    console.log('[Deco J.A.R.V.I.S.] Master training memory persisted to PostgreSQL.');
+    return {
+      success: true,
+      message: 'Memoria de J.A.R.V.I.S. guardada permanentemente en PostgreSQL.',
+      updatedAt: saved.updatedAt.toISOString()
+    };
+  } catch (err) {
+    console.error('[Deco J.A.R.V.I.S. Save Error]:', err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -258,7 +314,7 @@ export async function getVertexAccessToken() {
     return cachedVertexToken;
   }
 
-  const mem = getJarvisMemory();
+  const mem = await getJarvisMemory();
   const clientId     = process.env.GOOGLE_CLOUD_CLIENT_ID     || (mem.googleClientId     || '');
   const clientSecret = process.env.GOOGLE_CLOUD_CLIENT_SECRET || (mem.googleClientSecret || '');
   const refreshToken = process.env.GOOGLE_CLOUD_REFRESH_TOKEN || (mem.googleRefreshToken || '');

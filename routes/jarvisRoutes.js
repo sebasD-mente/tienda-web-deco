@@ -51,9 +51,9 @@ router.get('/health', async (req, res) => {
 
 // ── GET /api/jarvis  &  /api/jarvis/config ───────────────────────────────────
 // PUBLIC — returns merged training memory with sensitive fields stripped.
-router.get(['/jarvis', '/jarvis/config'], (req, res) => {
+router.get(['/jarvis', '/jarvis/config'], async (req, res) => {
   try {
-    const memory     = getJarvisMemory();
+    const memory     = await getJarvisMemory();
     const safeMemory = { ...memory };
     delete safeMemory.apiKey;
     delete safeMemory.googleClientSecret;
@@ -65,13 +65,13 @@ router.get(['/jarvis', '/jarvis/config'], (req, res) => {
 });
 
 // ── POST /api/jarvis/save ────────────────────────────────────────────────────
-router.post('/jarvis/save', requireAuth, (req, res) => {
+router.post('/jarvis/save', requireAuth, async (req, res) => {
   try {
     const payload = req.body;
     if (!payload || typeof payload !== 'object') {
       return res.status(400).json({ success: false, error: 'Payload inválido.' });
     }
-    const result = saveJarvisMemory(payload);
+    const result = await saveJarvisMemory(payload);
     if (!result.success) {
       return res.status(400).json(result);
     }
@@ -83,10 +83,10 @@ router.post('/jarvis/save', requireAuth, (req, res) => {
 });
 
 // ── POST /api/jarvis/save-key (Protected Admin) ──────────────────────────────
-router.post('/jarvis/save-key', requireAuth, (req, res) => {
+router.post('/jarvis/save-key', requireAuth, async (req, res) => {
   try {
     const { apiKey } = req.body;
-    const result = saveJarvisMemory({ apiKey: (apiKey || '').trim() });
+    const result = await saveJarvisMemory({ apiKey: (apiKey || '').trim() });
     if (!result.success) {
       return res.status(500).json({ error: result.error });
     }
@@ -116,7 +116,7 @@ router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
 
     // 1. Obtener catálogo en VIVO directamente desde PostgreSQL via Prisma
     const liveCatalog = await getFullCatalog();
-    const jarvisMemory = getJarvisMemory();
+    const jarvisMemory = await getJarvisMemory();
 
     const result = await chatWithJarvis(prompt, history, candidateKeys, liveCatalog, jarvisMemory);
 
