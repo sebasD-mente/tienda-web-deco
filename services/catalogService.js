@@ -112,9 +112,10 @@ export function formatPosterForClient(poster) {
   const finalPriceDisplay = poster.precioDisplay || poster.priceDisplay || (finalMinPrice ? `Desde Q ${finalMinPrice.toFixed(2)}` : 'Desde Q 25.00');
 
   const franchiseSlug = poster.franchise?.slug || (typeof poster.franchise === 'string' ? poster.franchise : null) || poster.franchiseId || null;
+  const { embedding: _rawEmbedding, ...cleanPoster } = poster;
 
   return {
-    ...poster,
+    ...cleanPoster,
     // ── Propiedades canónicas en inglés (requeridas por la UI de React) ──────
     title:          poster.titulo || poster.title || '',
     subtitle:       poster.subtitulo ?? poster.subtitle ?? null,

@@ -66,16 +66,10 @@ if [ -d /app/data_seed ]; then
   done
 fi
 
-# ── Step 6: PostgreSQL Database Schema Auto-Sync (Prisma) ───────────────
-if [ -n "$DATABASE_URL" ]; then
-  echo "[Boot] DATABASE_URL detected. Synchronizing Prisma PostgreSQL schema..."
-  npx prisma db push --skip-generate || echo "[Boot] WARNING: prisma db push failed or DB is temporarily unreachable. Proceeding..."
-fi
-
 echo ""
 echo "[Boot] Bootstrap complete. Starting Node.js server..."
 echo "=============================================="
 echo ""
 
-# ── Step 7: Hand off execution to the main server (PID 1) ─────────────────
+# ── Step 6: Hand off execution to the main server (PID 1) ─────────────────
 exec node /app/server.js
