@@ -29,21 +29,7 @@ mkdir -p /app/public/posters/uploads/full
 mkdir -p /app/public/posters/uploads/thumb
 echo "[Boot] Upload directories: OK"
 
-# ── Step 3: Seed catalogStore.json ONLY if volume is empty ────────────────
-# If the admin has already saved a catalog, this file will exist in the
-# persistent volume. We NEVER overwrite it.
-if [ ! -f /app/data/catalogStore.json ]; then
-  if [ -f /app/data_seed/catalogStore.json ]; then
-    cp /app/data_seed/catalogStore.json /app/data/catalogStore.json
-    echo "[Boot] catalogStore.json seeded from repo (cold start)."
-  else
-    echo "[Boot] WARNING: No seed catalogStore.json found. Server will start with empty catalog."
-  fi
-else
-  echo "[Boot] catalogStore.json already exists in volume — skipping seed. Admin data preserved."
-fi
-
-# ── Step 4: Seed jarvisConfig.json ONLY if volume is empty ────────────────
+# ── Step 3: Seed jarvisConfig.json ONLY if volume is empty ────────────────
 if [ ! -f /app/data/jarvisConfig.json ]; then
   if [ -f /app/data_seed/jarvisConfig.json ]; then
     cp /app/data_seed/jarvisConfig.json /app/data/jarvisConfig.json

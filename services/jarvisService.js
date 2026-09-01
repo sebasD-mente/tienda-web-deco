@@ -18,7 +18,7 @@ import { JARVIS_FILE, PROJECT_ROOT } from '../config/paths.js';
 import {
   getAllPosters,
   formatPosterForClient,
-  getCatalogData
+  getFullCatalog
 } from './catalogService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -687,29 +687,23 @@ const CANDIDATE_MODELS = [
  * @param {string}   prompt         - The user's current message.
  * @param {any[]}    history         - Raw chat history array from the client.
  * @param {string[]} candidateKeys  - Ordered list of Gemini API keys to try.
- * @param {object}   catalog        - Full catalog from getCatalogData().
+ * @param {object}   catalog        - Full catalog from PostgreSQL.
  * @param {object}   jarvisMemory   - Merged memory from getJarvisMemory().
  * @returns {Promise<{ replyText: string, actions: any[], poweredBy: string }>}
  */
 export async function chatWithJarvis(prompt, history, candidateKeys, catalog, jarvisMemory) {
   // 1. Asegurar que siempre tengamos la lista de pósters en vivo desde PostgreSQL
-  let livePosters = (catalog && Array.isArray(catalog.posters)) ? catalog.posters.filter(Boolean) : [];
-  if (livePosters.length === 0) {
+  let liveCatalog = catalog;
+  if (!liveCatalog || !Array.isArray(liveCatalog.posters) || liveCatalog.posters.length === 0) {
     try {
-      livePosters = await getAllPosters();
+      liveCatalog = await getFullCatalog();
     } catch (dbErr) {
-      console.warn('[Deco J.A.R.V.I.S.] Warning fetching live PostgreSQL posters in orchestrator:', dbErr.message);
-      const fallbackCatalog = getCatalogData();
-      livePosters = (fallbackCatalog.posters || []).map(formatPosterForClient);
+      console.warn('[Deco J.A.R.V.I.S.] Warning fetching live PostgreSQL catalog:', dbErr.message);
+      liveCatalog = { categories: [], franchises: [], settings: {}, posters: [] };
     }
   }
 
-  const liveCatalog = {
-    ...(catalog || getCatalogData()),
-    posters: livePosters
-  };
-
-  const posters           = livePosters;
+  const posters           = liveCatalog.posters || [];
   const systemInstruction = buildSystemInstruction(liveCatalog, jarvisMemory);
   const chatHistory       = formatChatHistory(history);
   let   lastError         = null;

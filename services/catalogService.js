@@ -1,26 +1,17 @@
 /**
  * services/catalogService.js
- * Fuente de verdad del catalogo — ahora sobre PostgreSQL via Prisma.
+ * Fuente de verdad ÚNICA del catálogo — 100% sobre PostgreSQL vía Prisma.
  *
  * ┌─────────────────────────────────────────────────────────────────┐
- * │  API PUBLICA                                                    │
+ * │  ARQUITECTURA ZERO SPLIT-BRAIN (POSTGRESQL + PRISMA)            │
  * │                                                                 │
- * │  [PRISMA — async]                                               │
- * │    getAllPosters(opts)          → Poster[] con sizes + franchise │
- * │    getPosterById(idOrLegacyId) → Poster | null                  │
- * │    updatePosterStatus(id, st)  → Poster actualizado             │
- * │    upsertPosterFromAdmin(data) → Poster creado o actualizado    │
- * │    deletePoster(id)            → void                           │
- * │                                                                 │
- * │  [JSON legacy — sync, para rutas admin y settings]              │
- * │    getCatalogData()            → objeto catalogo completo       │
- * │    saveCatalog(dataObject)     → persiste JSON atomicamente     │
+ * │  - Eliminados todos los métodos síncronos de archivos (fs.*Sync)│
+ * │  - Paginación basada en cursores (cursor + take) para LCP/INP   │
+ * │  - PostgreSQL es la única fuente de verdad para el catálogo     │
  * └─────────────────────────────────────────────────────────────────┘
  */
 
-import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
-import { CATALOG_FILE } from '../config/paths.js';
 
 // ── Singleton Prisma ──────────────────────────────────────────────────────────
 // Una sola instancia compartida por toda la vida del proceso Node.
@@ -49,7 +40,7 @@ const POSTER_INCLUDE_LIGHT = {
 };
 
 /** Mapeo y normalización de categoría a enum de Prisma Category */
-const VALID_CATEGORIES = [
+export const VALID_CATEGORIES = [
   'AUTOS',
   'SUPERHEROES',
   'ANIME',
@@ -154,42 +145,95 @@ export function formatPosterForClient(poster) {
   };
 }
 
+export function isUUID(str) {
+  return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 // =============================================================================
-//  SECCION 1 — API PRISMA (PostgreSQL) — Async
+//  SECCION 1 — API PRISMA (PostgreSQL) — Async con Paginación por Cursor
 // =============================================================================
 
 /**
- * Retorna todos los posters publicados con sus sizes y franchise.
+ * Retorna posters desde PostgreSQL con soporte para paginación basada en cursor.
  *
  * @param {object} opts
  * @param {string}  [opts.categoria]   - Filtrar por categoria (enum Category)
- * @param {string}  [opts.franchiseId] - Filtrar por franchise ID
+ * @param {string}  [opts.franchiseId] - Filtrar por franchise ID o slug
+ * @param {string}  [opts.search]      - Búsqueda textual
  * @param {boolean} [opts.onlyFeatured] - Solo posters destacados
  * @param {boolean} [opts.includeUnpublished] - Incluir no publicados (admin)
  * @param {'titulo'|'createdAt'|'precioMinimo'} [opts.orderBy='createdAt']
  * @param {'asc'|'desc'} [opts.order='desc']
- * @returns {Promise<object[]>}
+ * @param {string}  [opts.cursor]      - UUID del último poster de la página anterior
+ * @param {number|string} [opts.take]  - Cantidad de registros a solicitar
+ * @returns {Promise<object[]|{ posters: object[], nextCursor: string|null, hasMore: boolean, count: number }>}
  */
 export async function getAllPosters(opts = {}) {
   const {
     categoria,
     franchiseId,
+    search,
     onlyFeatured       = false,
     includeUnpublished = false,
     orderBy            = 'createdAt',
     order              = 'desc',
+    cursor,
+    take,
   } = opts;
+
+  // Si franchiseId es un slug y no un UUID, lo resolvemos
+  let resolvedFranchiseId = franchiseId;
+  if (franchiseId && !isUUID(franchiseId)) {
+    const fr = await prisma.franchise.findUnique({ where: { slug: franchiseId } });
+    if (fr) resolvedFranchiseId = fr.id;
+  }
 
   const where = {
     // Por defecto solo mostramos posters publicados al publico
     ...(!includeUnpublished && { isPublished: true }),
     // Estado excluye descontinuados del catalogo publico
     ...(!includeUnpublished && { estado: { not: 'DESCONTINUADO' } }),
-    ...(categoria    && { categoria: normalizeCategory(categoria) }),
-    ...(franchiseId  && { franchiseId }),
-    ...(onlyFeatured && { isFeatured: true }),
+    ...(categoria           && { categoria: normalizeCategory(categoria) }),
+    ...(resolvedFranchiseId && { franchiseId: resolvedFranchiseId }),
+    ...(onlyFeatured        && { isFeatured: true }),
+    ...(search && {
+      OR: [
+        { titulo:      { contains: search, mode: 'insensitive' } },
+        { subtitulo:   { contains: search, mode: 'insensitive' } },
+        { descripcion: { contains: search, mode: 'insensitive' } },
+      ]
+    })
   };
 
+  // Si se solicita paginación explícita con take
+  if (take !== undefined && take !== 'all') {
+    const takeNumber = Math.min(Math.max(parseInt(take, 10) || 24, 1), 100);
+    const queryArgs = {
+      where,
+      include: POSTER_INCLUDE_FULL,
+      orderBy: { [orderBy]: order },
+      take: takeNumber + 1, // Tomamos 1 extra para determinar hasMore
+    };
+
+    if (cursor && isUUID(cursor)) {
+      queryArgs.cursor = { id: cursor };
+      queryArgs.skip = 1; // Saltamos el cursor
+    }
+
+    const rawPosters = await prisma.poster.findMany(queryArgs);
+    const hasMore = rawPosters.length > takeNumber;
+    const items = hasMore ? rawPosters.slice(0, takeNumber) : rawPosters;
+    const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].id : null;
+
+    return {
+      posters: items.map(formatPosterForClient),
+      nextCursor,
+      hasMore,
+      count: items.length,
+    };
+  }
+
+  // Consulta regular sin paginación (para exports internos, JARVIS o panel completo)
   const posters = await prisma.poster.findMany({
     where,
     include: POSTER_INCLUDE_FULL,
@@ -201,7 +245,6 @@ export async function getAllPosters(opts = {}) {
 
 /**
  * Busca un poster por UUID (id) o por legacyId (el ID del JSON original).
- * Acepta cualquiera de los dos formatos para no romper las URLs del frontend.
  *
  * @param {string} idOrLegacyId
  * @returns {Promise<object | null>}
@@ -209,17 +252,13 @@ export async function getAllPosters(opts = {}) {
 export async function getPosterById(idOrLegacyId) {
   if (!idOrLegacyId) return null;
 
-  // Intentamos primero por UUID nativo (36 chars con guiones)
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrLegacyId);
-
   let poster = null;
-  if (isUUID) {
+  if (isUUID(idOrLegacyId)) {
     poster = await prisma.poster.findUnique({
       where:   { id: idOrLegacyId },
       include: POSTER_INCLUDE_FULL,
     });
   } else {
-    // Si no es UUID, buscamos por legacyId (ej: "deco-mtdamr8z-px9v")
     poster = await prisma.poster.findUnique({
       where:   { legacyId: idOrLegacyId },
       include: POSTER_INCLUDE_FULL,
@@ -231,7 +270,6 @@ export async function getPosterById(idOrLegacyId) {
 
 /**
  * Actualiza el estado de produccion/venta de un poster.
- * Valida que el estado sea un valor permitido antes de persistir.
  *
  * @param {string} id - UUID del poster en la BD
  * @param {import('@prisma/client').PosterStatus} newStatus
@@ -259,15 +297,7 @@ export async function updatePosterStatus(id, newStatus) {
 }
 
 /**
- * Crea o actualiza un poster desde el panel de administracion.
- * Si `legacyId` ya existe en BD → actualiza. Si no → crea nuevo.
- *
- * @param {object} data - Datos del poster tal como vienen del admin
- * @returns {Promise<import('@prisma/client').Poster>}
- */
-/**
  * Crea o actualiza un poster en PostgreSQL usando Prisma.
- * Maneja tanto la clave primaria UUID `id` como `legacyId`.
  *
  * @param {object} data - Datos del poster tal como vienen del admin o cliente
  * @returns {Promise<import('@prisma/client').Poster>}
@@ -331,7 +361,7 @@ export async function upsertPosterFromAdmin(data) {
   }
 
   if (existingPoster) {
-    // Si se actualiza, se usa transacción para renovar tamaños si vienen especificados
+    // Transacción para renovar tamaños
     const updated = await prisma.$transaction(async (tx) => {
       if (sizesData.length > 0) {
         await tx.posterSize.deleteMany({ where: { posterId: existingPoster.id } });
@@ -392,12 +422,8 @@ export async function upsertPosterFromAdmin(data) {
   return formatPosterForClient(created);
 }
 
-function isUUID(str) {
-  return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-}
-
 /**
- * Elimina un poster y sus sizes (Cascade definido en el schema).
+ * Elimina un poster y sus sizes en cascada.
  *
  * @param {string} id - UUID del poster
  * @returns {Promise<void>}
@@ -406,9 +432,124 @@ export async function deletePoster(id) {
   await prisma.poster.delete({ where: { id } });
 }
 
+// ── Categorías y Franquicias en PostgreSQL ────────────────────────────────────
+
+/**
+ * Obtiene la lista de categorías con conteo dinámico de obras activas en PostgreSQL.
+ * @returns {Promise<Array<{ id: string, name: string, count: number }>>}
+ */
+export async function getAllCategories() {
+  const counts = await prisma.poster.groupBy({
+    by: ['categoria'],
+    _count: { id: true },
+    where: { isPublished: true, estado: { not: 'DESCONTINUADO' } }
+  });
+
+  const countMap = {};
+  counts.forEach(c => { countMap[c.categoria] = c._count.id; });
+
+  const categoryDisplayNames = {
+    AUTOS: 'AUTOS',
+    SUPERHEROES: 'SUPER HEROES',
+    ANIME: 'ANIME',
+    MUSICA: 'MUSICA',
+    SERIESYPELICULAS: 'SERIES Y PELICULAS',
+    OBRASDEARTE: 'OBRAS DE ARTE',
+    INFANTILYDIBUJOSANIMADOS: 'INFANTIL Y DIBUJOS ANIMADOS',
+    CINE: 'CINE'
+  };
+
+  const totalActive = Object.values(countMap).reduce((a, b) => a + b, 0);
+
+  return [
+    { id: 'TODOS', name: 'TODAS LAS OBRAS', count: totalActive },
+    ...VALID_CATEGORIES.map(cat => ({
+      id: cat,
+      name: categoryDisplayNames[cat] || cat,
+      count: countMap[cat] || 0
+    }))
+  ];
+}
+
+/**
+ * Obtiene todas las franquicias desde la base de datos PostgreSQL.
+ * @returns {Promise<Array>}
+ */
+export async function getAllFranchises() {
+  const franchises = await prisma.franchise.findMany({
+    orderBy: { name: 'asc' },
+    include: {
+      _count: {
+        select: {
+          posters: {
+            where: { isPublished: true, estado: { not: 'DESCONTINUADO' } }
+          }
+        }
+      }
+    }
+  });
+
+  return franchises.map(f => ({
+    id: f.slug || f.id,
+    dbId: f.id,
+    slug: f.slug,
+    name: f.name,
+    img: f.imageUrl || `/franchises/${f.slug}.webp`,
+    imageUrl: f.imageUrl || `/franchises/${f.slug}.webp`,
+    category: f.category,
+    postersCount: f._count?.posters || 0,
+  }));
+}
+
+// ── Configuraciones de Tienda (In-Memory + Database Extensible) ───────────────
+let _inMemorySettings = {
+  whatsappPhone: '50238375078',
+  storeName: 'Deco Vintage Guate',
+  deliveryMinDays: 2,
+  deliveryMaxDays: 4,
+  customCm2Price: 0.048,
+  updatedAt: new Date().toISOString()
+};
+
+export async function getStoreSettings() {
+  return { ..._inMemorySettings };
+}
+
+export async function updateStoreSettings(newSettings = {}) {
+  _inMemorySettings = {
+    ..._inMemorySettings,
+    ...newSettings,
+    whatsappPhone: (newSettings.whatsappPhone || _inMemorySettings.whatsappPhone).replace(/[^0-9]/g, ''),
+    updatedAt: new Date().toISOString()
+  };
+  return { ..._inMemorySettings };
+}
+
+/**
+ * Retorna el catálogo maestro completo unificado desde PostgreSQL.
+ * @returns {Promise<{ categories: Array, franchises: Array, settings: object, posters: Array, count: number, updatedAt: string }>}
+ */
+export async function getFullCatalog() {
+  const [categories, franchises, settings, posters] = await Promise.all([
+    getAllCategories(),
+    getAllFranchises(),
+    getStoreSettings(),
+    getAllPosters({ includeUnpublished: true })
+  ]);
+
+  return {
+    categories,
+    franchises,
+    settings,
+    posters,
+    count: posters.length,
+    updatedAt: new Date().toISOString()
+  };
+}
+
 // ── Helper privado ────────────────────────────────────────────────────────────
 
-/** Tabla de precios base por tamano (mirror de migrateCatalog.js). */
+/** Tabla de precios base por tamano. */
 const DEFAULT_SIZE_CATALOG = {
   MINI:          { nombre: 'Mini',          dimensiones: '14 x 21 cm',  anchoCm: 14,  altoCm: 21,  precio: 25,  badge: 'Ideal para coleccionar y escritorios' },
   PEQUENO:       { nombre: 'Pequeño',       dimensiones: '21 x 27 cm',  anchoCm: 21,  altoCm: 27,  precio: 35,  badge: 'Espacios reducidos y cabeceras' },
@@ -437,44 +578,6 @@ function buildSizesForUpsert(sizes, availableSizes) {
       .map(sid => ({ sizeId: sid, ...DEFAULT_SIZE_CATALOG[sid], isActive: true }));
   }
   return [];
-}
-
-// =============================================================================
-//  SECCION 2 — API JSON LEGACY (sincrona)
-//  Mantenida para: settingsRoutes y catalogRoutes POST /save
-//  mientras se completa la migracion del panel admin.
-// =============================================================================
-
-/**
- * Lee y parsea catalogStore.json desde el SSD del VPS.
- * Maneja BOM (0xFEFF) y retorna un objeto seguro si el archivo falta o esta corrupto.
- *
- * @returns {{ categories: any[], franchises: any[], posters: any[], settings: object }}
- */
-export function getCatalogData() {
-  if (fs.existsSync(CATALOG_FILE)) {
-    try {
-      let raw = fs.readFileSync(CATALOG_FILE, 'utf-8');
-      if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
-      return JSON.parse(raw.trim());
-    } catch (err) {
-      console.error('[Deco Catalog] Error parsing catalog JSON:', err.message);
-    }
-  }
-  return { categories: [], franchises: [], posters: [], settings: { whatsappPhone: '50238375078' } };
-}
-
-/**
- * Persiste atomicamente un objeto catalogo en disco (tmp → rename).
- * Garantiza que el archivo nunca quede en estado corrupto/parcial.
- *
- * @param {object} dataObject - Catalogo completo a guardar.
- * @returns {void}
- */
-export function saveCatalog(dataObject) {
-  const tmpFile = `${CATALOG_FILE}.tmp`;
-  fs.writeFileSync(tmpFile, JSON.stringify(dataObject, null, 2), 'utf-8');
-  fs.renameSync(tmpFile, CATALOG_FILE);
 }
 
 // ── Exportar cliente Prisma para uso directo si fuera necesario ────────────────

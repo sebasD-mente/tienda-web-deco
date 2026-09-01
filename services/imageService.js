@@ -1,56 +1,54 @@
 /**
  * services/imageService.js
- * Image processing with Sharp — converts base64/buffer to WebP files on disk.
- * Extracted from server.js lines 217–233 (inline in catalog/save) and
- * lines 271–307 (catalog/upload handler).
- *
- * CRITICAL: UPLOADS_FULL and UPLOADS_THUMB paths are tied to Docker
- * persistent volumes on the VPS SSD — never alter.
+ * 100% Stateless Image Processor — RAM Buffer & Google Cloud Storage ONLY.
+ * 
+ * ZERO SSD / LOCAL DISK STORAGE.
+ * Sharp processes the image in memory and uploads directly to Google Cloud Storage.
  */
 
-import path from 'path';
 import sharp from 'sharp';
-import { UPLOADS_FULL, UPLOADS_THUMB } from '../config/paths.js';
-
-// ── Core image processor ─────────────────────────────────────────────────────
+import { uploadBufferToGCS } from './gcsService.js';
 
 /**
- * Converts a raw image buffer into two WebP files on the VPS SSD:
- * a full-resolution file (max 1400×1400px, 86% quality) and
- * a thumbnail (max 480×480px, 78% quality).
+ * Converts a raw image buffer into two optimized WebP buffers in RAM
+ * and uploads them directly to Google Cloud Storage:
+ *   - Full-resolution (max 1400×1400px, 86% quality WebP)
+ *   - Thumbnail (max 480×480px, 78% quality WebP)
  *
- * @param {Buffer} buffer    - Raw image data (from base64 or upload).
+ * @param {Buffer} buffer    - Raw image binary data (from multer.memoryStorage or base64).
  * @param {string} cleanId   - Sanitized identifier used to build the filename
  *                             (e.g. "obra-dragon-ball-z").
  * @returns {Promise<{ image: string, thumb: string }>}
- *          URL paths relative to the server root (e.g. "/posters/uploads/full/...").
+ *          Public Google Cloud Storage URLs (https://storage.googleapis.com/...).
  */
 export async function processImageBuffer(buffer, cleanId) {
   const baseFileName = `${cleanId}-${Date.now().toString().slice(-4)}.webp`;
-  const fullDest  = path.resolve(UPLOADS_FULL,  baseFileName);
-  const thumbDest = path.resolve(UPLOADS_THUMB, baseFileName);
 
-  // Full High-Res (Max 1400×1400px, 86% WebP)
-  await sharp(buffer)
+  // 1. Process High-Res (Max 1400×1400px, 86% WebP) in RAM Memory Buffer
+  const fullBuffer = await sharp(buffer)
     .resize(1400, 1400, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 86 })
-    .toFile(fullDest);
+    .toBuffer();
 
-  // Fast Thumbnail (Max 480×480px, 78% WebP)
-  await sharp(buffer)
+  // 2. Process Fast Thumbnail (Max 480×480px, 78% WebP) in RAM Memory Buffer
+  const thumbBuffer = await sharp(buffer)
     .resize(480, 480, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 78 })
-    .toFile(thumbDest);
+    .toBuffer();
 
-  console.log(`[VPS Storage] Created physical WebP files on SSD: ${baseFileName}`);
+  // 3. Upload Directly to Google Cloud Storage (Stateless Memory Gateway)
+  const [fullUrl, thumbUrl] = await Promise.all([
+    uploadBufferToGCS(fullBuffer, `posters/full/${baseFileName}`, 'image/webp'),
+    uploadBufferToGCS(thumbBuffer, `posters/thumb/${baseFileName}`, 'image/webp'),
+  ]);
+
+  console.log(`[Storage Gateway] ☁️ Pure Stateless upload to Google Cloud Storage: ${baseFileName}`);
 
   return {
-    image: `/posters/uploads/full/${baseFileName}`,
-    thumb: `/posters/uploads/thumb/${baseFileName}`
+    image: fullUrl,
+    thumb: thumbUrl,
   };
 }
-
-// ── Helper: base64 data URL → Buffer ────────────────────────────────────────
 
 /**
  * Strips the data-URL prefix from a base64 string and returns a Buffer.

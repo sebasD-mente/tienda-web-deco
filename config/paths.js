@@ -14,7 +14,6 @@ export const PROJECT_ROOT = path.resolve(path.dirname(__filename), '..');
 
 // ── Data persistence (Docker volume) ────────────────────────────────────────
 export const DATA_DIR     = path.resolve(PROJECT_ROOT, 'data');
-export const CATALOG_FILE = path.resolve(DATA_DIR, 'catalogStore.json'); // ← SACRED
 export const JARVIS_FILE  = path.resolve(DATA_DIR, 'jarvisConfig.json'); // ← SACRED
 
 // ── Image storage (Docker volume) ────────────────────────────────────────────

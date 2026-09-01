@@ -163,7 +163,8 @@ export default function AdminCreatePosterTab({
         setImageUrl(uploadRes.image);
         setThumbUrl(uploadRes.thumb || uploadRes.image);
         set_base64Full('');  // Limpiar base64 — ya no es necesario
-        onShowToast('¡Imagen optimizada a WebP y guardada en el disco SSD!', 'success');
+        const storageDestination = uploadRes.image.startsWith('http') ? 'Google Cloud Storage' : 'servidor';
+        onShowToast(`¡Imagen optimizada a WebP y guardada en ${storageDestination}!`, 'success');
       } else {
         // El servidor no confirmó la subida — conservar base64 como fallback
         // El backend puede procesar base64 en el POST/PUT si llega así
@@ -326,19 +327,19 @@ export default function AdminCreatePosterTab({
                 />
                 <div style={{ flex: 1, minWidth: '200px' }}>
                   <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
-                    {imageMeta?.name || (imageUrl ? 'Imagen en VPS SSD' : 'Imagen optimizada localmente')}
+                    {imageMeta?.name || (imageUrl?.startsWith('http') ? 'Google Cloud Storage (Cloud)' : (imageUrl ? 'Imagen en Servidor' : 'Imagen optimizada localmente'))}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
                     {imageMeta
                       ? `${imageMeta.dimensions} • ${imageMeta.originalSize} KB`
                       : imageUrl
                         ? `📍 ${imageUrl}`
-                        : 'Pendiente de guardado en disco'}
+                        : 'Pendiente de guardado'}
                   </div>
                   {/* Indicador de estado de imagen */}
                   {imageUrl && (
                     <div style={{ fontSize: '0.7rem', color: '#00f2fe', marginTop: '4px', fontWeight: 700 }}>
-                      ✓ Guardada en disco SSD
+                      {imageUrl.startsWith('http') ? '✓ Guardada en Google Cloud Storage' : '✓ Guardada en servidor'}
                     </div>
                   )}
                   {!imageUrl && _base64Full && (
