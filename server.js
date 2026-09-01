@@ -19,6 +19,7 @@ console.log('[Boot] Vaciando cache de Docker...');
 
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import compression from 'compression';
 import fs from 'fs';
 import path from 'path';
@@ -42,13 +43,45 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// ── Security Headers (Helmet con CSP compatible con SPA y Google Cloud Storage) 
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://storage.googleapis.com", "https://*.googleapis.com"],
+      connectSrc: ["'self'", "https://storage.googleapis.com", "https://*.googleapis.com", "https://generativelanguage.googleapis.com"]
+    }
+  },
+  crossOriginEmbedderPolicy: false
+}));
+
+// ── CORS Estricto (Restringido a dominios oficiales de producción y dev) ───────
+const ALLOWED_ORIGINS = [
+  'https://decovintage.online',
+  'https://www.decovintage.online',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permitir peticiones sin origen (como curl, apps móviles o server-to-server) o si está en la lista blanca
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Acceso denegado por política de CORS para el origen: ${origin}`));
+  },
+  credentials: true
+}));
+
 // Enable HTTP Gzip/Brotli compression for ultra-fast payload delivery
 app.use(compression());
 
 // Trust reverse proxy (Dokploy / Traefik / Nginx) for accurate client IP rate limiting
 app.set('trust proxy', 1);
-
-app.use(cors({ origin: true, credentials: true }));
 
 // ── Granular Body Parsing (CWE-400 DoS Mitigation) ───────────────────────────
 // Elevated limit strictly for admin image upload / catalog persist endpoints
