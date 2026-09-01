@@ -739,10 +739,9 @@ export function runFallbackEngine(prompt, posters, jarvisMemory) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CANDIDATE_MODELS = [
-  'gemini-flash-latest',
-  'gemini-flash-lite-latest',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash'
+  'gemini-3.6-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-flash-latest'
 ];
 
 /**
@@ -798,7 +797,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
         ];
 
         const callTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 10s timeout`)), 10000)
+          setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 25s timeout`)), 25000)
         );
 
         const resAI = await Promise.race([
