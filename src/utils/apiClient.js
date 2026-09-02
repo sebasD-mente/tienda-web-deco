@@ -393,15 +393,6 @@ export async function apiAskJarvis(prompt, history = []) {
     return data;
 
   } catch (err) {
-    const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
-    console.error('[ERROR CRÍTICO J.A.R.V.I.S.] 💥 Causa real de la desconexión:', {
-      errorName: err.name,
-      errorMessage: err.message,
-      targetUrl,
-      isTimeout,
-      stack: err.stack
-    });
-
     return {
       isFallback: true,
       replyText: 'No pude conectar con el cerebro principal en este momento. Por favor escríbenos directamente a WhatsApp.',
@@ -409,3 +400,40 @@ export async function apiAskJarvis(prompt, history = []) {
     };
   }
 }
+
+// ── Cotizaciones y Pedidos Personalizados ──────────────────────────────────────
+
+/**
+ * Obtiene todas las cotizaciones personalizadas del servidor (Admin).
+ */
+export async function apiGetCustomOrders() {
+  const res = await fetch('/api/custom-orders', {
+    method: 'GET',
+    headers: getHeaders(true)
+  });
+  return handleResponse(res);
+}
+
+/**
+ * Actualiza el estado de una cotización (Admin).
+ */
+export async function apiUpdateCustomOrderStatus(id, status) {
+  const res = await fetch(`/api/custom-orders/${id}/status`, {
+    method: 'PATCH',
+    headers: getHeaders(true),
+    body: JSON.stringify({ status })
+  });
+  return handleResponse(res);
+}
+
+/**
+ * Elimina una cotización (Admin).
+ */
+export async function apiDeleteCustomOrder(id) {
+  const res = await fetch(`/api/custom-orders/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders(true)
+  });
+  return handleResponse(res);
+}
+

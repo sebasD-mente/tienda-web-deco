@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit3, Trash2, ArrowLeft, Star, Tag, Sliders, Shield,
-  CheckCircle2, AlertCircle, LogOut, Package, Database
+  CheckCircle2, AlertCircle, LogOut, Package, Database, Image
 } from 'lucide-react';
 import ArcReactor from '../components/ArcReactor';
 import {
@@ -25,6 +25,7 @@ import AdminInventoryTab    from '../components/admin/AdminInventoryTab';
 import AdminCreatePosterTab from '../components/admin/AdminCreatePosterTab';
 import AdminFranchisesTab   from '../components/admin/AdminFranchisesTab';
 import AdminCategoriesTab   from '../components/admin/AdminCategoriesTab';
+import AdminCustomOrdersTab from '../components/admin/AdminCustomOrdersTab';
 import AdminJarvisTab       from '../components/admin/AdminJarvisTab';
 import AdminSettingsTab     from '../components/admin/AdminSettingsTab';
 
@@ -414,7 +415,32 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
               </span>
             </button>
 
-            {/* 5. J.A.R.V.I.S. IA */}
+            {/* 5. Personalizados */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('custom-orders')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 16px',
+                borderRadius: '10px',
+                background: activeTab === 'custom-orders' ? 'var(--grad-cyan)' : 'rgba(255, 255, 255, 0.04)',
+                border: activeTab === 'custom-orders' ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.08)',
+                color: activeTab === 'custom-orders' ? '#040609' : '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.2s ease',
+                boxShadow: activeTab === 'custom-orders' ? '0 0 16px rgba(0, 242, 254, 0.4)' : 'none'
+              }}
+            >
+              <Image size={15} />
+              <span>Personalizados</span>
+            </button>
+
+            {/* 6. J.A.R.V.I.S. IA */}
             <button
               type="button"
               onClick={() => setActiveTab('jarvis')}
@@ -525,12 +551,17 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
             />
           )}
 
-          {/* TAB 5: J.A.R.V.I.S. */}
+          {/* TAB 5: CUSTOM ORDERS */}
+          {activeTab === 'custom-orders' && (
+            <AdminCustomOrdersTab showToast={showToast} />
+          )}
+
+          {/* TAB 6: J.A.R.V.I.S. */}
           {activeTab === 'jarvis' && (
             <AdminJarvisTab onShowToast={showToast} />
           )}
 
-          {/* TAB 6: SETTINGS & WHATSAPP */}
+          {/* TAB 7: SETTINGS & WHATSAPP */}
           {activeTab === 'settings' && (
             <AdminSettingsTab
               onShowToast={showToast}

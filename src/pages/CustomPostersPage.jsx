@@ -34,6 +34,7 @@ const createNewCustomPoster = (index = 1) => ({
   customHeight: '',
   baseMaterial: null, // 'mdf' | 'pvc' | 'vinyl_only'
   uploadedImage: null,
+  imageFile: null,
   imageDetails: null,
   quantity: 1,
   customNote: ''
@@ -47,6 +48,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
 
   // List of Custom Posters configured by the customer
   const [postersList, setPostersList] = useState([createNewCustomPoster(1)]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRefs = useRef({});
 
   // Quick preset dimensions for custom mode
@@ -132,6 +134,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
     reader.onload = (event) => {
       handleUpdatePoster(id, {
         uploadedImage: event.target.result,
+        imageFile: file,
         imageDetails: {
           name: file.name,
           size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
@@ -145,6 +148,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
   const handleRemoveImage = (id) => {
     handleUpdatePoster(id, {
       uploadedImage: null,
+      imageFile: null,
       imageDetails: null
     });
     if (fileInputRefs.current[id]) {
@@ -157,15 +161,79 @@ export default function CustomPostersPage({ onNavigate, settings }) {
   const totalOrderPrice = postersList.reduce((acc, p) => acc + getPosterPrice(p).totalPrice, 0);
   const totalUnits = postersList.reduce((acc, p) => acc + (p.quantity || 1), 0);
 
-  // WhatsApp Quote Link
-  const handleWhatsAppQuote = () => {
+  // WhatsApp Quote Link con Registro Blindado en Base de Datos y Fallback Seguro
+  const handleWhatsAppQuote = async () => {
     const unconfiguredIdx = postersList.findIndex(p => !getPosterPrice(p).isConfigured);
     if (unconfiguredIdx !== -1) {
       alert(`Por favor selecciona el tipo de base y las medidas para el Póster #${unconfiguredIdx + 1}.`);
       return;
     }
 
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    let registeredOrderNumber = null;
+
+    try {
+      // Intentar registrar la cotización en el servidor con sus imágenes
+      const formData = new FormData();
+      formData.append('totalPrice', totalOrderPrice);
+      formData.append('totalUnits', totalUnits);
+
+      const itemsPayload = postersList.map((p, idx) => {
+        const calc = getPosterPrice(p);
+        const itemData = {
+          id: p.id,
+          sizeMode: p.sizeMode,
+          selectedStandardSize: p.selectedStandardSize,
+          customWidth: p.customWidth,
+          customHeight: p.customHeight,
+          customArea: calc.customArea,
+          baseMaterial: p.baseMaterial,
+          unitPrice: calc.unitPrice,
+          totalPrice: calc.totalPrice,
+          quantity: p.quantity || 1,
+          customNote: p.customNote || '',
+          originalFileName: p.imageDetails?.name || null
+        };
+
+        if (p.imageFile) {
+          formData.append(`image_${idx}`, p.imageFile);
+        } else if (p.uploadedImage && p.uploadedImage.startsWith('data:image/')) {
+          itemData.uploadedImage = p.uploadedImage;
+        }
+
+        return itemData;
+      });
+
+      formData.append('items', JSON.stringify(itemsPayload));
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout
+
+      const res = await fetch('/api/custom-orders', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.orderNumber) {
+          registeredOrderNumber = data.orderNumber;
+        }
+      }
+    } catch (err) {
+      console.warn('[CustomPostersPage] Error registrando cotización en servidor (activando fallback WhatsApp):', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+
+    // Generación del mensaje para WhatsApp con el código #CP-XXXX si fue registrado
     let message = '';
+    const codeTag = registeredOrderNumber ? ` #${registeredOrderNumber}` : '';
+
     if (postersList.length === 1) {
       const p = postersList[0];
       const calc = getPosterPrice(p);
@@ -180,16 +248,18 @@ export default function CustomPostersPage({ onNavigate, settings }) {
         materialName = 'Solo Impresión en Vinil Adhesivo HD (Sin Base - 50% Valor)';
       }
 
-      message = `👋 *¡Hola Deco Vintage! Quiero cotizar un PÓSTER PERSONALIZADO:*\n\n` +
+      message = `👋 *¡Hola Deco Vintage! Quiero cotizar un PÓSTER PERSONALIZADO${codeTag}:*\n\n` +
         `📐 *Dimensiones:* ${sizeName}\n` +
         `🪵 *Base / Material:* ${materialName}\n` +
-        `🖼️ *Imagen:* ${p.imageDetails ? `Archivo listo (${p.imageDetails.name})` : 'Tengo mi diseño listo para enviar por este chat'}\n` +
+        `🖼️ *Imagen:* ${p.imageDetails ? `Cargada en sistema (${p.imageDetails.name})` : 'Lista para enviar por WhatsApp'}\n` +
         `🔢 *Cantidad:* ${p.quantity} unidad(es)\n` +
         `💰 *Total Cotizado:* Q ${calc.totalPrice.toFixed(2)}\n` +
         (p.customNote ? `📝 *Detalle/Idea:* ${p.customNote}\n\n` : `\n`) +
-        `Adjunto mi imagen a continuación para validación de resolución y confirmación de pedido. ¿Me pueden asesorar?`;
+        (registeredOrderNumber 
+          ? `✅ *Mi cotización quedó registrada con el código #${registeredOrderNumber} en su sistema.* ¿Me pueden confirmar para iniciar?` 
+          : `Adjunto mi imagen a continuación para validación de resolución y confirmación de pedido. ¿Me pueden asesorar?`);
     } else {
-      message = `👋 *¡Hola Deco Vintage! Quiero cotizar ${postersList.length} PÓSTERS PERSONALIZADOS:*\n\n`;
+      message = `👋 *¡Hola Deco Vintage! Quiero cotizar ${postersList.length} PÓSTERS PERSONALIZADOS${codeTag}:*\n\n`;
 
       postersList.forEach((p, idx) => {
         const calc = getPosterPrice(p);
@@ -210,7 +280,9 @@ export default function CustomPostersPage({ onNavigate, settings }) {
       });
 
       message += `💰 *TOTAL GENERAL COTIZADO (${totalUnits} unidades en ${postersList.length} diseños):* Q ${totalOrderPrice.toFixed(2)}\n\n` +
-        `Adjunto mis imágenes a continuación para validación de resolución y confirmación de pedido. ¿Me pueden asesorar?`;
+        (registeredOrderNumber 
+          ? `✅ *Cotización registrada con código #${registeredOrderNumber} en el sistema.* ¿Me pueden confirmar para iniciar?` 
+          : `Adjunto mis imágenes a continuación para validación de resolución y confirmación de pedido. ¿Me pueden asesorar?`);
     }
 
     const waUrl = generateWhatsAppLink(message);
@@ -1347,22 +1419,29 @@ export default function CustomPostersPage({ onNavigate, settings }) {
               <button
                 type="button"
                 onClick={handleWhatsAppQuote}
+                disabled={!allConfigured || isSubmitting}
                 className="btn-cyan"
                 style={{
                   padding: '14px 28px',
                   fontSize: '0.98rem',
                   fontWeight: 800,
-                  boxShadow: allConfigured ? '0 8px 25px rgba(0, 242, 254, 0.4)' : 'none',
+                  boxShadow: allConfigured && !isSubmitting ? '0 8px 25px rgba(0, 242, 254, 0.4)' : 'none',
                   borderRadius: '12px',
-                  opacity: allConfigured ? 1 : 0.65,
-                  cursor: 'pointer',
+                  opacity: allConfigured && !isSubmitting ? 1 : 0.65,
+                  cursor: allConfigured && !isSubmitting ? 'pointer' : 'not-allowed',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px'
                 }}
               >
                 <MessageSquare size={19} />
-                <span>{allConfigured ? 'Pedir por WhatsApp' : 'Selecciona tus opciones para cotizar'}</span>
+                <span>
+                  {isSubmitting 
+                    ? '⏳ Registrando cotización...' 
+                    : allConfigured 
+                      ? 'Pedir por WhatsApp' 
+                      : 'Selecciona tus opciones para cotizar'}
+                </span>
               </button>
             </div>
 

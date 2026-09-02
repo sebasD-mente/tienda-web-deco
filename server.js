@@ -38,10 +38,11 @@ import {
   DIST_DIR
 } from './config/paths.js';
 
-import authRoutes     from './routes/authRoutes.js';
-import catalogRoutes  from './routes/catalogRoutes.js';
-import settingsRoutes from './routes/settingsRoutes.js';
-import jarvisRoutes   from './routes/jarvisRoutes.js';
+import authRoutes        from './routes/authRoutes.js';
+import catalogRoutes     from './routes/catalogRoutes.js';
+import settingsRoutes    from './routes/settingsRoutes.js';
+import jarvisRoutes      from './routes/jarvisRoutes.js';
+import customOrderRoutes from './routes/customOrderRoutes.js';
 
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
@@ -110,6 +111,7 @@ app.use('/api', authRoutes);
 app.use('/api', catalogRoutes);
 app.use('/api', settingsRoutes);
 app.use('/api', jarvisRoutes);
+app.use('/api/custom-orders', customOrderRoutes);
 
 // ── Manejo de errores centralizado ────────────────────────────────────────────
 // IMPORTANTE: Estos dos middlewares van SIEMPRE al final de las rutas API.
