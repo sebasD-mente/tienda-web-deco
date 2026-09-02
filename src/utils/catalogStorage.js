@@ -32,7 +32,9 @@ import {
   apiDeletePosterRecord,
   apiDeletePosterImage,
   apiCreateFranchise,
-  apiDeleteFranchise
+  apiDeleteFranchise,
+  apiCreateCategory,
+  apiDeleteCategory
 } from './apiClient.js';
 import { saveStoreWhatsAppPhone } from '../config/constants.js';
 
@@ -247,10 +249,20 @@ async function persistMetadata({ categories, franchises, settings } = {}) {
 }
 
 /**
- * Agrega una nueva categoría y la persiste en el backend (JSON VPS).
- * @param {{ id: string, name: string }} newCat
+ * Agrega una nueva categoría y la persiste en PostgreSQL.
+ * @param {{ id: string, name: string, icon?: string }} newCat
  */
 export async function addNewCategory(newCat) {
+  try {
+    const res = await apiCreateCategory(newCat);
+    if (res?.categories) {
+      _cachedCategories = res.categories;
+      emitCatalogUpdate();
+      return _cachedCategories;
+    }
+  } catch (e) {
+    console.warn('[Deco Storage] apiCreateCategory fallback:', e.message);
+  }
   const current = getStoredCategories();
   if (current.some(c => c.id === newCat.id)) return current;
   const updated = [...current, newCat];
@@ -260,10 +272,21 @@ export async function addNewCategory(newCat) {
 }
 
 /**
- * Elimina una categoría por ID y persiste en el backend.
+ * Elimina una categoría por ID y la persiste en PostgreSQL.
  * @param {string} categoryId
  */
 export async function deleteCategoryById(categoryId) {
+  try {
+    const res = await apiDeleteCategory(categoryId);
+    if (res?.categories) {
+      _cachedCategories = res.categories;
+      emitCatalogUpdate();
+      return _cachedCategories;
+    }
+  } catch (e) {
+    console.warn('[Deco Storage] apiDeleteCategory fallback:', e.message);
+    throw e;
+  }
   const updated = getStoredCategories().filter(c => c.id !== categoryId);
   _cachedCategories = updated;
   await persistMetadata({ categories: updated });

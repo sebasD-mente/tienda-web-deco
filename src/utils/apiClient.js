@@ -258,6 +258,33 @@ export async function apiDeleteFranchise(franchiseId) {
   return handleResponse(res);
 }
 
+/**
+ * Crea o actualiza una categoría en PostgreSQL (Admin).
+ * @param {object} categoryPayload - { id, name, icon }
+ * @returns {Promise<{ success: boolean, categories: Array }>}
+ */
+export async function apiCreateCategory(categoryPayload) {
+  const res = await fetch('/api/catalog/categories', {
+    method:  'POST',
+    headers: getHeaders(true),
+    body:    JSON.stringify(categoryPayload)
+  });
+  return handleResponse(res);
+}
+
+/**
+ * Elimina una categoría en PostgreSQL (Admin).
+ * @param {string} categoryId - ID de la categoría (ej: CINE).
+ * @returns {Promise<{ success: boolean, message: string, categories: Array }>}
+ */
+export async function apiDeleteCategory(categoryId) {
+  const res = await fetch(`/api/catalog/categories/${encodeURIComponent(categoryId)}`, {
+    method:  'DELETE',
+    headers: getHeaders(true)
+  });
+  return handleResponse(res);
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 
 /**

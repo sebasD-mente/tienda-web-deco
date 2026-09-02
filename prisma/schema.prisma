@@ -110,6 +110,7 @@ model StoreSettings {
   deliveryMinDays Int      @default(2)
   deliveryMaxDays Int      @default(4)
   customCm2Price  Decimal  @default(0.048) @db.Decimal(6, 4)
+  categories      Json?    @default("[]")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   @@map("store_settings")

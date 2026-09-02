@@ -457,6 +457,38 @@ export async function deletePoster(id) {
   }
 }
 
+export const DEFAULT_CATEGORIES = [
+  { id: 'AUTOS', name: 'AUTOS', icon: '🏎️' },
+  { id: 'SUPERHEROES', name: 'SUPER HÉROES', icon: '⚡' },
+  { id: 'ANIME', name: 'ANIME', icon: '⛩️' },
+  { id: 'MUSICA', name: 'MÚSICA', icon: '🎵' },
+  { id: 'SERIESYPELICULAS', name: 'SERIES Y PELÍCULAS', icon: '🎬' },
+  { id: 'OBRASDEARTE', name: 'OBRAS DE ARTE', icon: '🖼️' },
+  { id: 'INFANTILYDIBUJOSANIMADOS', name: 'INFANTIL Y DIBUJOS ANIMADOS', icon: '🧸' }
+];
+
+const CATEGORY_DISPLAY_NAMES = {
+  AUTOS: 'AUTOS',
+  SUPERHEROES: 'SUPER HÉROES',
+  ANIME: 'ANIME',
+  MUSICA: 'MÚSICA',
+  SERIESYPELICULAS: 'SERIES Y PELÍCULAS',
+  OBRASDEARTE: 'OBRAS DE ARTE',
+  INFANTILYDIBUJOSANIMADOS: 'INFANTIL Y DIBUJOS ANIMADOS',
+  CINE: 'CINE'
+};
+
+const CATEGORY_ICONS = {
+  AUTOS: '🏎️',
+  SUPERHEROES: '⚡',
+  ANIME: '⛩️',
+  MUSICA: '🎵',
+  SERIESYPELICULAS: '🎬',
+  OBRASDEARTE: '🖼️',
+  INFANTILYDIBUJOSANIMADOS: '🧸',
+  CINE: '🎥'
+};
+
 // ── Categorías y Franquicias en PostgreSQL ────────────────────────────────────
 
 /**
@@ -473,27 +505,112 @@ export async function getAllCategories() {
   const countMap = {};
   counts.forEach(c => { countMap[c.categoria] = c._count.id; });
 
-  const categoryDisplayNames = {
-    AUTOS: 'AUTOS',
-    SUPERHEROES: 'SUPER HEROES',
-    ANIME: 'ANIME',
-    MUSICA: 'MUSICA',
-    SERIESYPELICULAS: 'SERIES Y PELICULAS',
-    OBRASDEARTE: 'OBRAS DE ARTE',
-    INFANTILYDIBUJOSANIMADOS: 'INFANTIL Y DIBUJOS ANIMADOS',
-    CINE: 'CINE'
-  };
+  let savedCategories = null;
+  try {
+    const settings = await prisma.storeSettings.findUnique({ where: { id: 'default' } });
+    if (Array.isArray(settings?.categories) && settings.categories.length > 0) {
+      savedCategories = settings.categories;
+    }
+  } catch (err) {
+    console.warn('[Categories] Could not load custom categories from storeSettings:', err.message);
+  }
+
+  const baseList = savedCategories || DEFAULT_CATEGORIES;
+
+  const categoryMap = new Map();
+  baseList.forEach(cat => {
+    const id = (typeof cat === 'string' ? cat : cat.id || '').toUpperCase().trim();
+    if (id && id !== 'TODOS') {
+      categoryMap.set(id, {
+        id,
+        name: typeof cat === 'object' && cat.name ? cat.name : (CATEGORY_DISPLAY_NAMES[id] || id),
+        icon: typeof cat === 'object' && cat.icon ? cat.icon : (CATEGORY_ICONS[id] || '🏷️')
+      });
+    }
+  });
+
+  // Asegurar que si una categoría tiene pósters reales en BD, aparezca
+  counts.forEach(c => {
+    const id = c.categoria;
+    if (id && !categoryMap.has(id)) {
+      categoryMap.set(id, {
+        id,
+        name: CATEGORY_DISPLAY_NAMES[id] || id,
+        icon: CATEGORY_ICONS[id] || '🏷️'
+      });
+    }
+  });
+
+  const categoryList = Array.from(categoryMap.values()).map(cat => ({
+    ...cat,
+    count: countMap[cat.id] || 0
+  }));
 
   const totalActive = Object.values(countMap).reduce((a, b) => a + b, 0);
 
   return [
-    { id: 'TODOS', name: 'TODAS LAS OBRAS', count: totalActive },
-    ...VALID_CATEGORIES.map(cat => ({
-      id: cat,
-      name: categoryDisplayNames[cat] || cat,
-      count: countMap[cat] || 0
-    }))
+    { id: 'TODOS', name: 'TODAS LAS OBRAS', icon: '🎨', count: totalActive },
+    ...categoryList
   ];
+}
+
+/**
+ * Crea o actualiza una categoría en PostgreSQL (store_settings.categories).
+ */
+export async function upsertCategory({ id, name, icon }) {
+  const cleanId = (id || name).toUpperCase().replace(/\s+/g, '_');
+  const cleanName = (name || id).trim().toUpperCase();
+
+  const current = await getAllCategories();
+  const currentFiltered = current
+    .filter(c => c.id !== 'TODOS')
+    .map(c => ({ id: c.id, name: c.name, icon: c.icon || '🏷️' }));
+
+  const existingIdx = currentFiltered.findIndex(c => c.id === cleanId);
+  const newEntry = { id: cleanId, name: cleanName, icon: icon || '🏷️' };
+
+  if (existingIdx > -1) {
+    currentFiltered[existingIdx] = newEntry;
+  } else {
+    currentFiltered.push(newEntry);
+  }
+
+  await prisma.storeSettings.upsert({
+    where: { id: 'default' },
+    update: { categories: currentFiltered },
+    create: { id: 'default', categories: currentFiltered }
+  });
+
+  return await getAllCategories();
+}
+
+/**
+ * Elimina una categoría si no contiene pósters activos.
+ */
+export async function deleteCategory(categoryId) {
+  const cleanId = categoryId.toUpperCase().trim();
+
+  // Validar que no tenga obras activas
+  const count = await prisma.poster.count({
+    where: { categoria: cleanId, isPublished: true, estado: { not: 'DESCONTINUADO' } }
+  });
+
+  if (count > 0) {
+    throw new Error(`No se puede eliminar la categoría "${cleanId}" porque contiene ${count} obra(s).`);
+  }
+
+  const current = await getAllCategories();
+  const updatedCategories = current
+    .filter(c => c.id !== 'TODOS' && c.id !== cleanId)
+    .map(c => ({ id: c.id, name: c.name, icon: c.icon || '🏷️' }));
+
+  await prisma.storeSettings.upsert({
+    where: { id: 'default' },
+    update: { categories: updatedCategories },
+    create: { id: 'default', categories: updatedCategories }
+  });
+
+  return await getAllCategories();
 }
 
 /**

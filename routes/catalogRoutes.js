@@ -20,6 +20,8 @@ import {
   upsertFranchise,
   deleteFranchise,
   getAllCategories,
+  upsertCategory,
+  deleteCategory,
   updateStoreSettings,
 } from '../services/catalogService.js';
 import { processImageBuffer, dataUrlToBuffer } from '../services/imageService.js';
@@ -98,6 +100,33 @@ router.get('/catalog/categories', async (req, res) => {
   } catch (err) {
     console.error('[API Error] GET /api/catalog/categories:', err);
     return res.status(500).json({ error: 'Error al obtener las categorías.', details: err.message });
+  }
+});
+
+// ── POST /api/catalog/categories (Admin — Upsert category) ────────────────────
+router.post('/catalog/categories', requireAuth, async (req, res) => {
+  try {
+    const { id, name, icon } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: 'El nombre de la categoría es obligatorio.' });
+    }
+    const categories = await upsertCategory({ id: id || name, name, icon });
+    return res.status(200).json({ success: true, categories });
+  } catch (err) {
+    console.error('[API Error] POST /api/catalog/categories:', err);
+    return res.status(500).json({ error: 'Error al guardar la categoría.', details: err.message });
+  }
+});
+
+// ── DELETE /api/catalog/categories/:id (Admin — Delete category) ──────────────
+router.delete('/catalog/categories/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const categories = await deleteCategory(id);
+    return res.status(200).json({ success: true, message: 'Categoría eliminada con éxito.', categories });
+  } catch (err) {
+    console.error('[API Error] DELETE /api/catalog/categories/:id:', err);
+    return res.status(400).json({ error: err.message });
   }
 });
 
