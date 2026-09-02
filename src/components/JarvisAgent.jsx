@@ -12,7 +12,9 @@ import {
   MicOff,
   CheckCircle2,
   ExternalLink,
-  Eye
+  Eye,
+  Check,
+  CheckCheck
 } from 'lucide-react';
 import { generateWhatsAppLink } from '../config/constants';
 import { OFFICIAL_SIZES } from '../data/catalogData';
@@ -125,6 +127,7 @@ export default function JarvisAgent({
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showTypingDots, setShowTypingDots] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isListening, setIsListening] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
@@ -135,6 +138,7 @@ export default function JarvisAgent({
   const messagesEndRef = useRef(null);
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
+  const typingTimerRef = useRef(null);
 
   // Sync knowledge live on admin edits and initial mount
   useEffect(() => {
@@ -268,11 +272,19 @@ export default function JarvisAgent({
 
     if (soundEnabled) playTechSound('blip');
 
-    const userMsg = { id: `u-${Date.now()}`, sender: 'user', text };
+    const nowTime = new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+    const userMsg = { id: `u-${Date.now()}`, sender: 'user', text, time: nowTime, status: 'received' };
     setMessages(prev => [...prev, userMsg]);
     setInputText('');
     setLastUserPrompt(text);
     setIsTyping(true);
+    setShowTypingDots(false);
+
+    // Sutil y suave transición estilo WhatsApp (450ms de delay antes de mostrar los puntitos de digitación)
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      setShowTypingDots(true);
+    }, 450);
 
     try {
       const response = await askJarvis({
@@ -309,7 +321,8 @@ export default function JarvisAgent({
         actions: response.actions || [],
         toolResults: response.toolResults || [],
         isHandoff: Boolean(isFallbackReply),
-        contextPrompt: text
+        contextPrompt: text,
+        time: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' })
       };
 
       setMessages(prev => [...prev, jarvisMsg]);
@@ -328,10 +341,13 @@ export default function JarvisAgent({
           sender: 'jarvis',
           isHandoff: true,
           contextPrompt: text,
-          text: 'Se detectó una micro-interrupción en el enlace cuántico. Puedo responder a consultas de medidas oficiales, cotizar cuadros personalizados o enlazarle directamente con nuestro asesor Andrés por WhatsApp.'
+          text: 'Se detectó una micro-interrupción en el enlace cuántico. Puedo responder a consultas de medidas oficiales, cotizar cuadros personalizados o enlazarle directamente con nuestro asesor Andrés por WhatsApp.',
+          time: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' })
         }
       ]);
     } finally {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      setShowTypingDots(false);
       setIsTyping(false);
     }
   };
@@ -627,9 +643,25 @@ export default function JarvisAgent({
                     boxShadow: isJarvis ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0, 242, 254, 0.3)',
                     width: msg.actions && msg.actions.length > 0 ? '100%' : 'auto'
                   }}>
-                    <div style={{ wordBreak: 'break-word' }}>
+                    <div style={{ wordBreak: 'break-word', fontWeight: isJarvis ? 'normal' : 500 }}>
                       {renderCleanMessageText(msg.text)}
                     </div>
+
+                    {!isJarvis && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        gap: '4px',
+                        marginTop: '4px',
+                        fontSize: '0.64rem',
+                        color: 'rgba(4, 6, 9, 0.75)',
+                        fontWeight: 700
+                      }}>
+                        <span>{msg.time || currentTime || ''}</span>
+                        <CheckCheck size={13} color="#040609" style={{ opacity: 0.85 }} />
+                      </div>
+                    )}
 
                     {/* Interactive Action Cards */}
                     {msg.actions && msg.actions.map((act, actIdx) => {
@@ -1072,34 +1104,38 @@ export default function JarvisAgent({
             );
           })}
 
-          {/* Typing Indicator */}
-          {isTyping && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Typing Indicator - Sutil, elegante estilo WhatsApp / Asistente Moderno */}
+          {isTyping && showTypingDots && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              animation: 'fadeIn 0.25s ease'
+            }}>
               <div style={{
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                flexShrink: 0
               }}>
-                <ArcReactor size={26} pulsing={true} />
+                <ArcReactor size={24} pulsing={false} />
               </div>
               <div style={{
-                padding: '10px 14px',
-                background: 'rgba(14, 20, 35, 0.9)',
-                border: '1px solid rgba(0, 242, 254, 0.25)',
-                borderRadius: '4px 14px 14px 14px',
+                padding: '10px 16px',
+                background: 'rgba(14, 20, 35, 0.92)',
+                border: '1px solid rgba(0, 242, 254, 0.22)',
+                borderRadius: '4px 16px 16px 16px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '5px',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.35)'
               }}>
-                <span style={{ fontSize: '0.76rem', color: 'var(--accent-cyan)', fontWeight: 800, letterSpacing: '0.04em' }}>
-                  PROCESANDO MATRIZ TÁCTICA...
-                </span>
-                <span className="typing-dot" style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#00f2fe' }} />
-                <span className="typing-dot" style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#00f2fe', animationDelay: '0.2s' }} />
-                <span className="typing-dot" style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#00f2fe', animationDelay: '0.4s' }} />
+                <span className="jarvis-typing-dot" style={{ animationDelay: '0s' }} />
+                <span className="jarvis-typing-dot" style={{ animationDelay: '0.2s' }} />
+                <span className="jarvis-typing-dot" style={{ animationDelay: '0.4s' }} />
               </div>
             </div>
           )}
@@ -1278,12 +1314,23 @@ export default function JarvisAgent({
           background: rgba(0, 242, 254, 0.25);
           border-radius: 4px;
         }
-        @keyframes pulseDot {
-          0%, 100% { opacity: 0.2; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1.2); }
+        @keyframes gentleDotWave {
+          0%, 60%, 100% {
+            opacity: 0.3;
+            transform: translateY(0);
+          }
+          30% {
+            opacity: 1;
+            transform: translateY(-3px);
+          }
         }
-        .typing-dot {
-          animation: pulseDot 1s infinite ease-in-out;
+        .jarvis-typing-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #00f2fe;
+          display: inline-block;
+          animation: gentleDotWave 1.4s infinite ease-in-out;
         }
         @media (max-width: 520px) {
           .jarvis-header-title {
