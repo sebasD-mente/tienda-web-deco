@@ -17,6 +17,8 @@ import {
   deletePoster,
   getFullCatalog,
   getAllFranchises,
+  upsertFranchise,
+  deleteFranchise,
   getAllCategories,
   updateStoreSettings,
 } from '../services/catalogService.js';
@@ -58,6 +60,33 @@ router.get('/catalog/franchises', async (req, res) => {
   } catch (err) {
     console.error('[API Error] GET /api/catalog/franchises:', err);
     return res.status(500).json({ error: 'Error al obtener las franquicias.', details: err.message });
+  }
+});
+
+// ── POST /api/catalog/franchises (Admin — Upsert franchise) ──────────────────
+router.post('/catalog/franchises', requireAuth, async (req, res) => {
+  try {
+    const { id, slug, name, img, imageUrl, category } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: 'El nombre de la franquicia es obligatorio.' });
+    }
+    const franchise = await upsertFranchise({ id, slug, name, img, imageUrl, category });
+    return res.status(200).json({ success: true, franchise });
+  } catch (err) {
+    console.error('[API Error] POST /api/catalog/franchises:', err);
+    return res.status(500).json({ error: 'Error al guardar la franquicia.', details: err.message });
+  }
+});
+
+// ── DELETE /api/catalog/franchises/:id (Admin — Delete franchise) ─────────────
+router.delete('/catalog/franchises/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await deleteFranchise(id);
+    return res.status(200).json({ success: true, message: 'Franquicia eliminada con éxito.' });
+  } catch (err) {
+    console.error('[API Error] DELETE /api/catalog/franchises/:id:', err);
+    return res.status(500).json({ error: 'Error al eliminar la franquicia.', details: err.message });
   }
 });
 

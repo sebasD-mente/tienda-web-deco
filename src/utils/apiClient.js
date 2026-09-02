@@ -231,6 +231,33 @@ export async function apiSaveCatalog(catalogPayload) {
   return handleResponse(res);
 }
 
+/**
+ * Crea o actualiza una franquicia en PostgreSQL (Admin).
+ * @param {object} franchisePayload - { id, slug, name, img, category }
+ * @returns {Promise<{ success: boolean, franchise: object }>}
+ */
+export async function apiCreateFranchise(franchisePayload) {
+  const res = await fetch('/api/catalog/franchises', {
+    method:  'POST',
+    headers: getHeaders(true),
+    body:    JSON.stringify(franchisePayload)
+  });
+  return handleResponse(res);
+}
+
+/**
+ * Elimina una franquicia en PostgreSQL (Admin).
+ * @param {string} franchiseId - ID o slug de la franquicia.
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function apiDeleteFranchise(franchiseId) {
+  const res = await fetch(`/api/catalog/franchises/${encodeURIComponent(franchiseId)}`, {
+    method:  'DELETE',
+    headers: getHeaders(true)
+  });
+  return handleResponse(res);
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 
 /**

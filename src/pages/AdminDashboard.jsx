@@ -9,6 +9,8 @@ import {
   getStoredCategories,
   getStoredFranchises,
   saveAllFranchises,
+  createFranchise,
+  deleteFranchiseById,
   saveOrUpdatePoster,
   togglePosterFeatured,
   deletePosterById,
@@ -159,11 +161,9 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
   // Franchise Actions
   const handleCreateFranchise = async (franchiseObj) => {
     try {
-      const current = getStoredFranchises();
-      const updated = [...current, franchiseObj];
-      await saveAllFranchises(updated);
+      await createFranchise(franchiseObj);
       loadData();
-      showToast(`Franquicia "${franchiseObj.name}" creada.`, 'success');
+      showToast(`Franquicia "${franchiseObj.name}" creada con éxito.`, 'success');
     } catch (err) {
       showToast(`Error al crear franquicia: ${err.message}`, 'error');
     }
@@ -171,11 +171,9 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
 
   const handleDeleteFranchise = async (franchiseId) => {
     try {
-      const current = getStoredFranchises();
-      const updated = current.filter(f => f.id !== franchiseId);
-      await saveAllFranchises(updated);
+      await deleteFranchiseById(franchiseId);
       loadData();
-      showToast('Franquicia eliminada.', 'info');
+      showToast('Franquicia eliminada con éxito.', 'info');
     } catch (err) {
       showToast(`Error al eliminar franquicia: ${err.message}`, 'error');
     }

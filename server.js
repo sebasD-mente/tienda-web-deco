@@ -15,6 +15,12 @@
  *   routes/jarvisRoutes.js     — GET|POST /api/jarvis/* + /api/version + /api/health
  */
 
+try {
+  if (typeof process.loadEnvFile === 'function') {
+    process.loadEnvFile();
+  }
+} catch (e) {}
+
 console.log('[Boot] Vaciando cache de Docker...');
 
 import express from 'express';

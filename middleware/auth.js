@@ -6,6 +6,12 @@
 
 import crypto from 'crypto';
 
+try {
+  if (typeof process.loadEnvFile === 'function') {
+    process.loadEnvFile();
+  }
+} catch (e) {}
+
 // ── Secrets (Zero-Trust: Strictly from process.env — no hardcoded fallbacks CWE-798) ──
 const ADMIN_USER  = process.env.ADMIN_USER     || '';
 const ADMIN_PASS  = process.env.ADMIN_PASSWORD || '';

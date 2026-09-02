@@ -30,7 +30,9 @@ import {
   apiUpdatePoster,
   apiPatchPoster,
   apiDeletePosterRecord,
-  apiDeletePosterImage
+  apiDeletePosterImage,
+  apiCreateFranchise,
+  apiDeleteFranchise
 } from './apiClient.js';
 import { saveStoreWhatsAppPhone } from '../config/constants.js';
 
@@ -284,6 +286,46 @@ export async function saveAllCategories(categories) {
 export async function saveAllFranchises(franchises) {
   _cachedFranchises = franchises;
   await persistMetadata({ franchises });
+}
+
+/**
+ * Agrega o actualiza una franquicia directamente en PostgreSQL.
+ * @param {object} franchiseData - { id, slug, name, img, category }
+ */
+export async function createFranchise(franchiseData) {
+  try {
+    const res = await apiCreateFranchise(franchiseData);
+    if (res?.franchise) {
+      await syncCatalogFromServer();
+      emitCatalogUpdate();
+      return res.franchise;
+    }
+  } catch (e) {
+    console.warn('[Deco Storage] apiCreateFranchise fallback:', e.message);
+  }
+  const current = getStoredFranchises();
+  const updated = [...current, franchiseData];
+  await saveAllFranchises(updated);
+  return franchiseData;
+}
+
+/**
+ * Elimina una franquicia por ID o slug en PostgreSQL.
+ * @param {string} franchiseId
+ */
+export async function deleteFranchiseById(franchiseId) {
+  try {
+    await apiDeleteFranchise(franchiseId);
+    await syncCatalogFromServer();
+    emitCatalogUpdate();
+    return true;
+  } catch (e) {
+    console.warn('[Deco Storage] apiDeleteFranchise fallback:', e.message);
+  }
+  const current = getStoredFranchises();
+  const updated = current.filter(f => f.id !== franchiseId && f.slug !== franchiseId);
+  await saveAllFranchises(updated);
+  return true;
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────

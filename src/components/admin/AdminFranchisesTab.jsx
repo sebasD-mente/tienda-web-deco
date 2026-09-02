@@ -11,7 +11,6 @@ export default function AdminFranchisesTab({
   onShowToast
 }) {
   const [newFranchiseName, setNewFranchiseName] = useState('');
-  const [newFranchiseCategory, setNewFranchiseCategory] = useState('ANIME');
   const [newFranchiseImg, setNewFranchiseImg] = useState('');
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const franchiseIconRef = useRef(null);
@@ -45,7 +44,7 @@ export default function AdminFranchisesTab({
     }
 
     const cleanId = nameTrimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    if (franchises.some(f => f.id === cleanId)) {
+    if (franchises.some(f => f.id === cleanId || f.slug === cleanId)) {
       onShowToast('Ya existe una colección con ese nombre o identificador.', 'error');
       return;
     }
@@ -53,9 +52,9 @@ export default function AdminFranchisesTab({
     try {
       await onCreateFranchise({
         id: cleanId,
+        slug: cleanId,
         name: nameTrimmed,
-        img: newFranchiseImg,
-        category: newFranchiseCategory
+        img: newFranchiseImg
       });
       setNewFranchiseName('');
       setNewFranchiseImg('');
@@ -91,56 +90,29 @@ export default function AdminFranchisesTab({
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          {/* Name & Category */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                Nombre de la Colección *:
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Ej. Marvel Comics, Batman, Transformers..."
-                value={newFranchiseName}
-                onChange={e => setNewFranchiseName(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  background: '#0a0e18',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontSize: '0.92rem',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                Categoría Relacionada *:
-              </label>
-              <select
-                value={newFranchiseCategory}
-                onChange={e => setNewFranchiseCategory(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  background: '#0a0e18',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontSize: '0.92rem',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              >
-                {categories.filter(c => c.id !== 'TODOS').map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
+          {/* Name */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '6px' }}>
+              Nombre de la Colección *:
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ej. Marvel Comics, Batman, Transformers, DeLorean, Fórmula 1..."
+              value={newFranchiseName}
+              onChange={e => setNewFranchiseName(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                background: '#0a0e18',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '0.92rem',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
           </div>
 
           {/* Icon Upload */}
@@ -214,7 +186,12 @@ export default function AdminFranchisesTab({
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {franchises.map(f => {
-            const count = posters.filter(p => p.franchise === f.id).length;
+            const count = posters.filter(p => (
+              p.franchise === f.id || 
+              p.franchiseId === f.id || 
+              (f.slug && (p.franchise === f.slug || p.franchiseId === f.slug)) ||
+              (f.dbId && p.franchiseId === f.dbId)
+            )).length;
             return (
               <div
                 key={f.id}
@@ -250,7 +227,7 @@ export default function AdminFranchisesTab({
                       {f.name}
                     </div>
                     <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                      ID: <code>{f.id}</code> • Categoría: <strong>{f.category || 'General'}</strong>
+                      ID: <code>{f.id}</code>
                     </div>
                   </div>
                 </div>

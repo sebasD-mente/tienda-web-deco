@@ -526,6 +526,56 @@ export async function getAllFranchises() {
   }));
 }
 
+/**
+ * Crea o actualiza una franquicia en PostgreSQL (categoría opcional/independiente).
+ */
+export async function upsertFranchise({ id, slug, name, img, imageUrl, category }) {
+  const cleanSlug = (slug || id || name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const validCategory = category ? normalizeCategory(category) : null;
+  const image = imageUrl || img || `/franchises/${cleanSlug}.webp`;
+
+  return await prisma.franchise.upsert({
+    where: { slug: cleanSlug },
+    update: {
+      name,
+      imageUrl: image,
+      category: validCategory,
+    },
+    create: {
+      slug: cleanSlug,
+      name,
+      imageUrl: image,
+      category: validCategory,
+    }
+  });
+}
+
+/**
+ * Elimina una franquicia en PostgreSQL desvinculando pósters asociados.
+ */
+export async function deleteFranchise(slugOrId) {
+  const franchise = await prisma.franchise.findFirst({
+    where: {
+      OR: [
+        { slug: slugOrId },
+        { id: slugOrId }
+      ]
+    }
+  });
+  if (!franchise) return false;
+
+  await prisma.poster.updateMany({
+    where: { franchiseId: franchise.id },
+    data: { franchiseId: null }
+  });
+
+  await prisma.franchise.delete({
+    where: { id: franchise.id }
+  });
+
+  return true;
+}
+
 // ── Configuraciones de Tienda (100% Persistidas en PostgreSQL vía Prisma) ──────
 
 export async function getStoreSettings() {
