@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShoppingBag, MessageSquare, Check, Star } from 'lucide-react';
+import { X, ShoppingBag, MessageSquare, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 
@@ -193,15 +193,11 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
             justifyContent: 'flex-start'
           }}>
             
-            {/* Category Badge & Rating */}
+            {/* Category Badge */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span className="badge-cyan" style={{ fontSize: '0.72rem', padding: '2px 10px' }}>
                 {poster.category}
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
-                <Star size={13} fill="#00f2fe" color="#00f2fe" />
-                <span>{poster.rating} ({poster.reviewsCount} reseñas)</span>
-              </div>
             </div>
 
             {/* Main Title & Subtitle */}

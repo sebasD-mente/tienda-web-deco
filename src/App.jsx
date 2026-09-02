@@ -13,7 +13,7 @@ import { getStoredPosters, getStoredCategories, getStoredFranchises, syncCatalog
 import { getAuthToken, clearAuthToken, apiAdminVerify } from './utils/apiClient';
 import { generateWhatsAppLink } from './config/constants';
 
-const CART_STORAGE_KEY = 'deco_vintage_cart_v1';
+const CART_STORAGE_KEY = 'deco_vintage_cart_v2';
 
 // Code-Splitting: Lazy load with automatic retry on new deployment chunk changes
 function lazyWithRetry(componentImport) {
