@@ -393,8 +393,8 @@ export default function JarvisAgent({
         style={{
           width: '780px',
           maxWidth: '100%',
-          height: '88vh',
-          maxHeight: '740px',
+          height: '90vh',
+          maxHeight: '780px',
           background: 'linear-gradient(180deg, rgba(8, 12, 22, 0.98) 0%, rgba(4, 6, 12, 0.99) 100%)',
           border: '1px solid rgba(0, 242, 254, 0.35)',
           boxShadow: '0 0 50px rgba(0, 242, 254, 0.18), inset 0 0 20px rgba(0, 242, 254, 0.05)',
@@ -413,7 +413,7 @@ export default function JarvisAgent({
 
         {/* 1. Header Táctico Stark Industries */}
         <div style={{
-          padding: '16px 20px 14px',
+          padding: '10px 18px 8px',
           background: 'rgba(5, 8, 16, 0.96)',
           borderBottom: '1px solid rgba(0, 242, 254, 0.25)',
           position: 'relative',
@@ -427,7 +427,7 @@ export default function JarvisAgent({
           {/* Controls Top Right */}
           <div style={{
             position: 'absolute',
-            top: '12px',
+            top: '10px',
             right: '16px',
             display: 'flex',
             alignItems: 'center',
@@ -476,54 +476,60 @@ export default function JarvisAgent({
             </button>
           </div>
 
-          {/* Status Badge Top Left */}
+          {/* Title Top Left (replaces previous Online indicator) */}
           <div style={{
             position: 'absolute',
-            top: '14px',
+            top: '12px',
             left: '16px',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            zIndex: 15
           }}>
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              background: 'rgba(0, 245, 160, 0.12)',
-              border: '1px solid rgba(0, 245, 160, 0.35)',
-              color: '#00f5a0',
-              padding: '2px 8px',
-              borderRadius: '12px',
-              fontSize: '0.66rem',
-              fontWeight: 800
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00f5a0', boxShadow: '0 0 6px #00f5a0' }} />
-              ONLINE
-            </span>
-          </div>
-
-          {/* Centered Arc Reactor */}
-          <div style={{ marginBottom: '8px', transform: 'scale(1.05)' }}>
-            <ArcReactor size={56} active={isTyping} />
-          </div>
-
-          {/* Centered Titles */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '0.08em' }}>
-              J.A.R.V.I.S. <span style={{ color: 'var(--accent-cyan)', fontSize: '0.78rem', fontWeight: 800 }}>STARK OS 4.8</span>
-            </h3>
-            <span style={{ fontSize: '0.75rem', color: '#cbd5e1', letterSpacing: '0.05em', fontWeight: 500 }}>
-              Just A Rather Very Intelligent System
-            </span>
-            <span style={{
-              fontSize: '0.72rem',
-              color: '#00f2fe',
-              fontWeight: 800,
+            <h3 className="jarvis-header-title" style={{
+              fontSize: '0.92rem',
+              fontWeight: 900,
+              color: '#fff',
+              margin: 0,
               letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              textShadow: '0 0 10px rgba(0, 242, 254, 0.6)'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
-              Red Neuronal Gemini
+              J.A.R.V.I.S.
+              <span className="jarvis-header-tag" style={{
+                color: 'var(--accent-cyan)',
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                background: 'rgba(0, 242, 254, 0.08)',
+                border: '1px solid rgba(0, 242, 254, 0.25)',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                letterSpacing: '0.06em'
+              }}>
+                STARK OS 4.8
+              </span>
+            </h3>
+          </div>
+
+          {/* Centered Arc Reactor & Subtitle */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}>
+            <div style={{ transform: 'scale(1.05)' }}>
+              <ArcReactor size={64} active={isTyping} />
+            </div>
+            <span className="jarvis-header-subtitle" style={{
+              fontSize: '0.72rem',
+              color: '#94a3b8',
+              letterSpacing: '0.06em',
+              fontWeight: 500
+            }}>
+              Just Rather Very Intelligent System
             </span>
           </div>
         </div>
@@ -1278,6 +1284,17 @@ export default function JarvisAgent({
         }
         .typing-dot {
           animation: pulseDot 1s infinite ease-in-out;
+        }
+        @media (max-width: 520px) {
+          .jarvis-header-title {
+            font-size: 0.8rem !important;
+          }
+          .jarvis-header-tag {
+            display: none !important;
+          }
+          .jarvis-header-subtitle {
+            font-size: 0.62rem !important;
+          }
         }
       `}</style>
     </div>

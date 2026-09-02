@@ -345,7 +345,7 @@ export default function FranchiseGalleryPage({
                       alignItems: 'center',
                       gap: '4px'
                     }}>
-                      Personalizar ➔
+                      Ver Detalle ➔
                     </span>
                   </div>
                 </div>
