@@ -475,20 +475,42 @@ export default function AdminCreatePosterTab({
             </div>
           </div>
 
-          {/* 6. Sizes Matrix */}
+          {/* 6. Description */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              6. Descripción Detallada de la Obra (Opcional)
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Escribe la descripción de la obra, detalles artísticos, acabado en MDF 5.5mm, etc..."
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                background: '#0a0e18',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '0.92rem',
+                outline: 'none',
+                resize: 'vertical',
+                boxSizing: 'border-box',
+                fontFamily: 'inherit'
+              }}
+            />
+          </div>
+
+          {/* 7. Sizes Matrix */}
           <div style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
               <label style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
-                6. Tamaños Disponibles ({selectedSizeIds.length} seleccionados):
+                7. Tamaños Disponibles ({selectedSizeIds.length} seleccionados):
               </label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => setSelectedSizeIds(['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE'])}
-                  style={{ padding: '6px 12px', borderRadius: '8px', background: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.05)', border: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', color: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: '0.76rem', fontWeight: 800, cursor: 'pointer' }}>
+                  style={{ padding: '6px 14px', borderRadius: '8px', background: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.05)', border: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', color: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: '0.76rem', fontWeight: 800, cursor: 'pointer' }}>
                   ✓ Marcar los 5 Tamaños Estándar
-                </button>
-                <button type="button" onClick={() => setSelectedSizeIds(['MINI', 'PEQUENO', 'PORTADA_ALBUM', 'MEDIANO', 'GRANDE', 'GIGANTE'])}
-                  style={{ padding: '6px 12px', borderRadius: '8px', background: selectedSizeIds.length === 6 ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.05)', border: selectedSizeIds.length === 6 ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', color: selectedSizeIds.length === 6 ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: '0.76rem', fontWeight: 800, cursor: 'pointer' }}>
-                  Marcar Todos (6)
                 </button>
               </div>
             </div>
@@ -511,31 +533,33 @@ export default function AdminCreatePosterTab({
             </div>
 
             {/* Album cover size */}
-            <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px dashed rgba(0, 242, 254, 0.25)', borderRadius: '12px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span>🎵</span>
-                <strong>Formato Cuadrado (Exclusivo para Portadas de Álbum / Vinilos Musicales):</strong>
+                <span>Formato Cuadrado (Exclusivo para Portadas de Álbum / Vinilos Musicales):</span>
               </div>
-              {OFFICIAL_SIZES.filter(s => s.id === 'PORTADA_ALBUM').map(s => {
-                const isChecked = selectedSizeIds.includes(s.id);
-                return (
-                  <div key={s.id} onClick={() => toggleSizeId(s.id)} style={{ maxWidth: '320px', padding: '12px 14px', borderRadius: '10px', background: isChecked ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.03)', border: isChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.84rem', transition: 'all 0.15s ease' }}>
-                    <span style={{ color: isChecked ? '#fff' : 'var(--text-muted)', fontWeight: isChecked ? 700 : 400 }}>
-                      {isChecked ? '☑ ' : '☐ '} {s.name} ({s.dimensions})
-                    </span>
-                    <span style={{ color: isChecked ? '#00f2fe' : 'var(--text-muted)', fontWeight: 800 }}>
-                      Q{s.price.toFixed(0)}
-                    </span>
-                  </div>
-                );
-              })}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 300px))', gap: '10px' }}>
+                {OFFICIAL_SIZES.filter(s => s.id === 'PORTADA_ALBUM').map(s => {
+                  const isChecked = selectedSizeIds.includes(s.id);
+                  return (
+                    <div key={s.id} onClick={() => toggleSizeId(s.id)} style={{ padding: '12px 14px', borderRadius: '10px', background: isChecked ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.02)', border: isChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.84rem', transition: 'all 0.15s ease' }}>
+                      <span style={{ color: isChecked ? '#fff' : 'var(--text-muted)', fontWeight: isChecked ? 700 : 400, whiteSpace: 'nowrap' }}>
+                        {isChecked ? '☑ ' : '☐ '} {s.name} ({s.dimensions})
+                      </span>
+                      <span style={{ color: isChecked ? '#00f2fe' : 'var(--text-muted)', fontWeight: 800 }}>
+                        Q{s.price.toFixed(0)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* 7. Tags */}
+          {/* 8. Tags */}
           <div style={{ marginBottom: '18px' }}>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              7. Etiquetas / Tags de Búsqueda (separadas por coma)
+              8. Etiquetas / Tags de Búsqueda (separadas por coma)
             </label>
             <input
               type="text"
@@ -546,7 +570,7 @@ export default function AdminCreatePosterTab({
             />
           </div>
 
-          {/* 8. Featured toggle */}
+          {/* 9. Featured toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255, 255, 255, 0.03)', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px' }}>
             <input
               type="checkbox"
