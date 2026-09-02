@@ -6,8 +6,8 @@
 
 import { Router } from 'express';
 import {
-  ADMIN_USER,
-  ADMIN_PASS,
+  getAdminUser,
+  getAdminPass,
   safeCompare,
   generateAuthToken,
   verifyAuthToken
@@ -22,8 +22,11 @@ router.post('/auth/login', (req, res) => {
     return res.status(400).json({ success: false, error: 'Usuario y contraseña requeridos.' });
   }
 
-  const userMatch = safeCompare(username.trim(), ADMIN_USER);
-  const passMatch = safeCompare(password.trim(), ADMIN_PASS);
+  const expectedUser = getAdminUser();
+  const expectedPass = getAdminPass();
+
+  const userMatch = safeCompare(username.trim(), expectedUser);
+  const passMatch = safeCompare(password.trim(), expectedPass);
 
   if (userMatch && passMatch) {
     const token = generateAuthToken();
@@ -31,7 +34,7 @@ router.post('/auth/login', (req, res) => {
     return res.status(200).json({
       success: true,
       token,
-      user: { username: ADMIN_USER, role: 'admin' }
+      user: { username: expectedUser, role: 'admin' }
     });
   }
 
@@ -43,7 +46,7 @@ router.post('/auth/verify', (req, res) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace(/^Bearer\s+/, '').trim();
   if (token && verifyAuthToken(token)) {
-    return res.status(200).json({ valid: true, user: ADMIN_USER });
+    return res.status(200).json({ valid: true, user: getAdminUser() });
   }
   return res.status(401).json({ valid: false });
 });
