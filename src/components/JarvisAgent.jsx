@@ -628,6 +628,11 @@ export default function JarvisAgent({
                     {/* Interactive Action Cards */}
                     {msg.actions && msg.actions.map((act, actIdx) => {
                       if (act.type === 'catalog_matches' && act.posters && act.posters.length > 0) {
+                        const uniquePosters = act.posters.filter((p, index, self) =>
+                          index === self.findIndex((t) => (t.id && t.id === p.id) || (t.image && t.image === p.image) || (t.imageUrl && t.imageUrl === p.imageUrl))
+                        );
+                        if (uniquePosters.length === 0) return null;
+
                         return (
                           <div key={actIdx} style={{
                             marginTop: '14px',
@@ -637,7 +642,7 @@ export default function JarvisAgent({
                             whiteSpace: 'normal',
                             width: '100%'
                           }}>
-                            {act.posters.map((p) => {
+                            {uniquePosters.map((p) => {
                               const posterTitle = p.title || p.titulo || 'Póster Deco Vintage';
                               const posterSubtitle = p.subtitle || p.subtitulo || 'Póster Rígido en Madera MDF 5.5mm';
                               const posterCategory = p.category || p.categoria || 'COLECCIÓN';

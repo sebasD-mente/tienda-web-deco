@@ -550,9 +550,24 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
           matched = cleanPosters.slice(0, 3);
         }
 
+        // Deduplicación estricta por ID e Imagen para evitar tarjetas repetidas
+        const seenIds = new Set();
+        const seenImages = new Set();
+        const uniqueMatched = [];
+
+        for (const p of matched) {
+          if (!p || !p.id) continue;
+          const imgKey = p.imageUrl || p.image || p.thumbUrl || p.thumb || p.id;
+          if (!seenIds.has(p.id) && !seenImages.has(imgKey)) {
+            seenIds.add(p.id);
+            seenImages.add(imgKey);
+            uniqueMatched.push(p);
+          }
+        }
+
         return {
           type:    'catalog_matches',
-          posters: matched.filter(Boolean),
+          posters: uniqueMatched.slice(0, 3),
           motivo:  args.motivo || 'Obras destacadas de nuestro catálogo oficial Deco Vintage'
         };
       }
