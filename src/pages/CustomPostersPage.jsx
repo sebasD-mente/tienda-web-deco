@@ -173,6 +173,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
     setIsSubmitting(true);
 
     let registeredOrderNumber = null;
+    let registeredOrder = null;
 
     try {
       // Intentar registrar la cotización en el servidor con sus imágenes
@@ -222,6 +223,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
         const data = await res.json();
         if (data && data.orderNumber) {
           registeredOrderNumber = data.orderNumber;
+          registeredOrder = data.order;
         }
       }
     } catch (err) {
@@ -230,7 +232,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
       setIsSubmitting(false);
     }
 
-    // Generación del mensaje para WhatsApp con el código #CP-XXXX si fue registrado
+    // Generación del mensaje para WhatsApp con el código #CP-XXXX y los enlaces directos a las fotos
     let message = '';
     const codeTag = registeredOrderNumber ? ` #${registeredOrderNumber}` : '';
 
@@ -248,15 +250,21 @@ export default function CustomPostersPage({ onNavigate, settings }) {
         materialName = 'Solo Impresión en Vinil Adhesivo HD (Sin Base - 50% Valor)';
       }
 
+      const registeredItem = registeredOrder?.items?.[0];
+      const directImageUrl = registeredItem?.imageUrl;
+      const imageDetailLine = directImageUrl
+        ? `🖼️ *Foto HD:* ${directImageUrl}`
+        : `🖼️ *Imagen:* ${p.imageDetails ? `Archivo listo (${p.imageDetails.name})` : 'Lista para enviar por WhatsApp'}`;
+
       message = `👋 *¡Hola Deco Vintage! Quiero cotizar un PÓSTER PERSONALIZADO${codeTag}:*\n\n` +
         `📐 *Dimensiones:* ${sizeName}\n` +
         `🪵 *Base / Material:* ${materialName}\n` +
-        `🖼️ *Imagen:* ${p.imageDetails ? `Cargada en sistema (${p.imageDetails.name})` : 'Lista para enviar por WhatsApp'}\n` +
+        `${imageDetailLine}\n` +
         `🔢 *Cantidad:* ${p.quantity} unidad(es)\n` +
         `💰 *Total Cotizado:* Q ${calc.totalPrice.toFixed(2)}\n` +
         (p.customNote ? `📝 *Detalle/Idea:* ${p.customNote}\n\n` : `\n`) +
-        (registeredOrderNumber 
-          ? `✅ *Mi cotización quedó registrada con el código #${registeredOrderNumber} en su sistema.* ¿Me pueden confirmar para iniciar?` 
+        (directImageUrl
+          ? `✅ *Foto en alta resolución subida y vinculada.* ¿Me pueden confirmar para iniciar la fabricación?`
           : `Adjunto mi imagen a continuación para validación de resolución y confirmación de pedido. ¿Me pueden asesorar?`);
     } else {
       message = `👋 *¡Hola Deco Vintage! Quiero cotizar ${postersList.length} PÓSTERS PERSONALIZADOS${codeTag}:*\n\n`;
@@ -271,17 +279,23 @@ export default function CustomPostersPage({ onNavigate, settings }) {
         if (p.baseMaterial === 'pvc') materialName = 'PVC Espumado 5 mm Impermeable';
         if (p.baseMaterial === 'vinyl_only') materialName = 'Solo Impresión en Vinil Adhesivo HD (50%)';
 
+        const registeredItem = registeredOrder?.items?.[idx];
+        const directImageUrl = registeredItem?.imageUrl;
+        const imageDetailLine = directImageUrl
+          ? `• *Foto HD:* ${directImageUrl}`
+          : `• *Imagen:* ${p.imageDetails ? p.imageDetails.name : 'Lista para enviar por WhatsApp'}`;
+
         message += `🖼️ *PÓSTER #${idx + 1}:*\n` +
           `• *Dimensiones:* ${sizeName}\n` +
           `• *Base / Material:* ${materialName}\n` +
-          `• *Imagen:* ${p.imageDetails ? p.imageDetails.name : 'Lista para enviar por WhatsApp'}\n` +
+          `${imageDetailLine}\n` +
           `• *Cantidad:* ${p.quantity} ud(s) — Q ${calc.totalPrice.toFixed(2)}\n` +
           (p.customNote ? `• *Nota:* ${p.customNote}\n\n` : `\n`);
       });
 
       message += `💰 *TOTAL GENERAL COTIZADO (${totalUnits} unidades en ${postersList.length} diseños):* Q ${totalOrderPrice.toFixed(2)}\n\n` +
         (registeredOrderNumber 
-          ? `✅ *Cotización registrada con código #${registeredOrderNumber} en el sistema.* ¿Me pueden confirmar para iniciar?` 
+          ? `✅ *Cotización registrada con fotos en alta resolución vinculadas.* ¿Me pueden confirmar para iniciar?` 
           : `Adjunto mis imágenes a continuación para validación de resolución y confirmación de pedido. ¿Me pueden asesorar?`);
     }
 
