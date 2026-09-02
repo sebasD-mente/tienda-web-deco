@@ -816,7 +816,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
 
         let timerId = null;
         const callTimeout = new Promise((_, reject) => {
-          timerId = setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 25s timeout`)), 25000);
+          timerId = setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 10s timeout`)), 10000);
         });
 
         let resAI = null;
@@ -836,7 +836,22 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
           if (timerId) clearTimeout(timerId);
         }
 
-        let   replyText      = resAI.text || '';
+        // Extracción limpia de texto evitando advertencias de SDK por functionCalls
+        let replyText = '';
+        try {
+          const candidate = resAI.candidates?.[0];
+          if (candidate?.content?.parts) {
+            replyText = candidate.content.parts
+              .filter(p => typeof p.text === 'string')
+              .map(p => p.text)
+              .join('\n')
+              .trim();
+          }
+        } catch (_) {}
+        if (!replyText && resAI.text) {
+          replyText = resAI.text;
+        }
+
         const executedActions = [];
         const functionCalls   = resAI.functionCalls;
 
