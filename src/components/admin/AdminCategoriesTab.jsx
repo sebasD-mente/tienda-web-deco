@@ -27,14 +27,17 @@ export default function AdminCategoriesTab({
     try {
       await onCreateCategory({ id: catId, name: trimmed.toUpperCase() });
       setNewCatName('');
-      onShowToast(`¡Categoría "${trimmed.toUpperCase()}" agregada!`, 'success');
     } catch (err) {
-      onShowToast('Error al crear categoría: ' + err.message, 'error');
+      // Error is handled by parent handler
     }
   };
 
   const handleDelete = async (catId, catName) => {
-    const count = posters.filter(p => p.category === catId).length;
+    const targetCat = categories.find(c => c.id === catId);
+    const count = typeof targetCat?.count === 'number'
+      ? targetCat.count
+      : posters.filter(p => (p.categoria || p.category) === catId).length;
+
     if (count > 0) {
       onShowToast(`No se puede eliminar "${catName}" porque contiene ${count} obra(s).`, 'error');
       return;
@@ -45,9 +48,8 @@ export default function AdminCategoriesTab({
 
     try {
       await onDeleteCategory(catId);
-      onShowToast(`Categoría "${catName}" eliminada.`, 'info');
     } catch (err) {
-      onShowToast('Error al eliminar categoría: ' + err.message, 'error');
+      // Error is handled by parent handler
     }
   };
 
@@ -96,7 +98,9 @@ export default function AdminCategoriesTab({
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {categories.filter(c => c.id !== 'TODOS').map(cat => {
-            const count = posters.filter(p => p.category === cat.id).length;
+            const count = typeof cat.count === 'number'
+              ? cat.count
+              : posters.filter(p => (p.categoria || p.category) === cat.id).length;
             return (
               <div
                 key={cat.id}

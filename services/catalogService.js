@@ -590,19 +590,26 @@ export async function upsertCategory({ id, name, icon }) {
 export async function deleteCategory(categoryId) {
   const cleanId = categoryId.toUpperCase().trim();
 
-  // Validar que no tenga obras activas
-  const count = await prisma.poster.count({
-    where: { categoria: cleanId, isPublished: true, estado: { not: 'DESCONTINUADO' } }
+  // Validar que no tenga obras activas sin violar el enum estático de Prisma
+  const counts = await prisma.poster.groupBy({
+    by: ['categoria'],
+    _count: { id: true },
+    where: { isPublished: true, estado: { not: 'DESCONTINUADO' } }
   });
 
-  if (count > 0) {
-    throw new Error(`No se puede eliminar la categoría "${cleanId}" porque contiene ${count} obra(s).`);
+  const activeCount = counts.find(c => c.categoria === cleanId)?._count?.id || 0;
+  if (activeCount > 0) {
+    throw new Error(`No se puede eliminar la categoría "${cleanId}" porque contiene ${activeCount} obra(s).`);
   }
 
   const current = await getAllCategories();
   const updatedCategories = current
     .filter(c => c.id !== 'TODOS' && c.id !== cleanId)
-    .map(c => ({ id: c.id, name: c.name, icon: c.icon || '🏷️' }));
+    .map(c => ({
+      id: c.id,
+      name: c.name,
+      icon: c.icon || CATEGORY_ICONS[c.id] || '🏷️'
+    }));
 
   await prisma.storeSettings.upsert({
     where: { id: 'default' },
