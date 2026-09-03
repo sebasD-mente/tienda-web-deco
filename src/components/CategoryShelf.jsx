@@ -23,21 +23,23 @@ export default function CategoryShelf({
 }) {
   const scrollRefs = useRef({});
 
-  // 1. Pick categories that actually have posters
+  // 1. Pick max 5 categories randomly that actually have posters
   const spotlightCategories = useMemo(() => {
-    return categories.filter(
-      c => c.id !== 'TODAS' && c.id !== 'TODOS' && posters.some(p => p.category === c.id)
+    const validCategories = categories.filter(
+      c => c.id !== 'TODAS' && c.id !== 'TODOS' && posters.some(p => (p.category === c.id || p.categoria === c.id))
     );
+    return shuffleArray(validCategories).slice(0, 5);
   }, [categories, posters]);
 
-  // 2. Map all posters for each category deterministically (no random hiding or slicing)
+  // 2. Map all posters for each category in dynamic shuffled order
   const shuffledPostersByCategory = useMemo(() => {
     const map = {};
-    categories.forEach(cat => {
-      map[cat.id] = posters.filter(p => p.category === cat.id);
+    spotlightCategories.forEach(cat => {
+      const catPosters = posters.filter(p => (p.category === cat.id || p.categoria === cat.id));
+      map[cat.id] = shuffleArray(catPosters);
     });
     return map;
-  }, [posters, categories]);
+  }, [posters, spotlightCategories]);
 
   const handleScroll = (catId, direction) => {
     const container = scrollRefs.current[catId];
