@@ -583,11 +583,12 @@ router.get('/catalog/embeddings-status', async (req, res) => {
 });
 
 // ── POST /api/catalog/sync-embeddings (Protected Admin) ──────────────────────
-// Triggers automatic batch vectorization of all pending posters
+// Triggers automatic batch vectorization of all pending posters (or forced re-indexing)
 router.post('/catalog/sync-embeddings', requireAuth, async (req, res) => {
   try {
     const { syncPendingEmbeddings } = await import('../services/embeddingService.js');
-    const result = await syncPendingEmbeddings();
+    const force = req.body?.force === true;
+    const result = await syncPendingEmbeddings(undefined, 16, force);
     return res.status(200).json(result);
   } catch (err) {
     console.error('[API Error] POST /api/catalog/sync-embeddings:', err);

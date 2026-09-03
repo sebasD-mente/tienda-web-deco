@@ -1,10 +1,10 @@
 /**
  * services/embeddingService.js
- * High-performance vector embeddings & Hybrid RAG engine for Deco Vintage Guate.
+ * High-performance vector embeddings & Intelligent Hybrid RAG engine for Deco Vintage Guate.
  * 
  * Powered by Google Gemini Embedding API (768-dimensional MRL vectors).
- * Computes semantic vector similarity + lexical keyword matching for instant,
- * accurate inventory recommendation in J.A.R.V.I.S.
+ * Computes semantic vector similarity + entity alias expansion + lexical keyword matching
+ * for instant, human-grade, accurate inventory recommendation in J.A.R.V.I.S.
  */
 
 import { prisma, formatPosterForClient } from './catalogService.js';
@@ -12,14 +12,140 @@ import { getJarvisApiKey } from './jarvisService.js';
 
 export const EMBEDDING_MODEL = 'gemini-embedding-001';
 export const EMBEDDING_DIMENSIONS = 768;
-export const MIN_SIMILARITY_THRESHOLD = 0.48;
+export const MIN_SIMILARITY_THRESHOLD = 0.45;
 
 let isSyncingEmbeddings = false;
 
+// ── DICCIONARIO DE ENTIDADES, ALIAS Y NICKNAMES CULTURALES ──────────────────
+export const ENTITY_ALIASES = [
+  {
+    canonical: 'Cristiano Ronaldo',
+    keywords: ['bicho', 'el bicho', 'cr7', 'cristiano ronaldo', 'cristiano', 'comandante', 'el comandante', 'siuuu', 'siu', 'mister champions', 'ronaldo', '7'],
+    synonyms: 'Cristiano Ronaldo El Bicho CR7 El Comandante Siuuu Real Madrid Manchester United Portugal Futbolista Leyenda Balon de Oro Champions'
+  },
+  {
+    canonical: 'Messi',
+    keywords: ['messi', 'lionel messi', 'la pulga', 'pulga', 'd10s', 'goat', 'lio', 'leo messi', 'campeon del mundo', '10'],
+    synonyms: 'Lionel Messi La Pulga D10S GOAT Leo Argentina Barcelona Inter Miami Mundial Campeon del Mundo Balon de Oro Futbolista'
+  },
+  {
+    canonical: 'Spider-Man',
+    keywords: ['spiderman', 'spider-man', 'hombre arana', 'el hombre arana', 'spidey', 'peter parker', 'miles morales', 'spiderverse', 'venom'],
+    synonyms: 'Spider-Man Spiderman El Hombre Arana Spidey Peter Parker Miles Morales Marvel Superheroes Vengadores'
+  },
+  {
+    canonical: 'Batman',
+    keywords: ['batman', 'caballero de la noche', 'el caballero de la noche', 'hombre murcielago', 'bruce wayne', 'gotham', 'joker', 'el guason'],
+    synonyms: 'Batman El Caballero de la Noche El Hombre Murcielago Bruce Wayne Gotham DC Comics Superheroes'
+  },
+  {
+    canonical: 'Super Mario Bros',
+    keywords: ['mario', 'mario bros', 'super mario', 'luigi', 'peach', 'princesa peach', 'bowser', 'toad', 'nintendo', 'champinon', 'fontanero'],
+    synonyms: 'Super Mario Bros Mario Luigi Princesa Peach Bowser Toad Reino Champinon Nintendo Videojuegos'
+  },
+  {
+    canonical: 'Sonic',
+    keywords: ['sonic', 'sonic the hedgehog', 'erizo azul', 'tails', 'knuckles', 'shadow', 'sega', 'velocidad supersonica'],
+    synonyms: 'Sonic The Hedgehog El Erizo Azul Tails Knuckles Shadow Sega Videojuegos'
+  },
+  {
+    canonical: 'Rayo McQueen',
+    keywords: ['rayo mcqueen', 'mcqueen', 'rayo', 'el rayo', 'copa piston', 'cars', 'radiador springs', 'mate', '95', 'cuchau', 'cuchao'],
+    synonyms: 'Rayo McQueen Lightning McQueen Cars Copa Piston Radiador Springs Mate Disney Pixar Carreras 95'
+  },
+  {
+    canonical: 'Elsa y Anna',
+    keywords: ['frozen', 'elsa', 'anna', 'elsa y anna', 'olaf', 'arendelle', 'let it go', 'libre soy'],
+    synonyms: 'Elsa y Anna Frozen Princesa Reina del Hielo Olaf Arendelle Disney Princesas'
+  },
+  {
+    canonical: 'Lilo & Stitch',
+    keywords: ['stitch', 'lilo', 'lilo y stitch', 'lilo & stitch', 'experimento 626', 'ohana'],
+    synonyms: 'Lilo & Stitch Stitch Experimento 626 Ohana Hawai Disney'
+  },
+  {
+    canonical: 'Dragon Ball',
+    keywords: ['dragon ball', 'goku', 'vegeta', 'gohan', 'piccolo', 'trunks', 'saiyajin', 'super saiyan', 'kakarotto', 'kamehameha', 'ultra instinto', 'saiyan'],
+    synonyms: 'Dragon Ball Z Super Goku Vegeta Saiyajin Ultra Instinto Kamehameha Anime Akira Toriyama'
+  },
+  {
+    canonical: 'Kimetsu no Yaiba',
+    keywords: ['kimetsu', 'demon slayer', 'tanjiro', 'nezuko', 'zenitsu', 'inosuke', 'rengoku', 'pilares', 'cazador de demonios'],
+    synonyms: 'Demon Slayer Kimetsu no Yaiba Tanjiro Kamado Nezuko Rengoku Pilares Anime Manga'
+  },
+  {
+    canonical: 'Attack on Titan',
+    keywords: ['attack on titan', 'shingeki', 'shingeki no kyojin', 'eren', 'levi', 'mikasa', 'titanes', 'titan', 'retumbar', 'legion de reconocimiento'],
+    synonyms: 'Attack on Titan Shingeki no Kyojin Eren Jaeger Levi Ackerman Titanes Anime'
+  },
+  {
+    canonical: 'One Piece',
+    keywords: ['one piece', 'luffy', 'zoro', 'sanji', 'nami', 'sombrero de paja', 'mugiwara', 'gear 5', 'joy boy'],
+    synonyms: 'One Piece Monkey D Luffy Roronoa Zoro Sombrero de Paja Gear 5 Piratas Anime Manga'
+  },
+  {
+    canonical: 'Formula 1',
+    keywords: ['f1', 'formula 1', 'senna', 'ayrton senna', 'hamilton', 'verstappen', 'checo', 'perez', 'ferrari', 'red bull', 'mclaren', 'monaco'],
+    synonyms: 'Formula 1 F1 Automovilismo Gran Premio Ayrton Senna Ferrari Red Bull Carreras'
+  },
+  {
+    canonical: 'Autos',
+    keywords: ['auto', 'autos', 'carro', 'carros', 'porsche', 'gtr', 'supra', 'nissan', 'bmw', 'mercedes', 'mustang', 'jdm'],
+    synonyms: 'Autos Coches Vehiculos Deportivos Porsche 911 Nissan GTR Supra JDM Motor'
+  },
+  {
+    canonical: 'El Padrino',
+    keywords: ['el padrino', 'godfather', 'vito corleone', 'corleone', 'marlon brando', 'michael corleone'],
+    synonyms: 'El Padrino The Godfather Vito Corleone Mafia Cine Clasico Peliculas'
+  },
+  {
+    canonical: 'Breaking Bad',
+    keywords: ['breaking bad', 'walter white', 'heisenberg', 'jesse pinkman', 'pollos hermanos', 'saul goodman'],
+    synonyms: 'Breaking Bad Walter White Heisenberg Jesse Pinkman Metanfetamina Serie'
+  },
+  {
+    canonical: 'Peaky Blinders',
+    keywords: ['peaky blinders', 'peaky', 'tommy shelby', 'thomas shelby', 'shelby'],
+    synonyms: 'Peaky Blinders Thomas Tommy Shelby Gangster Serie Birmingham'
+  },
+  {
+    canonical: 'Star Wars',
+    keywords: ['star wars', 'guerra de las galaxias', 'darth vader', 'vader', 'yoda', 'luke skywalker', 'mandalorian', 'grogu'],
+    synonyms: 'Star Wars La Guerra de las Galaxias Darth Vader Yoda Jedi Sith Sci-Fi Cine'
+  }
+];
+
+// ── STOPWORDS EN ESPAÑOL (Palabras funcionales a ignorar en búsqueda léxica) ─
+export const SPANISH_STOPWORDS = new Set([
+  'de', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas', 'al', 'del',
+  'y', 'o', 'u', 'e', 'en', 'por', 'para', 'con', 'sin', 'sobre', 'tras',
+  'que', 'se', 'su', 'sus', 'mi', 'mis', 'tu', 'tus', 'me', 'te', 'nos',
+  'hay', 'tienen', 'tiene', 'tienes', 'tendra', 'tendran', 'habra',
+  'mostrame', 'mostrar', 'muestrame', 'ensenar', 'ensename', 'ver', 'quiero',
+  'busca', 'buscar', 'cuadros', 'cuadro', 'posters', 'poster', 'obra', 'obras',
+  'fotos', 'foto', 'disenos', 'diseno', 'mas', 'otro', 'otros', 'otra', 'otras',
+  'todos', 'todas', 'todo', 'toda', 'cuales', 'cual', 'quien', 'quienes',
+  'como', 'donde', 'cuando', 'hola', 'buenas', 'saludos', 'porfa', 'favor',
+  'dl', 'd'
+]);
+
 /**
- * Builds the canonical semantic text representation of a poster for vectorization.
+ * Normaliza una cadena quitando tildes, diacríticos y caracteres especiales.
+ */
+export function normalizeText(str) {
+  return String(str || '')
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Builds the enriched semantic text representation of a poster with entity aliases.
  * @param {object} p - Poster object
- * @returns {string} Clean semantic text string
+ * @returns {string} Rich semantic text string
  */
 export function buildSemanticPosterText(p) {
   if (!p) return '';
@@ -30,7 +156,18 @@ export function buildSemanticPosterText(p) {
   const franchiseStr = franchiseName ? `Franquicia: ${franchiseName}.` : '';
   const tags = Array.isArray(p.tags) && p.tags.length > 0 ? `Etiquetas: ${p.tags.join(', ')}.` : '';
   const desc = (p.descripcion || p.description) ? `Descripción: ${p.descripcion || p.description}.` : '';
-  return `Obra: ${title}. Categoría: ${category}. ${subtitle} ${franchiseStr} ${tags} ${desc}`
+
+  // Buscar si el título o subtítulo coincide con alguna entidad para enriquecer su vector
+  const normTitle = normalizeText(title);
+  const normSub = normalizeText(p.subtitulo || p.subtitle);
+  const matchedEntity = ENTITY_ALIASES.find(ent => 
+    normTitle.includes(normalizeText(ent.canonical)) ||
+    ent.keywords.some(kw => normTitle.includes(normalizeText(kw)) || normSub.includes(normalizeText(kw)))
+  );
+
+  const entityBonus = matchedEntity ? `Alias y Términos Clave de Búsqueda: ${matchedEntity.synonyms}.` : '';
+
+  return `Obra: ${title}. Categoría: ${category}. ${subtitle} ${franchiseStr} ${tags} ${entityBonus} ${desc}`
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 2048);
@@ -38,7 +175,7 @@ export function buildSemanticPosterText(p) {
 
 /**
  * Generates a 768-dimensional vector embedding for a given text prompt.
- * @param {string} text - Text to vectorize (e.g. title, tags, description, user query).
+ * @param {string} text - Text to vectorize.
  * @param {string} [customApiKey] - Optional API key override.
  * @returns {Promise<number[]>} Array of 768 floating point numbers.
  */
@@ -119,42 +256,111 @@ export function computeCosineSimilarity(vecA, vecB) {
 }
 
 /**
+ * Expands a user query with known entity aliases and conversation context.
+ * @param {string} userQuery
+ * @param {any[]} [conversationHistory=[]]
+ * @returns {{ expandedQuery: string, matchedEntities: object[], activeSubject: string|null }}
+ */
+export function expandQueryWithContext(userQuery, conversationHistory = []) {
+  const qNorm = normalizeText(userQuery);
+  const matchedEntities = [];
+
+  // 1. Detección directa en la consulta actual
+  for (const entity of ENTITY_ALIASES) {
+    const found = entity.keywords.some(kw => {
+      const kwNorm = normalizeText(kw);
+      return qNorm === kwNorm || qNorm.includes(` ${kwNorm} `) || qNorm.startsWith(`${kwNorm} `) || qNorm.endsWith(` ${kwNorm}`) || qNorm.includes(kwNorm);
+    });
+    if (found) {
+      matchedEntities.push(entity);
+    }
+  }
+
+  // 2. Detección en el historial reciente si la consulta es de seguimiento (ej: "y cuales otros hay?", "tienes mas?", "y de el?")
+  let activeSubject = null;
+  const isFollowUp = qNorm.includes('otro') || qNorm.includes('mas') || qNorm.includes('tambien') || qNorm.includes('ademas') || qNorm.length < 15;
+
+  if (matchedEntities.length === 0 && isFollowUp && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+    const recentMessages = conversationHistory.slice(-4);
+    for (const msg of recentMessages.reverse()) {
+      const msgText = normalizeText(msg.text || msg.content || '');
+      for (const entity of ENTITY_ALIASES) {
+        if (entity.keywords.some(kw => msgText.includes(normalizeText(kw)))) {
+          matchedEntities.push(entity);
+          activeSubject = entity.canonical;
+          break;
+        }
+      }
+      if (matchedEntities.length > 0) break;
+    }
+  }
+
+  // 3. Construir query expandida para la vectorización
+  let expandedQuery = userQuery;
+  if (matchedEntities.length > 0) {
+    const entityTerms = matchedEntities.map(e => `${e.canonical} ${e.synonyms}`).join(' ');
+    expandedQuery = `${userQuery} ${entityTerms}`.trim();
+  }
+
+  return {
+    expandedQuery,
+    matchedEntities,
+    activeSubject: activeSubject || (matchedEntities[0]?.canonical || null)
+  };
+}
+
+/**
  * Computes lexical / keyword relevance score between a query and a poster.
- * Handles tokenization, diacritics normalization and property weighting.
+ * Uses strict stopword filtering, entity alias matching, and property weighting.
  * @param {string} query
  * @param {object} p
+ * @param {object[]} [matchedEntities=[]]
  * @returns {number} Value between 0.0 and 1.0
  */
-export function computeLexicalSimilarity(query, p) {
+export function computeLexicalSimilarity(query, p, matchedEntities = []) {
   if (!query || !p) return 0;
-  const normalize = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-  const qClean = normalize(query);
-  const qTokens = qClean.split(/[\s,.-]+/).filter(t => t.length >= 2);
-  if (qTokens.length === 0) return 0;
+  const qClean = normalizeText(query);
+  // Filtrar estrictamente stopwords en español
+  const rawTokens = qClean.split(/[\s,.-]+/).filter(t => t.length >= 2);
+  const qTokens = rawTokens.filter(t => !SPANISH_STOPWORDS.has(t));
 
-  const title = normalize(p.titulo || p.title);
-  const sub = normalize(p.subtitulo || p.subtitle);
-  const cat = normalize(p.categoria || p.category);
-  const franchise = normalize(p.franchise?.name || p.franchise);
-  const desc = normalize(p.descripcion || p.description);
-  const tags = (Array.isArray(p.tags) ? p.tags : []).map(normalize);
+  const title = normalizeText(p.titulo || p.title);
+  const sub = normalizeText(p.subtitulo || p.subtitle);
+  const cat = normalizeText(p.categoria || p.category);
+  const franchise = normalizeText(p.franchise?.name || p.franchise);
+  const desc = normalizeText(p.descripcion || p.description);
+  const tags = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
+
+  // 1. Verificación directa de entidades reconocidas (ej: "el bicho" -> Cristiano Ronaldo)
+  for (const ent of matchedEntities) {
+    const canonicalNorm = normalizeText(ent.canonical);
+    if (title.includes(canonicalNorm) || franchise.includes(canonicalNorm)) {
+      return 1.0; // Coincidencia perfecta de entidad
+    }
+  }
+
+  // Si no quedaron tokens tras el filtrado de stopwords, verificar frase completa o fallback
+  if (qTokens.length === 0) {
+    if (rawTokens.length > 0 && title.includes(rawTokens.join(' '))) return 0.50;
+    return 0;
+  }
 
   let rawScore = 0;
   let matchCount = 0;
 
   for (const token of qTokens) {
     if (title.includes(token)) {
-      rawScore += 0.55;
+      rawScore += 0.60;
       matchCount++;
     } else if (franchise.includes(token)) {
-      rawScore += 0.45;
+      rawScore += 0.50;
       matchCount++;
     } else if (tags.some(t => t.includes(token))) {
-      rawScore += 0.40;
+      rawScore += 0.45;
       matchCount++;
     } else if (sub.includes(token)) {
-      rawScore += 0.30;
+      rawScore += 0.35;
       matchCount++;
     } else if (cat.includes(token)) {
       rawScore += 0.25;
@@ -167,9 +373,11 @@ export function computeLexicalSimilarity(query, p) {
 
   if (matchCount === 0) return 0;
 
-  // Exact whole phrase match boost in title or tags
-  if (title.includes(qClean) || tags.some(t => t.includes(qClean))) {
-    rawScore += 0.30;
+  // Exact whole keyword match boost in title or tags
+  for (const token of qTokens) {
+    if (title === token || tags.includes(token)) {
+      rawScore += 0.40;
+    }
   }
 
   const coverage = matchCount / qTokens.length;
@@ -177,25 +385,29 @@ export function computeLexicalSimilarity(query, p) {
 }
 
 /**
- * Searches the catalog in PostgreSQL using Hybrid Search (Semantic Vectors + Lexical Keywords).
+ * Searches the catalog in PostgreSQL using Hybrid Search (Semantic Vectors + Entity Aliases + Lexical Keywords).
  * Retrieves the Top-N most relevant posters for a user's prompt.
  * 
  * @param {string} userQuery - The user question or search phrase.
- * @param {number} [limit=4] - Max items to return (default Top-4).
+ * @param {number} [limit=8] - Max items to return (default Top-8).
  * @param {string} [customApiKey] - Optional API key.
  * @param {number} [minThreshold=MIN_SIMILARITY_THRESHOLD] - Minimum similarity threshold.
+ * @param {any[]} [conversationHistory=[]] - Recent conversation turns.
  * @returns {Promise<Array<{ poster: object, score: number }>>}
  */
-export async function findSimilarPosters(userQuery, limit = 4, customApiKey, minThreshold = MIN_SIMILARITY_THRESHOLD) {
+export async function findSimilarPosters(userQuery, limit = 8, customApiKey, minThreshold = MIN_SIMILARITY_THRESHOLD, conversationHistory = []) {
   try {
+    // 1. Expansión inteligente de la consulta con entidades y contexto conversacional
+    const { expandedQuery, matchedEntities } = expandQueryWithContext(userQuery, conversationHistory);
+
     let queryVector = null;
     try {
-      queryVector = await generateEmbedding(userQuery, customApiKey);
+      queryVector = await generateEmbedding(expandedQuery, customApiKey);
     } catch (embErr) {
       console.warn('[Embedding Search] Query embedding failed, falling back to lexical search:', embErr.message);
     }
 
-    // Fetch all published posters with their relations
+    // 2. Obtener todas las obras publicadas de PostgreSQL
     const rawPosters = await prisma.poster.findMany({
       where: {
         isPublished: true,
@@ -211,34 +423,34 @@ export async function findSimilarPosters(userQuery, limit = 4, customApiKey, min
       return [];
     }
 
-    // Check if any posters lack embeddings, trigger non-blocking background sync if needed
+    // Auto-sync no bloqueante si hay obras sin vector
     const pendingCount = rawPosters.filter(p => !Array.isArray(p.embedding) || p.embedding.length !== EMBEDDING_DIMENSIONS).length;
     if (pendingCount > 0 && !isSyncingEmbeddings) {
-      // Fire-and-forget background auto-index
       syncPendingEmbeddings(customApiKey).catch(err => {
-        console.warn('[Background Embedding Sync] Non-blocking warning:', err.message);
+        console.warn('[Background Embedding Sync] Warning:', err.message);
       });
     }
 
-    // Score each poster using Hybrid Strategy (Semantic Cosine + Lexical Keywords)
+    // 3. Puntuar cada obra con la estrategia híbrida mejorada
     const scoredPosters = rawPosters.map((p) => {
       let vectorScore = 0;
       if (queryVector && Array.isArray(p.embedding) && p.embedding.length === EMBEDDING_DIMENSIONS) {
         vectorScore = computeCosineSimilarity(queryVector, p.embedding);
       }
 
-      const lexicalScore = computeLexicalSimilarity(userQuery, p);
+      const lexicalScore = computeLexicalSimilarity(userQuery, p, matchedEntities);
 
       let finalScore = 0;
       if (vectorScore > 0) {
-        // Hybrid blend: 70% semantic vector, 30% lexical keyword
+        // Ponderación: 70% vector + 30% léxico
         finalScore = (vectorScore * 0.70) + (lexicalScore * 0.30);
-        // Boost if direct exact lexical match exists
-        if (lexicalScore >= 0.40) {
-          finalScore = Math.max(finalScore, vectorScore * 0.50 + 0.50);
+        // Si hay coincidencia de entidad o coincidencia fuerte de título, boost directo
+        if (lexicalScore >= 0.80) {
+          finalScore = Math.max(finalScore, 0.92);
+        } else if (lexicalScore >= 0.40) {
+          finalScore = Math.max(finalScore, vectorScore * 0.40 + 0.60);
         }
       } else {
-        // If poster doesn't have vector yet or query vector failed, use lexical score
         finalScore = lexicalScore;
       }
 
@@ -250,10 +462,10 @@ export async function findSimilarPosters(userQuery, limit = 4, customApiKey, min
       };
     });
 
-    // Filter by threshold (either hybrid score meets threshold OR strong lexical match)
+    // 4. Filtrar por umbral de relevancia
     const relevantPosters = scoredPosters.filter(p => p.score >= minThreshold || p.lexicalScore >= 0.35);
 
-    // Sort descending by score
+    // 5. Ordenar descendente por score
     relevantPosters.sort((a, b) => b.score - a.score);
 
     return relevantPosters.slice(0, limit);
@@ -269,9 +481,10 @@ export async function findSimilarPosters(userQuery, limit = 4, customApiKey, min
  * 
  * @param {string} [customApiKey]
  * @param {number} [batchSize=16]
+ * @param {boolean} [forceReindex=false]
  * @returns {Promise<{ total: number, synced: number, alreadySynced: number, durationSec: string }>}
  */
-export async function syncPendingEmbeddings(customApiKey, batchSize = 16) {
+export async function syncPendingEmbeddings(customApiKey, batchSize = 16, forceReindex = false) {
   if (isSyncingEmbeddings) {
     return { alreadyRunning: true };
   }
@@ -290,9 +503,10 @@ export async function syncPendingEmbeddings(customApiKey, batchSize = 16) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const pendingPosters = allPosters.filter(
-      p => !Array.isArray(p.embedding) || p.embedding.length !== EMBEDDING_DIMENSIONS
-    );
+    const pendingPosters = forceReindex
+      ? allPosters
+      : allPosters.filter(p => !Array.isArray(p.embedding) || p.embedding.length !== EMBEDDING_DIMENSIONS);
+      
     const alreadySynced = allPosters.length - pendingPosters.length;
 
     if (pendingPosters.length === 0) {
@@ -305,7 +519,7 @@ export async function syncPendingEmbeddings(customApiKey, batchSize = 16) {
       };
     }
 
-    console.log(`[RAG Auto-Sync] Iniciando vectorización de ${pendingPosters.length} obras pendientes...`);
+    console.log(`[RAG Auto-Sync] Iniciando vectorización enriquecida de ${pendingPosters.length} obras...`);
 
     let successCount = 0;
 
@@ -373,9 +587,9 @@ export async function syncPendingEmbeddings(customApiKey, batchSize = 16) {
     return {
       total: allPosters.length,
       synced: successCount,
-      alreadySynced,
+      alreadySynced: allPosters.length - successCount,
       durationSec,
-      message: `Se vectorizaron exitosamente ${successCount} obras.`
+      message: `Se vectorizaron exitosamente ${successCount} obras con alias semánticos enriquecidos.`
     };
   } finally {
     isSyncingEmbeddings = false;

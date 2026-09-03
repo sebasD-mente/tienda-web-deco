@@ -21,7 +21,7 @@ import {
   getFullCatalog,
   prisma
 } from './catalogService.js';
-import { findSimilarPosters } from './embeddingService.js';
+import { findSimilarPosters, ENTITY_ALIASES, normalizeText } from './embeddingService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -423,10 +423,13 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
    - En su lugar, responde de forma súper amable, transparente y entusiasta diciendo que actualmente no cuentan con diseños de esa temática en el catálogo oficial listo para entrega, pero destaca con fuerza que contamos con el servicio de **CUADROS PERSONALIZADOS**.
    - Explícale que podemos fabricar cualquier cuadro con la foto de su propio vehículo, personaje, anime o imagen que el cliente desee en madera MDF 5.5mm rígida con impresión HP Látex y cinta industrial Tesa incluida en cualquier medida (desde Mini Q25 hasta Mediano Q65 o Gigante Q210), e invítalo a enviar su diseño o cotizarlo.
 3. SI EL CLIENTE PIDE VER O RECOMENDAR OBRAS QUE SÍ EXISTEN EN EL CATÁLOGO:
-   - Invoca 'explorar_catalogo' pasando los IDs o término de las obras que sí coinciden, y llena el parámetro 'mensaje_conversacional' con una introducción conversacional fresca y adaptada a lo que pidió.
-4. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración).
-5. Si el cliente pide cotizar o fabricar medidas personalizadas especiales (ej: 50x70cm, 80x120cm, foto propia), invoca 'capturar_orden_personalizada'.
-6. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
+   - Invoca 'explorar_catalogo' pasando los IDs exactos de las obras disponibles en 'OBRAS DISPONIBLES COINCIDENTES' (o término de búsqueda), y llena el parámetro 'mensaje_conversacional' con una introducción conversacional fresca y adaptada a lo que pidió.
+   - Si el catálogo tiene varias opciones del mismo personaje o tema (por ejemplo, múltiples cuadros de Cristiano Ronaldo / El Bicho, Lionel Messi, Mario Bros, Dragon Ball, etc.), ¡preséntalas y muéstralas todas en las tarjetas!
+4. PREGUNTAS DE SEGUIMIENTO Y CONTINUIDAD ("¿y cuáles otros hay?", "¿tienes más?", "¿qué más hay de él?", "muéstrame otros"):
+   - Si el cliente pregunta por otros diseños o más opciones del mismo personaje/tema sobre el que estaban hablando, NUNCA digas que solo hay uno si en las obras coincidentes o catálogo existen más diseños. Revisa las obras disponibles e invoca 'explorar_catalogo' mostrando los otros diseños.
+5. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración).
+6. Si el cliente pide cotizar o fabricar medidas personalizadas especiales (ej: 50x70cm, 80x120cm, foto propia), invoca 'capturar_orden_personalizada'.
+7. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
 
 === HILO Y CONTINUIDAD DE LA CONVERSACIÓN ===
 - Mantén la coherencia con lo que el usuario te ha dicho previamente en sus mensajes anteriores.
@@ -534,29 +537,42 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
 
         // 2. Filtrado por término o categoría si no hubo match por IDs
         if (matched.length === 0 && (args.termino || args.categoria)) {
-          const term = (args.termino || '').toLowerCase().trim();
+          const rawTerm = (args.termino || '').trim();
+          const normTerm = normalizeText(rawTerm);
           const cat = (args.categoria || '').toUpperCase().trim();
+
+          // Buscar entidad canónica por si el término fue un alias (ej: "el bicho" -> Cristiano Ronaldo)
+          const matchedEntity = ENTITY_ALIASES.find(ent =>
+            ent.keywords.some(kw => normTerm.includes(normalizeText(kw))) ||
+            normalizeText(ent.canonical).includes(normTerm)
+          );
+          const canonicalNorm = matchedEntity ? normalizeText(matchedEntity.canonical) : null;
+
           matched = cleanPosters.filter(p => {
             if (!p) return false;
             const pCat = (p.category || p.categoria || '').toUpperCase();
             const matchCat = cat && pCat.includes(cat);
-            const pTitle = (p.title || p.titulo || '').toLowerCase();
-            const pSub = (p.subtitle || p.subtitulo || '').toLowerCase();
-            const pDesc = (p.description || p.descripcion || '').toLowerCase();
-            const pTags = Array.isArray(p.tags) ? p.tags : [];
-            const matchTerm = term && (
-              pTitle.includes(term) ||
-              pSub.includes(term) ||
-              pDesc.includes(term) ||
-              pTags.some(t => String(t).toLowerCase().includes(term))
+            const pTitle = normalizeText(p.title || p.titulo);
+            const pSub = normalizeText(p.subtitle || p.subtitulo);
+            const pDesc = normalizeText(p.description || p.descripcion);
+            const pTags = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
+
+            const matchEntity = canonicalNorm && (pTitle.includes(canonicalNorm) || pTags.includes(canonicalNorm));
+
+            const matchTerm = normTerm && (
+              pTitle.includes(normTerm) ||
+              pSub.includes(normTerm) ||
+              pDesc.includes(normTerm) ||
+              pTags.some(t => t.includes(normTerm))
             );
-            return matchCat || matchTerm;
-          }).slice(0, 4);
+
+            return matchCat || matchEntity || matchTerm;
+          }).slice(0, 10);
         }
 
         // 3. Si no hubo match por ID o término, usar los relevantes de RAG (solo si superaron el umbral de similitud)
         if (matched.length === 0 && Array.isArray(relevantPosters) && relevantPosters.length > 0) {
-          matched = relevantPosters.slice(0, 3);
+          matched = relevantPosters.slice(0, 6);
         }
         // NOTA: Si no hay coincidencias reales, NO forzar obras aleatorias de la BD.
 
@@ -579,7 +595,7 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
 
         return {
           type:    'catalog_matches',
-          posters: uniqueMatched.slice(0, 3),
+          posters: uniqueMatched.slice(0, 6),
           motivo:  msgIntro || (uniqueMatched.length > 0 ? 'Obras destacadas de nuestro catálogo oficial Deco Vintage' : '')
         };
       }
@@ -777,7 +793,12 @@ const CANDIDATE_MODELS = [
   'gemini-3.7-flash',
   'gemini-3.6-flash',
   'gemini-3.5-flash',
-  'gemini-flash-latest'
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
+  'gemini-2.5-pro',
+  'gemini-pro-latest'
 ];
 
 /**
@@ -804,10 +825,10 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
 
   const posters = liveCatalog.posters || [];
 
-  // 2. Búsqueda Semántica Vectorial previa (RAG) para inyectar el Top-8 relevante
+  // 2. Búsqueda Semántica Vectorial previa (RAG) para inyectar el Top-12 relevante con contexto
   let topRelevantPosters = [];
   try {
-    const scoredMatches = await findSimilarPosters(prompt, 8, candidateKeys[0]);
+    const scoredMatches = await findSimilarPosters(prompt, 12, candidateKeys[0], undefined, history);
     if (scoredMatches && scoredMatches.length > 0) {
       topRelevantPosters = scoredMatches.map((m) => m.poster);
     }
