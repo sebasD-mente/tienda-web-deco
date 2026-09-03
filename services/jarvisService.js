@@ -804,10 +804,10 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
 
   const posters = liveCatalog.posters || [];
 
-  // 2. Búsqueda Semántica Vectorial previa (RAG) para inyectar únicamente el Top-4 relevante
+  // 2. Búsqueda Semántica Vectorial previa (RAG) para inyectar el Top-8 relevante
   let topRelevantPosters = [];
   try {
-    const scoredMatches = await findSimilarPosters(prompt, 4, candidateKeys[0]);
+    const scoredMatches = await findSimilarPosters(prompt, 8, candidateKeys[0]);
     if (scoredMatches && scoredMatches.length > 0) {
       topRelevantPosters = scoredMatches.map((m) => m.poster);
     }

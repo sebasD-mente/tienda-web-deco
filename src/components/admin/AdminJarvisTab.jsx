@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   MessageSquare, Zap, FileText, Image as ImageIcon, 
   Sparkles, Key, Plus, Trash2, Edit3, Save, Upload, 
-  Download, ExternalLink, X, CheckCircle2, AlertCircle 
+  Download, ExternalLink, X, CheckCircle2, AlertCircle,
+  Database, RefreshCw
 } from 'lucide-react';
 import ArcReactor from '../ArcReactor';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
@@ -27,6 +28,10 @@ export default function AdminJarvisTab({ onShowToast }) {
   const [jarvisSubTab, setJarvisSubTab] = useState('greeting'); // 'greeting' | 'prompts' | 'docs' | 'images' | 'directives' | 'apikey'
   const [knowledgeData, setKnowledgeData] = useState(() => getStoreKnowledge());
   const [geminiKeyInput, setGeminiKeyInput] = useState(getGeminiApiKey());
+  
+  // RAG Vector Status
+  const [ragStatus, setRagStatus] = useState({ total: 0, synced: 0, pending: 0, isFullySynced: true });
+  const [isSyncingRAG, setIsSyncingRAG] = useState(false);
   
   // Greeting State
   const [greetingInput, setGreetingInput] = useState(() => getStoreKnowledge().initialGreeting || '');
@@ -56,6 +61,20 @@ export default function AdminJarvisTab({ onShowToast }) {
   const reloadKnowledge = () => {
     setKnowledgeData(getStoreKnowledge());
   };
+
+  const fetchRAGStatus = async () => {
+    try {
+      const res = await fetch('/api/catalog/embeddings-status');
+      if (res.ok) {
+        const data = await res.json();
+        setRagStatus(data);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    fetchRAGStatus();
+  }, []);
 
   // 1. Greeting Handlers
   const handleSaveGreeting = async () => {
@@ -228,7 +247,33 @@ export default function AdminJarvisTab({ onShowToast }) {
     onShowToast('¡Clave de Gemini guardada y sincronizada con el VPS!', 'success');
   };
 
-  // 7. Memory Backup Handlers
+  // 7. RAG Vector Synchronization Handler
+  const handleSyncRAG = async () => {
+    setIsSyncingRAG(true);
+    const token = getAuthToken();
+    try {
+      const res = await fetch('/api/catalog/sync-embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await fetchRAGStatus();
+        onShowToast(`¡Sincronización RAG completada! ${data.synced || 0} obras indexadas.`, 'success');
+      } else {
+        onShowToast(`Error al sincronizar embeddings: ${data.error || 'Fallo desconocido'}`, 'error');
+      }
+    } catch (err) {
+      onShowToast(`Error de conexión al sincronizar: ${err.message}`, 'error');
+    } finally {
+      setIsSyncingRAG(false);
+    }
+  };
+
+  // 8. Memory Backup Handlers
   const handleImportJarvisMemory = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -697,6 +742,80 @@ export default function AdminJarvisTab({ onShowToast }) {
                 <span>Guardar Clave</span>
               </button>
             </form>
+          </div>
+
+          {/* RAG Vectorization Index Status Card */}
+          <div className="glass-card" style={{ padding: '24px', border: '1px solid rgba(0, 242, 254, 0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Database size={22} color="var(--accent-cyan)" />
+                <div>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                    Indexación Semántica RAG (Vectores IA)
+                  </h4>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Motor vectorial de 768 dimensiones para recomendación instantánea en chat
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  background: ragStatus.isFullySynced ? 'rgba(0, 245, 160, 0.12)' : 'rgba(234, 179, 8, 0.12)',
+                  color: ragStatus.isFullySynced ? '#00f5a0' : '#eab308',
+                  border: ragStatus.isFullySynced ? '1px solid rgba(0, 245, 160, 0.3)' : '1px solid rgba(234, 179, 8, 0.3)'
+                }}>
+                  {ragStatus.isFullySynced ? '✅ 100% Vectorizado' : `⚠️ ${ragStatus.pending} obras pendientes`}
+                </span>
+                <button
+                  onClick={handleSyncRAG}
+                  disabled={isSyncingRAG}
+                  className="btn-cyan"
+                  style={{
+                    padding: '7px 14px',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: isSyncingRAG ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <RefreshCw size={14} className={isSyncingRAG ? 'animate-spin' : ''} />
+                  <span>{isSyncingRAG ? 'Vectorizando...' : 'Sincronizar e Indexar Todo'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: '12px',
+              marginTop: '12px',
+              padding: '12px',
+              background: 'rgba(0, 0, 0, 0.25)',
+              borderRadius: '8px'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Total Obras en BD:</span>
+                <strong style={{ fontSize: '1.1rem', color: '#fff' }}>{ragStatus.total}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Vectorizadas (768d):</span>
+                <strong style={{ fontSize: '1.1rem', color: '#00f5a0' }}>{ragStatus.synced}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Pendientes de indexar:</span>
+                <strong style={{ fontSize: '1.1rem', color: ragStatus.pending > 0 ? '#eab308' : '#fff' }}>{ragStatus.pending}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Búsqueda Híbrida:</span>
+                <strong style={{ fontSize: '0.9rem', color: 'var(--accent-cyan)' }}>Activa (Vector + Léxico)</strong>
+              </div>
+            </div>
           </div>
 
           <div className="glass-card" style={{ padding: '24px' }}>

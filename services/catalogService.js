@@ -358,6 +358,22 @@ export async function upsertPosterFromAdmin(data) {
 
   const sizesData = buildSizesForUpsert(sizes, availableSizes);
 
+  // Generar vector de embedding semántico de 768 dimensiones (RAG)
+  let embeddingVector = undefined;
+  try {
+    const { generatePosterEmbedding } = await import('./embeddingService.js');
+    embeddingVector = await generatePosterEmbedding({
+      titulo: finalTitle,
+      categoria: finalCategory,
+      subtitulo: subtitle ?? subtitulo,
+      descripcion: description ?? descripcion,
+      tags: Array.isArray(tags) ? tags : [],
+      franchise: rawFranchiseKey
+    });
+  } catch (embErr) {
+    console.warn('[Deco Catalog] No se pudo generar embedding en tiempo real para la obra:', embErr.message);
+  }
+
   // Determina si existe por id (UUID) o por legacyId
   let existingPoster = null;
   if (inputId && isUUID(inputId)) {
@@ -393,6 +409,9 @@ export async function upsertPosterFromAdmin(data) {
           rating:       rating != null ? rating : existingPoster.rating,
           reviewsCount: reviewsCount ?? existingPoster.reviewsCount,
           updatedAt:    new Date(),
+          ...(embeddingVector && embeddingVector.length === 768 && {
+            embedding:  embeddingVector
+          }),
           ...(sizesData.length > 0 && {
             sizes: { create: sizesData }
           })
@@ -422,6 +441,9 @@ export async function upsertPosterFromAdmin(data) {
       isFeatured:   isFeatured ?? false,
       rating:       rating != null ? rating : null,
       reviewsCount: reviewsCount ?? 0,
+      ...(embeddingVector && embeddingVector.length === 768 && {
+        embedding:  embeddingVector
+      }),
       sizes: { create: sizesData.length > 0 ? sizesData : buildSizesForUpsert(null, ['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE']) },
     },
     include: POSTER_INCLUDE_FULL,

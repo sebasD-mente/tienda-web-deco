@@ -554,4 +554,45 @@ router.post('/catalog/clean-orphans', requireAuth, async (req, res) => {
   }
 });
 
+// ── GET /api/catalog/embeddings-status (Public / Admin) ──────────────────────
+// Returns vectorization metrics for RAG engine
+router.get('/catalog/embeddings-status', async (req, res) => {
+  try {
+    const { prisma } = await import('../services/catalogService.js');
+    const { EMBEDDING_DIMENSIONS } = await import('../services/embeddingService.js');
+    
+    const all = await prisma.poster.findMany({
+      select: { id: true, embedding: true }
+    });
+    
+    const total = all.length;
+    const synced = all.filter(p => Array.isArray(p.embedding) && p.embedding.length === EMBEDDING_DIMENSIONS).length;
+    const pending = total - synced;
+    
+    return res.status(200).json({
+      success: true,
+      total,
+      synced,
+      pending,
+      isFullySynced: pending === 0
+    });
+  } catch (err) {
+    console.error('[API Error] GET /api/catalog/embeddings-status:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/catalog/sync-embeddings (Protected Admin) ──────────────────────
+// Triggers automatic batch vectorization of all pending posters
+router.post('/catalog/sync-embeddings', requireAuth, async (req, res) => {
+  try {
+    const { syncPendingEmbeddings } = await import('../services/embeddingService.js');
+    const result = await syncPendingEmbeddings();
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[API Error] POST /api/catalog/sync-embeddings:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
