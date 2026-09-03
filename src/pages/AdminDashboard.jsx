@@ -32,9 +32,9 @@ import AdminSettingsTab     from '../components/admin/AdminSettingsTab';
 export default function AdminDashboard({ onNavigate, onLogout }) {
   const [isVerifyingAuth, setIsVerifyingAuth] = useState(true);
   const [activeTab,     setActiveTab]     = useState('inventory');
-  const [posters,       setPosters]       = useState([]);
-  const [categories,    setCategories]    = useState([]);
-  const [franchises,    setFranchises]    = useState([]);
+  const [posters,       setPosters]       = useState(() => getStoredPosters());
+  const [categories,    setCategories]    = useState(() => getStoredCategories());
+  const [franchises,    setFranchises]    = useState(() => getStoredFranchises());
   const [editingPoster, setEditingPoster] = useState(null);
   const [toast,         setToast]         = useState(null);
 

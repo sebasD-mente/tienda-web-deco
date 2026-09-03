@@ -15,37 +15,40 @@ export default function AdminCreatePosterTab({
   onCancel,
   onShowToast
 }) {
-  // ── Identificadores ──────────────────────────────────────────────────────────
-  // pgId  = UUID de PostgreSQL (solo existe cuando estamos EDITANDO un póster ya guardado)
-  // legId = legacyId (ID antiguo tipo "deco-xxxx" — conservado para compatibilidad)
-  const defaultCatId = categories.find(c => c.id !== 'TODOS')?.id || 'SUPERHEROES';
+  const activeCategories = categories.filter(c => c.id !== 'TODOS');
+  const initialCategory = editingPoster 
+    ? (editingPoster.categoria || editingPoster.category || '')
+    : (activeCategories[0]?.id || '');
 
-  const [pgId,  setPgId]  = useState(null);
-  const [legId, setLegId] = useState(null);
+  const [pgId,  setPgId]  = useState(() => editingPoster?.id || null);
+  const [legId, setLegId] = useState(() => editingPoster?.legacyId || null);
 
   // ── Campos del formulario ────────────────────────────────────────────────────
-  const [title,        setTitle]        = useState('');
-  const [subtitle,     setSubtitle]     = useState('');
-  const [category,     setCategory]     = useState(defaultCatId);
-  const [franchiseId,  setFranchiseId]  = useState('');
-  const [description,  setDescription]  = useState('');
-  const [tagsInput,    setTagsInput]    = useState('');
-  const [isFeatured,   setIsFeatured]   = useState(false);
-  const [rating,       setRating]       = useState(5.0);
-  const [reviewsCount, setReviewsCount] = useState(30);
+  const [title,        setTitle]        = useState(() => editingPoster?.titulo || editingPoster?.title || '');
+  const [subtitle,     setSubtitle]     = useState(() => editingPoster?.subtitulo || editingPoster?.subtitle || '');
+  const [category,     setCategory]     = useState(() => initialCategory);
+  const [franchiseId,  setFranchiseId]  = useState(() => editingPoster?.franchiseId || editingPoster?.franchise || '');
+  const [description,  setDescription]  = useState(() => editingPoster?.descripcion || editingPoster?.description || '');
+  const [tagsInput,    setTagsInput]    = useState(() => (editingPoster?.tags || []).join(', '));
+  const [isFeatured,   setIsFeatured]   = useState(() => !!editingPoster?.isFeatured);
+  const [rating,       setRating]       = useState(() => editingPoster?.rating || 5.0);
+  const [reviewsCount, setReviewsCount] = useState(() => editingPoster?.reviewsCount || 30);
 
   // Tamaños
   const STANDARD_5_SIZES = ['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE'];
-  const [selectedSizeIds, setSelectedSizeIds] = useState(STANDARD_5_SIZES);
+  const [selectedSizeIds, setSelectedSizeIds] = useState(() => {
+    if (Array.isArray(editingPoster?.sizes) && editingPoster.sizes.length > 0) {
+      return editingPoster.sizes.map(s => s.sizeId || s.id);
+    }
+    if (Array.isArray(editingPoster?.availableSizes) && editingPoster.availableSizes.length > 0) {
+      return editingPoster.availableSizes;
+    }
+    return STANDARD_5_SIZES;
+  });
 
   // ── Estado de imagen ─────────────────────────────────────────────────────────
-  // imageUrl  = URL final persistida en el VPS SSD (/posters/uploads/full/...) o URL existente
-  // thumbUrl  = URL final del thumbnail
-  // imageMeta = Datos informativos del archivo original (para mostrar al usuario)
-  // _base64   = Blob base64 temporal en memoria (solo mientras se sube al servidor)
-  //             Se limpia en cuanto el servidor confirma la subida.
-  const [imageUrl,    setImageUrl]    = useState('');
-  const [thumbUrl,    setThumbUrl]    = useState('');
+  const [imageUrl,    setImageUrl]    = useState(() => editingPoster?.imageUrl || editingPoster?.image || '');
+  const [thumbUrl,    setThumbUrl]    = useState(() => editingPoster?.thumbUrl || editingPoster?.thumb || '');
   const [imageMeta,   setImageMeta]   = useState(null);
   const [_base64Full, set_base64Full] = useState('');  // temporal, no se envía a PG
 
@@ -54,48 +57,48 @@ export default function AdminCreatePosterTab({
   const [isSaving,     setIsSaving]     = useState(false);
 
   const fileInputRef = useRef(null);
+  const prevEditingIdRef = useRef(editingPoster?.id || null);
 
-  // ── Populate form when editing ───────────────────────────────────────────────
+  // ── Populate form ONLY when editingPoster reference actually switches ────────
   useEffect(() => {
-    if (editingPoster) {
-      // Capturar ambos identificadores del póster existente
-      setPgId(editingPoster.id     || null);
-      setLegId(editingPoster.legacyId || null);
-
-      setTitle(editingPoster.titulo        || editingPoster.title    || '');
-      setSubtitle(editingPoster.subtitulo  || editingPoster.subtitle || '');
-      setCategory(editingPoster.categoria  || editingPoster.category || defaultCatId);
-      setFranchiseId(editingPoster.franchiseId || editingPoster.franchise || '');
-      setDescription(editingPoster.descripcion || editingPoster.description || '');
-      setTagsInput((editingPoster.tags || []).join(', '));
-      setIsFeatured(!!editingPoster.isFeatured);
-      setRating(editingPoster.rating        || 5.0);
-      setReviewsCount(editingPoster.reviewsCount || 25);
-
-      // Imagen existente (ya está en el VPS SSD — no hay base64)
-      setImageUrl(editingPoster.imageUrl   || editingPoster.image || '');
-      setThumbUrl(editingPoster.thumbUrl   || editingPoster.thumb || '');
-      set_base64Full('');
-      setImageMeta(null);
-
-      if (Array.isArray(editingPoster.sizes) && editingPoster.sizes.length > 0) {
-        setSelectedSizeIds(editingPoster.sizes.map(s => s.sizeId || s.id));
-      } else if (Array.isArray(editingPoster.availableSizes) && editingPoster.availableSizes.length > 0) {
-        setSelectedSizeIds(editingPoster.availableSizes);
+    const currentId = editingPoster?.id || null;
+    if (currentId !== prevEditingIdRef.current) {
+      prevEditingIdRef.current = currentId;
+      if (editingPoster) {
+        setPgId(editingPoster.id || null);
+        setLegId(editingPoster.legacyId || null);
+        setTitle(editingPoster.titulo || editingPoster.title || '');
+        setSubtitle(editingPoster.subtitulo || editingPoster.subtitle || '');
+        setCategory(editingPoster.categoria || editingPoster.category || activeCategories[0]?.id || '');
+        setFranchiseId(editingPoster.franchiseId || editingPoster.franchise || '');
+        setDescription(editingPoster.descripcion || editingPoster.description || '');
+        setTagsInput((editingPoster.tags || []).join(', '));
+        setIsFeatured(!!editingPoster.isFeatured);
+        setRating(editingPoster.rating || 5.0);
+        setReviewsCount(editingPoster.reviewsCount || 25);
+        setImageUrl(editingPoster.imageUrl || editingPoster.image || '');
+        setThumbUrl(editingPoster.thumbUrl || editingPoster.thumb || '');
+        set_base64Full('');
+        setImageMeta(null);
+        if (Array.isArray(editingPoster.sizes) && editingPoster.sizes.length > 0) {
+          setSelectedSizeIds(editingPoster.sizes.map(s => s.sizeId || s.id));
+        } else if (Array.isArray(editingPoster.availableSizes) && editingPoster.availableSizes.length > 0) {
+          setSelectedSizeIds(editingPoster.availableSizes);
+        } else {
+          setSelectedSizeIds(STANDARD_5_SIZES);
+        }
       } else {
-        setSelectedSizeIds(STANDARD_5_SIZES);
+        resetForm();
       }
-    } else {
-      resetForm();
     }
-  }, [editingPoster, defaultCatId]);
+  }, [editingPoster]);
 
   const resetForm = () => {
     setPgId(null);
     setLegId(null);
     setTitle('');
     setSubtitle('');
-    setCategory(defaultCatId);
+    setCategory(activeCategories[0]?.id || '');
     setFranchiseId('');
     setDescription('');
     setTagsInput('');
@@ -453,11 +456,16 @@ export default function AdminCreatePosterTab({
               <select
                 value={category}
                 onChange={e => setCategory(e.target.value)}
+                required
                 style={{ width: '100%', padding: '10px 14px', background: '#0a0e18', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '0.92rem', outline: 'none' }}
               >
-                {categories.filter(c => c.id !== 'TODOS').map(c => (
+                {!category && <option value="" disabled>-- Selecciona una categoría --</option>}
+                {activeCategories.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
+                {category && !activeCategories.some(c => c.id === category) && (
+                  <option key={category} value={category}>{category.replace(/_/g, ' ')}</option>
+                )}
               </select>
             </div>
             <div>
