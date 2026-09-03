@@ -112,6 +112,21 @@ export const ENTITY_ALIASES = [
     canonical: 'Star Wars',
     keywords: ['star wars', 'guerra de las galaxias', 'darth vader', 'vader', 'yoda', 'luke skywalker', 'mandalorian', 'grogu'],
     synonyms: 'Star Wars La Guerra de las Galaxias Darth Vader Yoda Jedi Sith Sci-Fi Cine'
+  },
+  {
+    canonical: 'Pablo Escobar',
+    keywords: ['pablo escobar', 'escobar', 'el patron', 'patron', 'patron del mal', 'medellin', 'narcos', 'pablo'],
+    synonyms: 'Pablo Escobar El Patron Patron del Mal Medellin Narcos Sneakerhead Sonrisa Historica Colombia Serie Historia'
+  },
+  {
+    canonical: 'Scarface',
+    keywords: ['scarface', 'tony montana', 'cara cortada', 'caracortada', 'al pacino', 'montana'],
+    synonyms: 'Scarface Tony Montana Cara Cortada Al Pacino Peliculas Cine Clasico Gangster Miami'
+  },
+  {
+    canonical: 'Pulp Fiction',
+    keywords: ['pulp fiction', 'tiempos violentos', 'tarantino', 'vincent vega', 'jules winnfield', 'mia wallace'],
+    synonyms: 'Pulp Fiction Tiempos Violentos Quentin Tarantino Mia Wallace Cine Clasico Peliculas'
   }
 ];
 
@@ -441,15 +456,17 @@ export async function findSimilarPosters(userQuery, limit = 8, customApiKey, min
       const lexicalScore = computeLexicalSimilarity(userQuery, p, matchedEntities);
 
       let finalScore = 0;
-      if (vectorScore > 0) {
-        // Ponderación: 70% vector + 30% léxico
-        finalScore = (vectorScore * 0.70) + (lexicalScore * 0.30);
-        // Si hay coincidencia de entidad o coincidencia fuerte de título, boost directo
+      if (vectorScore > 0 && lexicalScore > 0) {
+        // Coincidencia híbrida: vector + léxico con sinergia
+        finalScore = Math.max(vectorScore, (vectorScore * 0.60) + (lexicalScore * 0.40));
         if (lexicalScore >= 0.80) {
           finalScore = Math.max(finalScore, 0.92);
         } else if (lexicalScore >= 0.40) {
-          finalScore = Math.max(finalScore, vectorScore * 0.40 + 0.60);
+          finalScore = Math.max(finalScore, (vectorScore * 0.40) + 0.60);
         }
+      } else if (vectorScore > 0) {
+        // Coincidencia puramente semántica (el modelo de embeddings asocia la semántica aunque no comparta palabras exactas)
+        finalScore = vectorScore;
       } else {
         finalScore = lexicalScore;
       }
@@ -463,7 +480,7 @@ export async function findSimilarPosters(userQuery, limit = 8, customApiKey, min
     });
 
     // 4. Filtrar por umbral de relevancia
-    const relevantPosters = scoredPosters.filter(p => p.score >= minThreshold || p.lexicalScore >= 0.35);
+    const relevantPosters = scoredPosters.filter(p => p.score >= minThreshold || p.lexicalScore >= 0.35 || p.vectorScore >= 0.48);
 
     // 5. Ordenar descendente por score
     relevantPosters.sort((a, b) => b.score - a.score);

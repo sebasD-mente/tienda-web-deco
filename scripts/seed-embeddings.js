@@ -9,6 +9,7 @@
 
 import { prisma } from '../services/catalogService.js';
 import { getJarvisApiKey } from '../services/jarvisService.js';
+import { buildSemanticPosterText } from '../services/embeddingService.js';
 
 console.log('═══════════════════════════════════════════════════════════════════════════════');
 console.log('🧠 INICIANDO VECTORIZACIÓN Y SEEDING DE EMBEDDINGS (768d MRL - Google Gemini)');
@@ -86,12 +87,7 @@ async function seedEmbeddingsBatch() {
     console.log(`📦 Enviando lote de ${chunk.length} obras a Gemini batchEmbedContents...`);
 
     const requests = chunk.map((p) => {
-      const tagsString = Array.isArray(p.tags) && p.tags.length > 0 ? p.tags.join(', ') : '';
-      const franchiseString = p.franchise ? `Franquicia: ${p.franchise.name}.` : '';
-      const subtitleString = p.subtitulo ? `Subtítulo: ${p.subtitulo}.` : '';
-      const descString = p.descripcion ? `Descripción: ${p.descripcion}.` : '';
-
-      const semanticText = `Obra: ${p.titulo}. Categoría: ${p.categoria}. ${subtitleString} ${franchiseString} Etiquetas: ${tagsString}. ${descString}`.trim().slice(0, 2048);
+      const semanticText = buildSemanticPosterText(p);
 
       return {
         model: `models/${EMBEDDING_MODEL}`,
