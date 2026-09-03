@@ -83,6 +83,8 @@ export function computeCosineSimilarity(vecA, vecB) {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+export const MIN_SIMILARITY_THRESHOLD = 0.50;
+
 /**
  * Searches the catalog in PostgreSQL using Semantic Vector Similarity (RAG).
  * Retrieves the Top-N most relevant posters for a user's prompt.
@@ -90,9 +92,10 @@ export function computeCosineSimilarity(vecA, vecB) {
  * @param {string} userQuery - The user question or search phrase.
  * @param {number} [limit=4] - Max items to return (default Top-4).
  * @param {string} [customApiKey] - Optional API key.
+ * @param {number} [minThreshold=MIN_SIMILARITY_THRESHOLD] - Minimum cosine similarity threshold.
  * @returns {Promise<Array<{ poster: object, score: number }>>}
  */
-export async function findSimilarPosters(userQuery, limit = 4, customApiKey) {
+export async function findSimilarPosters(userQuery, limit = 4, customApiKey, minThreshold = MIN_SIMILARITY_THRESHOLD) {
   try {
     const queryVector = await generateEmbedding(userQuery, customApiKey);
 
@@ -124,13 +127,16 @@ export async function findSimilarPosters(userQuery, limit = 4, customApiKey) {
       };
     });
 
-    // Sort descending by similarity score
-    scoredPosters.sort((a, b) => b.score - a.score);
+    // Filter by minimum similarity threshold to prevent hallucinated / irrelevant recommendations
+    const relevantPosters = scoredPosters.filter(p => p.score >= minThreshold);
 
-    return scoredPosters.slice(0, limit);
+    // Sort descending by similarity score
+    relevantPosters.sort((a, b) => b.score - a.score);
+
+    return relevantPosters.slice(0, limit);
   } catch (err) {
     console.warn('[Embedding Search Warning] Fallback due to error:', err.message);
-    // Fallback: Return empty or initial featured posters gracefully
+    // Fallback: Return empty gracefully
     return [];
   }
 }

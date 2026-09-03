@@ -32,22 +32,26 @@ const __filename = fileURLToPath(import.meta.url);
 export const JARVIS_TOOL_DECLARATIONS = [
   {
     name: 'explorar_catalogo',
-    description: 'ÚNICAMENTE invocar cuando el cliente PIDA EXPLÍCITAMENTE ver, mostrar, enseñar, recomendar u ordenar obras o pósters específicos del inventario (ej: "muéstrame cuadros de autos", "qué posters de anime tienes", "recomiéndame 3 diseños de Marvel", "¿tienes cuadros de Batman?"). ESTRICTAMENTE PROHIBIDO invocar en saludos, preguntas sobre materiales, cintas Tesa, medidas, precios generales, envíos o conversación casual.',
+    description: 'ÚNICAMENTE invocar cuando el cliente PIDA EXPLÍCITAMENTE ver, mostrar, enseñar, recomendar u ordenar obras o pósters específicos que existan en el inventario. ESTRICTAMENTE PROHIBIDO invocar si no hay obras de la temática pedida en el catálogo, o en saludos, preguntas sobre materiales, cintas Tesa, medidas, precios generales o envíos.',
     parameters: {
       type: 'OBJECT',
       properties: {
         termino: {
           type: 'STRING',
-          description: 'Término o palabra clave de búsqueda (ej: Spider-Man, Porsche, GTR, Batman)'
+          description: 'Término o palabra clave de búsqueda (ej: Spider-Man, Batman, Anime, Nirvana)'
         },
         categoria: {
           type: 'STRING',
-          description: 'Categoría oficial (ej: AUTOS, ANIME, SUPERHEROES, CINE_SERIES, MUSICA, RETRO_GAMING)'
+          description: 'Categoría oficial (ej: AUTOS, ANIME, SUPERHEROES, SERIESYPELICULAS, MUSICA, OBRASDEARTE, INFANTILYDIBUJOSANIMADOS)'
         },
         posterIds: {
           type: 'ARRAY',
           items: { type: 'STRING' },
           description: 'Lista de IDs exactos de las obras seleccionadas del catálogo oficial'
+        },
+        mensaje_conversacional: {
+          type: 'STRING',
+          description: 'Mensaje amigable, natural, entusiasta y conversacional con el que le presentas estas obras al cliente en el chat, mencionando los nombres o temática de las obras (ej: "¡Por supuesto! Aquí tienes estos increíbles cuadros de Marvel que se verán geniales en tu espacio:")'
         },
         motivo: {
           type: 'STRING',
@@ -387,21 +391,22 @@ export function buildSystemInstruction(catalog, jarvisMemory = {}, relevantPoste
     }
   ]).map(doc => `[DOCUMENTO / EVENTO: ${doc.title}]\nCategoría: ${doc.category || 'General'}\nContenido: ${doc.content}`).join('\n\n');
 
-  // Inyección Semántica RAG (Top-4 obras más relevantes del catálogo en lugar de volcar toda la BD)
-  const targetPosters = Array.isArray(relevantPosters) && relevantPosters.length > 0
-    ? relevantPosters
-    : allPosters.slice(0, 4);
-
-  const catalogSummary = targetPosters.map(p => {
-    const id = p.id || '';
-    const title = p.title || p.titulo || 'Póster';
-    const subtitle = p.subtitle || p.subtitulo || '';
-    const category = p.category || p.categoria || 'AUTOS';
-    const description = p.description || p.descripcion || '';
-    const tags = Array.isArray(p.tags) ? p.tags.join(', ') : '';
-    const price = p.priceDisplay || (p.minPrice ? `Desde Q${p.minPrice}.00` : 'Desde Q25.00');
-    return `- ID: "${id}", Título: "${title}", Subtítulo: "${subtitle}", Categoría: "${category}", Descripción: "${description}", Tags: "${tags}", Precio: "${price}"`;
-  }).join('\n');
+  // Inyección Semántica RAG: Únicamente incluir si realmente hay obras que superaron el umbral de similitud
+  let catalogSummary = '';
+  if (Array.isArray(relevantPosters) && relevantPosters.length > 0) {
+    catalogSummary = relevantPosters.map(p => {
+      const id = p.id || '';
+      const title = p.title || p.titulo || 'Póster';
+      const subtitle = p.subtitle || p.subtitulo || '';
+      const category = p.category || p.categoria || 'GENERAL';
+      const description = p.description || p.descripcion || '';
+      const tags = Array.isArray(p.tags) ? p.tags.join(', ') : '';
+      const price = p.priceDisplay || (p.minPrice ? `Desde Q${p.minPrice}.00` : 'Desde Q25.00');
+      return `- ID: "${id}", Título: "${title}", Subtítulo: "${subtitle}", Categoría: "${category}", Descripción: "${description}", Tags: "${tags}", Precio: "${price}"`;
+    }).join('\n');
+  } else {
+    catalogSummary = 'No se encontraron obras específicas en el inventario actual para esta búsqueda.';
+  }
 
   return `Eres J.A.R.V.I.S. (Just A Rather Very Intelligent System), el asesor de inteligencia artificial exclusivo de Deco Vintage Guate (tienda en Guatemala de cuadros rígidos y pósters decorativos de colección en madera MDF de 5.5mm con tecnología HP Látex).
 WhatsApp Oficial de Atención al Cliente: +${waPhone}
@@ -409,13 +414,19 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
 === ESTILO Y PERSONALIDAD DE J.A.R.V.I.S. ===
 - Eres súper amable, cálido, conversacional, servicial, ameno y educado. Hablas con emoción y cultura sobre cine, Marvel, DC, autos, anime, videojuegos, arte y música.
 - Trato cercano: Trata al cliente de 'tú' de forma natural y respetuosa. NUNCA uses repetitivamente palabras robóticas o frías como 'señor', 'caballero' o estructuras de soporte aburrido.
+- Respuestas 100% naturales y personalizadas: Al presentar obras, comenta con entusiasmo y estilo propio sobre los pósters que seleccionaste (NUNCA uses frases acartonadas o genéricas).
 
-=== POLÍTICA CRÍTICA DE INTERFAZ: CUÁNDO MOSTRAR TARJETAS VS SOLO TEXTO (UX ANTI-SATURACIÓN) ===
-1. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en el 90% de las conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración). En estos casos está ESTRICTAMENTE PROHIBIDO invocar 'explorar_catalogo' o generar tarjetas de producto.
-2. ÚNICAMENTE INVOCAR 'explorar_catalogo': Cuando el cliente HAGA UNA PREGUNTA O PETICIÓN EXPLÍCITA DE INVENTARIO Y CATÁLOGO (ejemplos: "muéstrame cuadros de...", "qué posters de Spider-Man tienes", "¿tienen diseños de Dragon Ball?", "recomiéndame 2 cuadros de autos", "quiero ver obras de anime", "enséñame opciones de Marvel").
-3. Si el cliente solo está saludando ("hola", "buenas"), preguntando cómo se cuelgan los cuadros o charlando de una serie sin pedir ver catálogo, RESPONDE CON TEXTO AMIGABLE, asesóralo y pregúntale educadamente si le gustaría que le muestres los cuadros disponibles de esa categoría.
-4. Si el cliente pide cotizar o fabricar medidas personalizadas especiales (ej: 50x70cm, 80x120cm, foto propia), invoca 'capturar_orden_personalizada'.
-5. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
+=== POLÍTICA CRÍTICA DE CATÁLOGO E INVENTARIO (CERO ALUCINACIONES) ===
+1. VERACIDAD TOTAL: Recomienda ÚNICAMENTE obras que realmente existan en el catálogo y coincidan con lo solicitado.
+2. SI EL CLIENTE PIDE UNA TEMÁTICA, PERSONAJE O CATEGORÍA QUE NO ESTÁ DISPONIBLE EN EL CATÁLOGO (por ejemplo, autos si no hay modelos de autos en el inventario, o una banda de rock específica):
+   - ESTRICTAMENTE PROHIBIDO inventar obras o mostrar tarjetas no relacionadas (como mostrar superhéroes o películas si pidió autos). En estos casos, ESTRICTAMENTE PROHIBIDO invocar 'explorar_catalogo' con obras no relacionadas.
+   - En su lugar, responde de forma súper amable, transparente y entusiasta diciendo que actualmente no cuentan con diseños de esa temática en el catálogo oficial listo para entrega, pero destaca con fuerza que contamos con el servicio de **CUADROS PERSONALIZADOS**.
+   - Explícale que podemos fabricar cualquier cuadro con la foto de su propio vehículo, personaje, anime o imagen que el cliente desee en madera MDF 5.5mm rígida con impresión HP Látex y cinta industrial Tesa incluida en cualquier medida (desde Mini Q25 hasta Mediano Q65 o Gigante Q210), e invítalo a enviar su diseño o cotizarlo.
+3. SI EL CLIENTE PIDE VER O RECOMENDAR OBRAS QUE SÍ EXISTEN EN EL CATÁLOGO:
+   - Invoca 'explorar_catalogo' pasando los IDs o término de las obras que sí coinciden, y llena el parámetro 'mensaje_conversacional' con una introducción conversacional fresca y adaptada a lo que pidió.
+4. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración).
+5. Si el cliente pide cotizar o fabricar medidas personalizadas especiales (ej: 50x70cm, 80x120cm, foto propia), invoca 'capturar_orden_personalizada'.
+6. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
 
 === HILO Y CONTINUIDAD DE LA CONVERSACIÓN ===
 - Mantén la coherencia con lo que el usuario te ha dicho previamente en sus mensajes anteriores.
@@ -432,7 +443,7 @@ ${customDocs}
 - Solo Vinil Adhesivo: Impresión en vinil HP Látex al 50% de descuento (mitad de precio).
 Medidas estándar: Mini (14x21cm - Q25), Pequeño (21x27cm - Q35), Portada Álbum (30x30cm - Q55), Mediano (30x45cm - Q65), Grande (45x60cm - Q125), Gigante (60x100cm - Q210).
 
-=== OBRAS MÁS RELEVANTES PARA ESTA CONSULTA (RAG SEMÁNTICO) ===
+=== OBRAS DISPONIBLES COINCIDENTES PARA ESTA CONSULTA (RAG SEMÁNTICO) ===
 ${catalogSummary}`;
 }
 
@@ -543,12 +554,11 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
           }).slice(0, 4);
         }
 
-        // 3. Fallback de RAG semántico si no hay coincidencia exacta para garantizar respuesta visual precisa
+        // 3. Si no hubo match por ID o término, usar los relevantes de RAG (solo si superaron el umbral de similitud)
         if (matched.length === 0 && Array.isArray(relevantPosters) && relevantPosters.length > 0) {
           matched = relevantPosters.slice(0, 3);
-        } else if (matched.length === 0 && cleanPosters.length > 0) {
-          matched = cleanPosters.slice(0, 3);
         }
+        // NOTA: Si no hay coincidencias reales, NO forzar obras aleatorias de la BD.
 
         // Deduplicación estricta por ID e Imagen para evitar tarjetas repetidas
         const seenIds = new Set();
@@ -565,10 +575,12 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
           }
         }
 
+        const msgIntro = args.mensaje_conversacional || args.mensaje || args.motivo || '';
+
         return {
           type:    'catalog_matches',
           posters: uniqueMatched.slice(0, 3),
-          motivo:  args.motivo || 'Obras destacadas de nuestro catálogo oficial Deco Vintage'
+          motivo:  msgIntro || (uniqueMatched.length > 0 ? 'Obras destacadas de nuestro catálogo oficial Deco Vintage' : '')
         };
       }
 
@@ -634,6 +646,7 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
  * @returns {{ replyText: string, actions: any[], poweredBy: string }}
  */
 export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null) {
+  const cleanPosters = Array.isArray(posters) ? posters.filter(Boolean) : [];
   const qLower     = (prompt || '').toLowerCase();
   let   localReply = '';
   const localActions = [];
@@ -669,18 +682,22 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
     localReply = `¡Claro que sí! Con respecto a **${matchedDoc.title}**:\n\n${matchedDoc.content}\n\n¿Te gustaría que te ayude a preparar o cotizar algún cuadro para esta ocasión?`;
 
   } else if (qLower.includes('auto') || qLower.includes('carro') || qLower.includes('f1') || qLower.includes('carrera') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('bmw') || qLower.includes('gtr')) {
-    const hasVisualRequest = qLower.includes('muestra') || qLower.includes('mostrar') || qLower.includes('ver') || qLower.includes('ensena') || qLower.includes('enseña') || qLower.includes('tienes') || qLower.includes('recomiend') || qLower.includes('catalogo') || qLower.includes('posters de') || qLower.includes('cuadros de');
-    if (hasVisualRequest) {
-      const autoPosters = posters.filter(p => (p.category || p.categoria) === 'AUTOS' || (p.tags && p.tags.some(t => t.toLowerCase().includes('auto') || t.toLowerCase().includes('f1')))).slice(0, 4);
-      if (autoPosters.length > 0) {
-        localActions.push({ type: 'catalog_matches', posters: autoPosters, motivo: 'Cuadros destacados de automovilismo' });
-      }
+    const autoPosters = cleanPosters.filter(p => (p.category || p.categoria) === 'AUTOS' || (p.tags && p.tags.some(t => String(t).toLowerCase().includes('auto') || String(t).toLowerCase().includes('carro') || String(t).toLowerCase().includes('f1')))).slice(0, 4);
+    
+    if (autoPosters.length > 0) {
+      localActions.push({ type: 'catalog_matches', posters: autoPosters, motivo: 'Cuadros destacados de automovilismo' });
+      localReply = `¡Excelente elección! Nos apasiona el mundo motor. Aquí tienes estas increíbles opciones de automovilismo de nuestro catálogo oficial:\n\n` +
+                   `* **Impresión:** HP Látex de alta resolución ecológica y resistente al agua.\n` +
+                   `* **Estructura:** Madera MDF rígida de 5.5mm con bordes pulidos y cinta doble cara Tesa incluida para colgar sin clavos.\n` +
+                   `* **Medida más vendida:** Mediano (30x45cm) por solo **Q65.00**.\n\n` +
+                   `¡También podemos fabricar cualquier cuadro con la foto de tu propio vehículo en medida personalizada!`;
+    } else {
+      localReply = `¡Excelente elección! Nos apasiona el mundo motor, la Fórmula 1 y los autos clásicos y deportivos. Actualmente no contamos con diseños de autos listos en nuestro catálogo estándar, ¡pero con gusto podemos fabricarte cualquier cuadro **100% personalizado** con la foto de tu propio vehículo, modelo preferido o arte digital!\n\n` +
+                   `* **Material:** Madera MDF rígida de 5.5mm con bordes pulidos e impresión HP Látex con colores vivos y protección UV.\n` +
+                   `* **Montaje:** Incluye cinta doble cara industrial Tesa en el reverso lista para colgar sin taladrar.\n` +
+                   `* **Medidas y Precios:** Mini (Q25), Pequeño (Q35), Portada Álbum (Q55), Mediano 30x45cm (**Q65** ⭐) o a cualquier medida a tu elección.\n\n` +
+                   `¿Te gustaría cotizar una medida personalizada o enviarnos tu imagen para fabricarla?`;
     }
-    localReply = `¡Excelente elección! Nos apasiona el mundo motor. Manejamos cuadros de **Fórmula 1**, leyendas del **JDM** (como el Toyota Supra, Nissan GTR, RX-7), superdeportivos clásicos y modernos (Porsche, Ferrari, Mustang, Lamborghini).\n\n` +
-                 `* **Impresión:** HP Látex de alta resolución ecológica y resistente al agua.\n` +
-                 `* **Estructura:** Madera MDF rígida de 5.5mm con bordes pulidos y cinta doble cara Tesa incluida para colgar sin clavos.\n` +
-                 `* **Medida más vendida:** Mediano (30x45cm) por solo **Q65.00**.\n\n` +
-                 `¡También podemos fabricar el cuadro con la foto de tu propio vehículo en cualquier medida personalizada! ¿Te gustaría que te muestre los diseños disponibles de autos?`;
 
   } else if (qLower.includes('material') || qLower.includes('calidad') || qLower.includes('tesa') || qLower.includes('colocar') || qLower.includes('pegar') || qLower.includes('instalar')) {
     localReply = `¡Nuestros cuadros están fabricados con los mejores estándares!\n\n` +
@@ -757,8 +774,9 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CANDIDATE_MODELS = [
+  'gemini-3.7-flash',
   'gemini-3.6-flash',
-  'gemini-3.5-flash-lite',
+  'gemini-3.5-flash',
   'gemini-flash-latest'
 ];
 
@@ -816,7 +834,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
 
         let timerId = null;
         const callTimeout = new Promise((_, reject) => {
-          timerId = setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 10s timeout`)), 10000);
+          timerId = setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 15s timeout`)), 15000);
         });
 
         let resAI = null;
@@ -859,21 +877,53 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
           for (const call of functionCalls) {
             try {
               const action = executeFunctionCall(call, posters, topRelevantPosters, liveCatalog);
-              if (action) executedActions.push(action);
+              if (action) {
+                // Solo registrar catalog_matches si realmente contiene posters
+                if (action.type === 'catalog_matches' && (!action.posters || action.posters.length === 0)) {
+                  // Sin obras coincidentes
+                } else {
+                  executedActions.push(action);
+                }
+
+                // Capturar mensaje conversacional del modelo si no hubo texto directo
+                if (!replyText) {
+                  const toolMsg = call.args?.mensaje_conversacional || call.args?.mensaje || call.args?.motivo;
+                  if (toolMsg && toolMsg.trim().length > 0 && !toolMsg.includes('Obras destacadas de nuestro catálogo')) {
+                    replyText = toolMsg.trim();
+                  }
+                }
+              }
             } catch (fnErr) {
               console.error('[Deco J.A.R.V.I.S.] Error executing function call:', fnErr);
             }
           }
         }
 
+        // Si tenemos tarjetas pero replyText sigue vacío, generar una introducción conversacional dinámica
         if (!replyText && executedActions.length > 0) {
-          replyText = '¡Por supuesto! Aquí tienes las obras y detalles seleccionados especialmente para ti:';
+          const catalogAct = executedActions.find(a => a.type === 'catalog_matches');
+          if (catalogAct && catalogAct.posters && catalogAct.posters.length > 0) {
+            const firstPosters = catalogAct.posters.slice(0, 2);
+            const posterNames = firstPosters.map(p => p.title || p.titulo).filter(Boolean).join(' y ');
+            replyText = posterNames 
+              ? `¡Por supuesto! Aquí tienes estas geniales obras (${posterNames}) seleccionadas especialmente para tu espacio:`
+              : `¡Por supuesto! Aquí tienes estas excelentes opciones de nuestro catálogo oficial seleccionadas para ti:`;
+          } else if (executedActions.some(a => a.type === 'custom_quote')) {
+            replyText = `¡Con gusto! Aquí tienes el desglose y cotización para tu cuadro personalizado:`;
+          } else if (executedActions.some(a => a.type === 'workshop_status')) {
+            replyText = `¡He consultado el estado de tu pedido en el sistema del taller! Aquí tienes los detalles:`;
+          }
+        }
+
+        // Si no hay texto ni acciones (ej. búsqueda sin stock), dar respuesta amable ofreciendo personalizados
+        if (!replyText && executedActions.length === 0) {
+          replyText = `Actualmente no contamos con diseños listos de esa temática en nuestro catálogo oficial, ¡pero con gusto podemos fabricarte cualquier cuadro 100% personalizado con la foto o imagen que desees en madera MDF de 5.5mm con impresión HP Látex! ¿Te gustaría cotizarlo o enviarnos tu diseño?`;
         }
 
         console.log(`[Deco J.A.R.V.I.S.] Success via ${modelName} | Turns: ${chatHistory.length} | Prompt: "${prompt?.slice(0, 40)}..."`);
 
         return {
-          replyText:  replyText || '¡Con gusto! Aquí tienes los detalles:',
+          replyText:  replyText || '¡Con gusto te asisto! ¿Qué diseño o temática tienes en mente?',
           actions:    executedActions,
           poweredBy:  `Google Gemini 3.6 Flash (@google/genai - ${modelName})`
         };
@@ -935,11 +985,39 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
             if (part.functionCall) {
               try {
                 const action = executeFunctionCall(part.functionCall, posters, topRelevantPosters, liveCatalog);
-                if (action) executedActions.push(action);
+                if (action) {
+                  if (action.type === 'catalog_matches' && (!action.posters || action.posters.length === 0)) {
+                    // Sin obras coincidentes
+                  } else {
+                    executedActions.push(action);
+                  }
+
+                  if (!replyText) {
+                    const toolMsg = part.functionCall.args?.mensaje_conversacional || part.functionCall.args?.mensaje || part.functionCall.args?.motivo;
+                    if (toolMsg && toolMsg.trim().length > 0 && !toolMsg.includes('Obras destacadas')) {
+                      replyText = toolMsg.trim();
+                    }
+                  }
+                }
               } catch (fnErr) {
                 console.error('[Deco J.A.R.V.I.S. Vertex] Error executing function call:', fnErr);
               }
             }
+          }
+
+          if (!replyText && executedActions.length > 0) {
+            const catalogAct = executedActions.find(a => a.type === 'catalog_matches');
+            if (catalogAct && catalogAct.posters && catalogAct.posters.length > 0) {
+              const firstPosters = catalogAct.posters.slice(0, 2);
+              const posterNames = firstPosters.map(p => p.title || p.titulo).filter(Boolean).join(' y ');
+              replyText = posterNames 
+                ? `¡Por supuesto! Aquí tienes estas geniales obras (${posterNames}) seleccionadas especialmente para tu espacio:`
+                : `¡Por supuesto! Aquí tienes estas excelentes opciones de nuestro catálogo oficial seleccionadas para ti:`;
+            }
+          }
+
+          if (!replyText && executedActions.length === 0) {
+            replyText = `Actualmente no contamos con diseños listos de esa temática en nuestro catálogo oficial, ¡pero con gusto podemos fabricarte cualquier cuadro 100% personalizado con la foto o imagen que desees en madera MDF de 5.5mm con impresión HP Látex! ¿Te gustaría cotizarlo o enviarnos tu diseño?`;
           }
 
           return {

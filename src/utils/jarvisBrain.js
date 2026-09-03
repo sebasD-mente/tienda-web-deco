@@ -35,39 +35,7 @@ export function saveGeminiApiKey(apiKey) {
   }
 }
 
-/**
- * Intelligent Catalog Matcher fallback
- */
-function findMatchingPosters(userQuery, replyText, posters) {
-  const qNorm = (userQuery + ' ' + (replyText || '')).toLowerCase();
-  const matchedIds = new Set();
 
-  for (const poster of posters) {
-    const titleNorm = (poster.title || '').toLowerCase();
-    const subtitleNorm = (poster.subtitle || '').toLowerCase();
-    const tagsNorm = (poster.tags || []).join(' ').toLowerCase();
-
-    if (titleNorm && qNorm.includes(titleNorm)) {
-      matchedIds.add(poster.id);
-    } else if (subtitleNorm && qNorm.includes(subtitleNorm)) {
-      matchedIds.add(poster.id);
-    } else if (tagsNorm && tagsNorm.split(' ').some(t => t.length > 3 && qNorm.includes(t))) {
-      matchedIds.add(poster.id);
-    }
-  }
-
-  if (matchedIds.size === 0) {
-    if (qNorm.includes('auto') || qNorm.includes('carro') || qNorm.includes('porsche') || qNorm.includes('supra') || qNorm.includes('bmw') || qNorm.includes('delorean')) {
-      posters.filter(p => p.category === 'AUTOS').slice(0, 3).forEach(p => matchedIds.add(p.id));
-    } else if (qNorm.includes('superheroe') || qNorm.includes('marvel') || qNorm.includes('dc') || qNorm.includes('batman') || qNorm.includes('iron man')) {
-      posters.filter(p => p.category === 'SUPERHEROES').slice(0, 3).forEach(p => matchedIds.add(p.id));
-    } else if (qNorm.includes('anime') || qNorm.includes('dragon ball') || qNorm.includes('naruto')) {
-      posters.filter(p => p.category === 'ANIME').slice(0, 3).forEach(p => matchedIds.add(p.id));
-    }
-  }
-
-  return posters.filter(p => matchedIds.has(p.id)).slice(0, 3);
-}
 
 /**
  * Main J.A.R.V.I.S. Query Function
