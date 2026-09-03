@@ -667,6 +667,40 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
   let   localReply = '';
   const localActions = [];
 
+  // Check entity aliases first for instant high-accuracy local matching
+  const normQ = normalizeText(prompt);
+  const matchedEntity = ENTITY_ALIASES.find(ent =>
+    ent.keywords.some(kw => normQ.includes(normalizeText(kw))) ||
+    normalizeText(ent.canonical).includes(normQ)
+  );
+
+  if (matchedEntity) {
+    const canonicalNorm = normalizeText(matchedEntity.canonical);
+    const matchedPosters = cleanPosters.filter(p => {
+      const pTitle = normalizeText(p.title || p.titulo);
+      const pTags = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
+      return pTitle.includes(canonicalNorm) || pTags.includes(canonicalNorm);
+    }).slice(0, 6);
+
+    if (matchedPosters.length > 0) {
+      localActions.push({
+        type: 'catalog_matches',
+        posters: matchedPosters,
+        motivo: `Obras disponibles de ${matchedEntity.canonical}`
+      });
+      localReply = `¡Por supuesto! Aquí tienes las obras disponibles de **${matchedEntity.canonical}** en nuestro catálogo oficial:\n\n` +
+                   `* **Material:** Madera MDF rígida de 5.5mm con bordes pulidos e impresión ecológica HP Látex con protección UV.\n` +
+                   `* **Montaje:** Incluye cinta doble cara industrial Tesa en el reverso lista para colgar sin taladrar.\n` +
+                   `* **Medida más vendida:** Mediano (30x45cm) por **Q65.00** ⭐.\n\n` +
+                   `¿Cuál de estos diseños te gustaría elegir o deseas ver otra medida?`;
+      return {
+        replyText: localReply,
+        actions: localActions,
+        poweredBy: 'Deco High-Availability Fallback Engine'
+      };
+    }
+  }
+
   // Check custom documents and events
   const rawDocs    = jarvisMemory.customDocuments || [];
   const matchedDoc = rawDocs.find(d => {
@@ -790,15 +824,13 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CANDIDATE_MODELS = [
-  'gemini-3.7-flash',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash',
-  'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
-  'gemini-flash-latest',
+  'gemini-3.8-flash',
+  'gemini-3.6-flash',
   'gemini-flash-lite-latest',
-  'gemini-2.5-pro',
-  'gemini-pro-latest'
+  'gemini-3.5-flash-lite',
+  'gemini-3.7-flash',
+  'gemini-flash-latest'
 ];
 
 /**
@@ -855,7 +887,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
 
         let timerId = null;
         const callTimeout = new Promise((_, reject) => {
-          timerId = setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 15s timeout`)), 15000);
+          timerId = setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 5s timeout`)), 5000);
         });
 
         let resAI = null;
