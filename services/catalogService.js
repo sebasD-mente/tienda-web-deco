@@ -39,35 +39,25 @@ const POSTER_INCLUDE_LIGHT = {
   franchise: true,
 };
 
-/** Mapeo y normalización de categoría a enum de Prisma Category */
-export const VALID_CATEGORIES = [
-  'AUTOS',
-  'SUPERHEROES',
-  'ANIME',
-  'MUSICA',
-  'SERIESYPELICULAS',
-  'OBRASDEARTE',
-  'INFANTILYDIBUJOSANIMADOS',
-  'CINE'
-];
-
 export function normalizeCategory(catStr) {
-  if (!catStr) return 'AUTOS';
-  const clean = String(catStr).toUpperCase().replace(/[^A-Z]/g, '');
-  if (VALID_CATEGORIES.includes(clean)) return clean;
+  if (!catStr) return 'GENERAL';
+  const raw = String(catStr).trim();
+  if (!raw) return 'GENERAL';
 
-  // Mapeos comunes por si viene en minúsculas, con espacios o tildes
-  const lower = String(catStr).toLowerCase();
-  if (lower.includes('auto') || lower.includes('car')) return 'AUTOS';
-  if (lower.includes('superh') || lower.includes('hero')) return 'SUPERHEROES';
-  if (lower.includes('anim')) return 'ANIME';
-  if (lower.includes('music')) return 'MUSICA';
-  if (lower.includes('serie') || lower.includes('pelicula')) return 'SERIESYPELICULAS';
-  if (lower.includes('obra') || lower.includes('arte')) return 'OBRASDEARTE';
-  if (lower.includes('infantil') || lower.includes('dibujo')) return 'INFANTILYDIBUJOSANIMADOS';
-  if (lower.includes('cine') || lower.includes('movie')) return 'CINE';
+  // Mapeos canónicos conocidos para mantener compatibilidad histórica
+  const lower = raw.toLowerCase();
+  if (lower === 'autos' || lower.includes('automov') || lower.includes('coches')) return 'AUTOS';
+  if (lower === 'superheroes' || lower.includes('superh') || lower.includes('super heroe')) return 'SUPERHEROES';
+  if (lower === 'anime' || lower.includes('manga') || lower.includes('otaku')) return 'ANIME';
+  if (lower === 'musica' || lower === 'música' || lower.includes('rock') || lower.includes('banda')) return 'MUSICA';
+  if (lower === 'seriesypeliculas' || lower.includes('serie') || lower.includes('pelicula')) return 'SERIESYPELICULAS';
+  if (lower === 'obrasdearte' || lower.includes('obra de arte') || lower.includes('cuadro clasico')) return 'OBRASDEARTE';
+  if (lower === 'infantilydibujosanimados' || lower.includes('infantil') || lower.includes('dibujo animado')) return 'INFANTILYDIBUJOSANIMADOS';
+  if (lower === 'cine' || lower.includes('cinema')) return 'CINE';
+  if (lower.includes('bebida') || lower.includes('bar') || lower.includes('licor') || lower.includes('trago')) return 'BEBIDAS_Y_BAR';
 
-  return 'AUTOS';
+  // Para cualquier categoría personalizada nueva (ej. BEBIDAS_Y_BAR, GAMING, RETRO, etc.)
+  return raw.toUpperCase().replace(/[\s-]+/g, '_').replace(/[^A-Z0-9_]/g, '') || 'GENERAL';
 }
 
 /**
@@ -113,6 +103,7 @@ export function formatPosterForClient(poster) {
 
   const franchiseSlug = poster.franchise?.slug || (typeof poster.franchise === 'string' ? poster.franchise : null) || poster.franchiseId || null;
   const { embedding: _rawEmbedding, ...cleanPoster } = poster;
+  const rawCat = poster.categoria || poster.category || 'GENERAL';
 
   return {
     ...cleanPoster,
@@ -120,7 +111,7 @@ export function formatPosterForClient(poster) {
     title:          poster.titulo || poster.title || '',
     subtitle:       poster.subtitulo ?? poster.subtitle ?? null,
     description:    poster.descripcion ?? poster.description ?? '',
-    category:       poster.categoria || poster.category || 'AUTOS',
+    category:       rawCat,
     franchise:      franchiseSlug,
     image:          poster.imageUrl || poster.image || null,
     thumb:          poster.thumbUrl || poster.thumb || null,
@@ -134,7 +125,7 @@ export function formatPosterForClient(poster) {
     titulo:         poster.titulo || poster.title || '',
     subtitulo:      poster.subtitulo ?? poster.subtitle ?? null,
     descripcion:    poster.descripcion ?? poster.description ?? '',
-    categoria:      poster.categoria || poster.category || 'AUTOS',
+    categoria:      rawCat,
     imageUrl:       poster.imageUrl || poster.image || null,
     thumbUrl:       poster.thumbUrl || poster.thumb || null,
     precioMinimo:   finalMinPrice,
@@ -458,35 +449,38 @@ export async function deletePoster(id) {
 }
 
 export const DEFAULT_CATEGORIES = [
-  { id: 'AUTOS', name: 'AUTOS', icon: '🏎️' },
   { id: 'SUPERHEROES', name: 'SUPER HÉROES', icon: '⚡' },
   { id: 'ANIME', name: 'ANIME', icon: '⛩️' },
-  { id: 'MUSICA', name: 'MÚSICA', icon: '🎵' },
   { id: 'SERIESYPELICULAS', name: 'SERIES Y PELÍCULAS', icon: '🎬' },
   { id: 'OBRASDEARTE', name: 'OBRAS DE ARTE', icon: '🖼️' },
-  { id: 'INFANTILYDIBUJOSANIMADOS', name: 'INFANTIL Y DIBUJOS ANIMADOS', icon: '🧸' }
+  { id: 'INFANTILYDIBUJOSANIMADOS', name: 'INFANTIL Y DIBUJOS ANIMADOS', icon: '🧸' },
+  { id: 'BEBIDAS_Y_BAR', name: 'BEBIDAS Y BAR', icon: '🍸' },
+  { id: 'MUSICA', name: 'MÚSICA', icon: '🎵' },
+  { id: 'CINE', name: 'CINE', icon: '🎥' }
 ];
 
 const CATEGORY_DISPLAY_NAMES = {
-  AUTOS: 'AUTOS',
   SUPERHEROES: 'SUPER HÉROES',
   ANIME: 'ANIME',
   MUSICA: 'MÚSICA',
   SERIESYPELICULAS: 'SERIES Y PELÍCULAS',
   OBRASDEARTE: 'OBRAS DE ARTE',
   INFANTILYDIBUJOSANIMADOS: 'INFANTIL Y DIBUJOS ANIMADOS',
-  CINE: 'CINE'
+  CINE: 'CINE',
+  BEBIDAS_Y_BAR: 'BEBIDAS Y BAR',
+  AUTOS: 'AUTOS'
 };
 
 const CATEGORY_ICONS = {
-  AUTOS: '🏎️',
   SUPERHEROES: '⚡',
   ANIME: '⛩️',
   MUSICA: '🎵',
   SERIESYPELICULAS: '🎬',
   OBRASDEARTE: '🖼️',
   INFANTILYDIBUJOSANIMADOS: '🧸',
-  CINE: '🎥'
+  CINE: '🎥',
+  BEBIDAS_Y_BAR: '🍸',
+  AUTOS: '🏎️'
 };
 
 // ── Categorías y Franquicias en PostgreSQL ────────────────────────────────────
@@ -523,7 +517,7 @@ export async function getAllCategories() {
     if (id && id !== 'TODOS') {
       categoryMap.set(id, {
         id,
-        name: typeof cat === 'object' && cat.name ? cat.name : (CATEGORY_DISPLAY_NAMES[id] || id),
+        name: typeof cat === 'object' && cat.name ? cat.name : (CATEGORY_DISPLAY_NAMES[id] || id.replace(/_/g, ' ')),
         icon: typeof cat === 'object' && cat.icon ? cat.icon : (CATEGORY_ICONS[id] || '🏷️')
       });
     }
@@ -535,7 +529,7 @@ export async function getAllCategories() {
     if (id && !categoryMap.has(id)) {
       categoryMap.set(id, {
         id,
-        name: CATEGORY_DISPLAY_NAMES[id] || id,
+        name: CATEGORY_DISPLAY_NAMES[id] || id.replace(/_/g, ' '),
         icon: CATEGORY_ICONS[id] || '🏷️'
       });
     }

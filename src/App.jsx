@@ -63,7 +63,7 @@ function PageLoader() {
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'catalog' | 'category' | 'franchise' | 'about' | 'custom' | 'admin'
-  const [selectedCategoryId, setSelectedCategoryId] = useState('AUTOS');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('SUPERHEROES');
   const [selectedFranchiseId, setSelectedFranchiseId] = useState('avengers');
   const [cart, setCart] = useState(() => {
     try {

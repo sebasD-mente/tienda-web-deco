@@ -15,7 +15,7 @@ export default function CategoryGalleryPage({
   // Find the active category object
   const currentCategory = useMemo(() => {
     return categories.find(c => c.id === categoryId) || {
-      id: categoryId || 'AUTOS',
+      id: categoryId || 'SUPERHEROES',
       name: categoryId || 'Colección Especial',
       description: 'Explora todas las obras exclusivas impresas en madera MDF rígida de 5.5mm con tecnología HP Látex.'
     };

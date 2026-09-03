@@ -18,13 +18,15 @@ export default function AdminCreatePosterTab({
   // ── Identificadores ──────────────────────────────────────────────────────────
   // pgId  = UUID de PostgreSQL (solo existe cuando estamos EDITANDO un póster ya guardado)
   // legId = legacyId (ID antiguo tipo "deco-xxxx" — conservado para compatibilidad)
+  const defaultCatId = categories.find(c => c.id !== 'TODOS')?.id || 'SUPERHEROES';
+
   const [pgId,  setPgId]  = useState(null);
   const [legId, setLegId] = useState(null);
 
   // ── Campos del formulario ────────────────────────────────────────────────────
   const [title,        setTitle]        = useState('');
   const [subtitle,     setSubtitle]     = useState('');
-  const [category,     setCategory]     = useState('AUTOS');
+  const [category,     setCategory]     = useState(defaultCatId);
   const [franchiseId,  setFranchiseId]  = useState('');
   const [description,  setDescription]  = useState('');
   const [tagsInput,    setTagsInput]    = useState('');
@@ -62,7 +64,7 @@ export default function AdminCreatePosterTab({
 
       setTitle(editingPoster.titulo        || editingPoster.title    || '');
       setSubtitle(editingPoster.subtitulo  || editingPoster.subtitle || '');
-      setCategory(editingPoster.categoria  || editingPoster.category || 'AUTOS');
+      setCategory(editingPoster.categoria  || editingPoster.category || defaultCatId);
       setFranchiseId(editingPoster.franchiseId || editingPoster.franchise || '');
       setDescription(editingPoster.descripcion || editingPoster.description || '');
       setTagsInput((editingPoster.tags || []).join(', '));
@@ -86,14 +88,14 @@ export default function AdminCreatePosterTab({
     } else {
       resetForm();
     }
-  }, [editingPoster]);
+  }, [editingPoster, defaultCatId]);
 
   const resetForm = () => {
     setPgId(null);
     setLegId(null);
     setTitle('');
     setSubtitle('');
-    setCategory('AUTOS');
+    setCategory(defaultCatId);
     setFranchiseId('');
     setDescription('');
     setTagsInput('');
