@@ -88,7 +88,7 @@ model PosterSize {
   id          String   @id @default(cuid())
   poster      Poster   @relation(fields: [posterId], references: [id], onDelete: Cascade)
   posterId    String
-  sizeId      SizeId
+  sizeId      String
   nombre      String
   dimensiones String
   anchoCm     Decimal? @db.Decimal(6, 2)

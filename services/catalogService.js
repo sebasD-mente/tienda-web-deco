@@ -785,12 +785,13 @@ export async function getFullCatalog() {
 
 /** Tabla de precios base por tamano. */
 const DEFAULT_SIZE_CATALOG = {
-  MINI:          { nombre: 'Mini',          dimensiones: '14 x 21 cm',  anchoCm: 14,  altoCm: 21,  precio: 25,  badge: 'Ideal para coleccionar y escritorios' },
-  PEQUENO:       { nombre: 'Pequeño',       dimensiones: '21 x 27 cm',  anchoCm: 21,  altoCm: 27,  precio: 35,  badge: 'Espacios reducidos y cabeceras' },
-  MEDIANO:       { nombre: 'Mediano',       dimensiones: '30 x 45 cm',  anchoCm: 30,  altoCm: 45,  precio: 65,  badge: '⭐ El más vendido para habitaciones' },
-  GRANDE:        { nombre: 'Grande',        dimensiones: '45 x 60 cm',  anchoCm: 45,  altoCm: 60,  precio: 125, badge: 'Protagonista para salas y oficinas' },
-  GIGANTE:       { nombre: 'Gigante',       dimensiones: '60 x 100 cm', anchoCm: 60,  altoCm: 100, precio: 210, badge: 'Impacto visual monumental' },
-  PERSONALIZADO: { nombre: 'Personalizado', dimensiones: 'A convenir',  anchoCm: null,altoCm: null,precio: 250, badge: 'Medida especial negociada' },
+  MINI:          { nombre: 'Mini',             dimensiones: '14 x 21 cm',  anchoCm: 14,  altoCm: 21,  precio: 25,  badge: 'Ideal para coleccionar y escritorios' },
+  PEQUENO:       { nombre: 'Pequeño',          dimensiones: '21 x 27 cm',  anchoCm: 21,  altoCm: 27,  precio: 35,  badge: 'Espacios reducidos y cabeceras' },
+  PORTADA_ALBUM: { nombre: 'Portada de Álbum', dimensiones: '30 x 30 cm',  anchoCm: 30,  altoCm: 30,  precio: 55,  badge: 'Formato vinilo cuadrado para música' },
+  MEDIANO:       { nombre: 'Mediano',          dimensiones: '30 x 45 cm',  anchoCm: 30,  altoCm: 45,  precio: 65,  badge: '⭐ El más vendido para habitaciones' },
+  GRANDE:        { nombre: 'Grande',           dimensiones: '45 x 60 cm',  anchoCm: 45,  altoCm: 60,  precio: 125, badge: 'Protagonista para salas y oficinas' },
+  GIGANTE:       { nombre: 'Gigante',          dimensiones: '60 x 100 cm', anchoCm: 60,  altoCm: 100, precio: 210, badge: 'Impacto visual monumental' },
+  PERSONALIZADO: { nombre: 'Personalizado',    dimensiones: 'A convenir',  anchoCm: null,altoCm: null,precio: 250, badge: 'Medida especial negociada' },
 };
 
 function buildSizesForUpsert(sizes, availableSizes) {
