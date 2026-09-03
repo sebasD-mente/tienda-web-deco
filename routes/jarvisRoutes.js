@@ -21,11 +21,16 @@ import {
 const router = Router();
 
 // ── GET /api/version ─────────────────────────────────────────────────────────
-router.get('/version', (req, res) => {
-  const key = getJarvisApiKey();
+router.get('/version', async (req, res) => {
+  let dbKey = '';
+  try {
+    const memory = await getJarvisMemory();
+    dbKey = memory?.apiKey || '';
+  } catch (e) {}
+  const key = dbKey || getJarvisApiKey();
   res.json({
-    version:   'v7.0-genai-modern',
-    engine:    '@google/genai-gemini-3.6-flash',
+    version:   'v7.1-genai-flash',
+    engine:    '@google/genai-gemini-flash',
     hasApiKey: !!key,
     keyPrefix: (key || '').substring(0, 10)
   });
@@ -90,7 +95,7 @@ router.post('/jarvis/save-key', requireAuth, async (req, res) => {
     if (!result.success) {
       return res.status(500).json({ error: result.error });
     }
-    console.log('[Deco J.A.R.V.I.S.] Saved Gemini API key to persistent store.');
+    console.log('[Deco J.A.R.V.I.S.] Saved Gemini API key to PostgreSQL store.');
     return res.status(200).json({ success: true, message: 'Clave de Gemini API guardada.' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -105,18 +110,22 @@ router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
     const clientKey       = req.headers['x-gemini-key'] || req.body?.apiKey;
     const masterServerKey = getJarvisApiKey();
 
-    // Build candidate key pool — server key takes priority over client-provided key
+    // 1. Obtener catálogo y memoria de entrenamiento en VIVO directamente desde PostgreSQL
+    const liveCatalog  = await getFullCatalog();
+    const jarvisMemory = await getJarvisMemory();
+    const dbApiKey     = (jarvisMemory?.apiKey || '').trim();
+
+    // Build candidate key pool — DB key (from Admin panel) + Server Env key (Dokploy) + Client key
     const candidateKeys = [];
-    if (masterServerKey && masterServerKey.trim().length > 0) {
+    if (dbApiKey && dbApiKey.length > 0) {
+      candidateKeys.push(dbApiKey);
+    }
+    if (masterServerKey && masterServerKey.trim().length > 0 && !candidateKeys.includes(masterServerKey.trim())) {
       candidateKeys.push(masterServerKey.trim());
     }
     if (clientKey && clientKey.trim().length > 0 && !candidateKeys.includes(clientKey.trim())) {
       candidateKeys.push(clientKey.trim());
     }
-
-    // 1. Obtener catálogo en VIVO directamente desde PostgreSQL via Prisma
-    const liveCatalog = await getFullCatalog();
-    const jarvisMemory = await getJarvisMemory();
 
     const result = await chatWithJarvis(prompt, history, candidateKeys, liveCatalog, jarvisMemory);
 
