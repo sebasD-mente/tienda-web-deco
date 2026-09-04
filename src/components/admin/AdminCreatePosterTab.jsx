@@ -93,6 +93,15 @@ export default function AdminCreatePosterTab({
     }
   }, [editingPoster]);
 
+  // Asegurar que al abrir la pestaña de crear o editar obra, la vista siempre inicie arriba mostrando la imagen
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const timer = setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [editingPoster?.id]);
+
   const resetForm = () => {
     setPgId(null);
     setLegId(null);
@@ -275,6 +284,7 @@ export default function AdminCreatePosterTab({
       apiDeletePosterImage(imageUrl, thumbUrl).catch(() => {});
     }
     resetForm();
+    window.scrollTo(0, 0);
     if (onCancel) onCancel();
   };
 

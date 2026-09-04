@@ -79,6 +79,15 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
     };
   }, []);
 
+  // Al cambiar de pestaña activa o al editar/crear una obra, situar el scroll arriba
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const timer = setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [activeTab, editingPoster]);
+
   if (isVerifyingAuth) {
     return (
       <div style={{
@@ -105,6 +114,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
       // loadData() ya fue llamado por el evento 'deco-catalog-updated' en catalogStorage
       setEditingPoster(null);
       setActiveTab('inventory');
+      window.scrollTo(0, 0);
       const displayTitle = savedPoster?.titulo || savedPoster?.title || posterData.title;
       showToast(`¡Obra "${displayTitle}" guardada en PostgreSQL!`, 'success');
     } catch (err) {
@@ -136,6 +146,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
   const handleEditPoster = (poster) => {
     setEditingPoster(poster);
     setActiveTab('create');
+    window.scrollTo(0, 0);
   };
 
   // Category Actions
@@ -509,6 +520,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
               onCreateNew={() => {
                 setEditingPoster(null);
                 setActiveTab('create');
+                window.scrollTo(0, 0);
               }}
             />
           )}
@@ -523,6 +535,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
               onCancel={() => {
                 setEditingPoster(null);
                 setActiveTab('inventory');
+                window.scrollTo(0, 0);
               }}
               onShowToast={showToast}
             />

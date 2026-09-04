@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, Plus, X, Package, Star, Edit3, Trash2, Eye 
 } from 'lucide-react';
@@ -13,6 +13,15 @@ export default function AdminInventoryTab({
   onToggleFeatured,
   onCreateNew
 }) {
+  // Asegurar que al entrar al inventario (p. ej. tras guardar obra o cambiar de pestaña), la vista esté situada arriba donde está el botón de crear obra
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const timer = setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
   const [searchFilter, setSearchFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
