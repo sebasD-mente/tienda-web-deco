@@ -99,8 +99,11 @@ export default function HeroCarousel({
           {/* User Button: Botón Categorías Disponibles */}
           <div style={{ margin: '24px 0 0 0', display: 'flex', justifyContent: 'center' }}>
             <a
-              href="#catalogo"
+              href="/catalogo"
               onClick={(e) => {
+                if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                  return;
+                }
                 e.preventDefault();
                 if (onNavigate) {
                   onNavigate('catalog');

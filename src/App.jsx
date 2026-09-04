@@ -354,6 +354,13 @@ export default function App() {
     window.open(waUrl, '_blank');
   };
 
+  const isAnyModalOpen = Boolean(
+    isJarvisOpen ||
+    selectedPosterForModal ||
+    showAdminLoginModal ||
+    isCartOpen
+  );
+
   return (
     <div style={{ position: 'relative', minHeight: '100vh', background: '#060910' }}>
       
@@ -556,8 +563,8 @@ export default function App() {
         onNavigate={handleNavigate}
       />
 
-      {/* Floating Jarvis Arc Reactor Trigger Button (When closed) */}
-      {!isJarvisOpen && (
+      {/* Floating Jarvis Arc Reactor Trigger Button (When closed & no modal open) */}
+      {!isAnyModalOpen && (
         <div
           onClick={handleOpenJarvis}
           className="jarvis-trigger-orb"
@@ -566,7 +573,7 @@ export default function App() {
             bottom: '20px',
             right: '20px',
             cursor: 'pointer',
-            zIndex: 999,
+            zIndex: 900,
             transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
             padding: 0
           }}

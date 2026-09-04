@@ -228,7 +228,7 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 1000;
   padding: 20px;
   animation: fadeIn 0.25s ease;
 }
@@ -308,7 +308,7 @@ html {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 999;
+  z-index: 900;
   transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   animation: arcPulse 3s infinite ease-in-out;
 }
@@ -317,6 +317,17 @@ html {
   transform: scale(1.08) translateY(-3px);
   box-shadow: 0 0 40px rgba(0, 242, 254, 0.75), inset 0 0 20px rgba(0, 242, 254, 0.45);
   border-color: #00f2fe;
+}
+
+/* Hide and deactivate J.A.R.V.I.S. trigger orb when any modal or drawer is active */
+body:has(.modal-backdrop) .jarvis-trigger-orb,
+body:has(.cart-drawer-backdrop) .jarvis-trigger-orb,
+body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transform: scale(0.7) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 /* Hide carousel navigation arrows on mobile & touch devices */

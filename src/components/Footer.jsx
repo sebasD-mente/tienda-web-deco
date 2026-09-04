@@ -3,6 +3,9 @@ import { MapPin, MessageSquare, ArrowRight } from 'lucide-react';
 
 export default function Footer({ onNavigate }) {
   const handleNav = (e, page) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+      return;
+    }
     e.preventDefault();
     if (onNavigate) {
       onNavigate(page);
@@ -29,7 +32,7 @@ export default function Footer({ onNavigate }) {
           <div>
             <div style={{ marginBottom: '16px' }}>
               <a
-                href="#"
+                href="/"
                 onClick={(e) => handleNav(e, 'home')}
                 style={{ textDecoration: 'none' }}
               >
@@ -63,7 +66,7 @@ export default function Footer({ onNavigate }) {
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.88rem' }}>
               <li>
                 <a
-                  href="#inicio"
+                  href="/"
                   onClick={(e) => handleNav(e, 'home')}
                   style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }}
                   onMouseEnter={e => e.target.style.color = '#00f2fe'}
@@ -75,7 +78,7 @@ export default function Footer({ onNavigate }) {
               </li>
               <li>
                 <a
-                  href="#catalogo"
+                  href="/catalogo"
                   onClick={(e) => handleNav(e, 'catalog')}
                   style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }}
                   onMouseEnter={e => e.target.style.color = '#00f2fe'}
@@ -87,7 +90,7 @@ export default function Footer({ onNavigate }) {
               </li>
               <li>
                 <a
-                  href="#sobre-nosotros"
+                  href="/sobre-posters"
                   onClick={(e) => handleNav(e, 'about')}
                   style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }}
                   onMouseEnter={e => e.target.style.color = '#00f2fe'}
@@ -99,7 +102,7 @@ export default function Footer({ onNavigate }) {
               </li>
               <li>
                 <a
-                  href="#personalizados"
+                  href="/personalizados"
                   onClick={(e) => handleNav(e, 'custom')}
                   style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }}
                   onMouseEnter={e => e.target.style.color = '#00f2fe'}

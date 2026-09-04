@@ -8,11 +8,49 @@ export function getRouteFromPath(pathname = (typeof window !== 'undefined' ? win
     return { page: 'home', categoryId: null, franchiseId: null };
   }
 
+  // Extract inline hash if present in pathname argument
+  let pathOnly = pathname;
+  let inlineHash = '';
+  if (pathname.includes('#')) {
+    const hashIndex = pathname.indexOf('#');
+    pathOnly = pathname.slice(0, hashIndex) || '/';
+    inlineHash = pathname.slice(hashIndex);
+  }
+
   // Remove trailing slash if present (except for root '/')
-  const clean = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  const clean = pathOnly.length > 1 && pathOnly.endsWith('/') ? pathOnly.slice(0, -1) : pathOnly;
   const lower = clean.toLowerCase();
 
   if (lower === '' || lower === '/') {
+    // Graceful backward compatibility for legacy hash bookmarks (#catalogo, #sobre-nosotros, etc.)
+    const activeHash = inlineHash || (typeof window !== 'undefined' && window.location ? window.location.hash : '');
+    if (activeHash) {
+      const rawHash = activeHash.replace(/^#\/?/, '').trim();
+      const lowerHash = rawHash.toLowerCase();
+
+      if (lowerHash === 'catalogo' || lowerHash === 'catalog') {
+        return { page: 'catalog', categoryId: null, franchiseId: null };
+      }
+      if (lowerHash === 'sobre-nosotros' || lowerHash === 'sobre-posters' || lowerHash === 'about' || lowerHash === 'nuestros-posters') {
+        return { page: 'about', categoryId: null, franchiseId: null };
+      }
+      if (lowerHash === 'personalizados' || lowerHash === 'custom' || lowerHash === 'cuadros-personalizados' || lowerHash === 'custom-posters') {
+        return { page: 'custom', categoryId: null, franchiseId: null };
+      }
+      if (lowerHash === 'admin' || lowerHash === 'dashboard') {
+        return { page: 'admin', categoryId: null, franchiseId: null };
+      }
+      if (lowerHash.startsWith('categoria/')) {
+        const rawCat = rawHash.substring('categoria/'.length).trim();
+        const catId = decodeURIComponent(rawCat);
+        return { page: 'category', categoryId: catId || 'SUPERHEROES', franchiseId: null };
+      }
+      if (lowerHash.startsWith('franquicia/')) {
+        const rawFran = rawHash.substring('franquicia/'.length).trim();
+        const franId = decodeURIComponent(rawFran);
+        return { page: 'franchise', categoryId: null, franchiseId: franId || 'avengers' };
+      }
+    }
     return { page: 'home', categoryId: null, franchiseId: null };
   }
 

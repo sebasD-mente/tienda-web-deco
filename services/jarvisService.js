@@ -391,7 +391,7 @@ export function buildSystemInstruction(catalog, jarvisMemory = {}, relevantPoste
     "Escribe en texto conversacional fluido, natural y limpio.",
     "Recomienda siempre el tamaño Mediano (30x45cm) como la opción más balanceada e ideal para cualquier habitación.",
     "Menciona que la cinta industrial Tesa de montaje viene incluida en el reverso lista para colgar sin taladros.",
-    "Este sábado y domingo 29 y 30 de agosto tendremos stand disponible en el Centro Comercial Centranorte, zona 18, Guatemala donde estarán disponibles todos nuestros diseños."
+    "El próximo 6 de septiembre tendremos stand disponible en el Fan Fest Guatemala en Parque de la Industria donde estarán disponibles todos nuestros diseños y pósters autografiables con el actor de doblaje invitado Rodo Balderas."
   ]).map(d => `- ${d}`).join('\n');
 
   const customDocs = (jarvisMemory.customDocuments || [
@@ -802,8 +802,8 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
     const cNorm = (d.content || '').toLowerCase();
     return (tNorm && qLower.includes(tNorm)) ||
            (qLower.includes('evento')      && (tNorm.includes('fest')        || tNorm.includes('stand')       || tNorm.includes('evento'))) ||
-           (qLower.includes('fan fest')    &&  tNorm.includes('fan fest')) ||
-           (qLower.includes('centranorte') && (tNorm.includes('centranorte') || cNorm.includes('centranorte')));
+           (qLower.includes('fan fest')    && (tNorm.includes('fan fest')    || cNorm.includes('fan fest'))) ||
+           ((qLower.includes('parque de la industria') || qLower.includes('parque industria')) && (tNorm.includes('industria') || cNorm.includes('industria') || tNorm.includes('fan fest') || cNorm.includes('fan fest')));
   });
 
   if (matchedDoc) {

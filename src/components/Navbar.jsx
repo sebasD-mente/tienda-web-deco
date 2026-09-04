@@ -88,6 +88,9 @@ export default function Navbar({
   }, [localSearch, posters]);
 
   const handleNavClick = (e, page) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+      return;
+    }
     e.preventDefault();
     setMobileMenuOpen(false);
     if (onNavigate) {
@@ -129,7 +132,7 @@ export default function Navbar({
             
             {/* 3. Vertically Centered Overlapping Circular Logo */}
             <a
-              href="#"
+              href="/"
               onClick={(e) => handleNavClick(e, 'home')}
               style={{
                 position: 'absolute',
@@ -163,7 +166,7 @@ export default function Navbar({
               marginRight: '30px'
             }}>
               <a
-                href="#inicio"
+                href="/"
                 onClick={(e) => handleNavClick(e, 'home')}
                 style={{
                   color: activePage === 'home' ? '#00f2fe' : '#ffffff',
@@ -184,7 +187,7 @@ export default function Navbar({
               </a>
 
               <a
-                href="#catalogo"
+                href="/catalogo"
                 onClick={(e) => handleNavClick(e, 'catalog')}
                 style={{
                   color: (activePage === 'catalog' || activePage === 'category') ? '#00f2fe' : '#ffffff',
@@ -205,7 +208,7 @@ export default function Navbar({
               </a>
 
               <a
-                href="#sobre-nosotros"
+                href="/sobre-posters"
                 onClick={(e) => handleNavClick(e, 'about')}
                 style={{
                   color: activePage === 'about' ? '#00f2fe' : '#ffffff',
@@ -226,7 +229,7 @@ export default function Navbar({
               </a>
 
               <a
-                href="#personalizados"
+                href="/personalizados"
                 onClick={(e) => handleNavClick(e, 'custom')}
                 style={{
                   color: activePage === 'custom' ? '#00f2fe' : '#ffffff',
@@ -630,7 +633,7 @@ export default function Navbar({
         <div
           className="modal-backdrop"
           onClick={handleCloseSearchModal}
-          style={{ zIndex: 200, padding: '16px' }}
+          style={{ zIndex: 1000, padding: '16px' }}
         >
           <div
             className="glass-card"

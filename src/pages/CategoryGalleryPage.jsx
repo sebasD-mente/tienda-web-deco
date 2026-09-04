@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Search, Filter, Sparkles, Layers, ShieldCheck, ChevronRight, X } from 'lucide-react';
+import { ArrowLeft, Search, Sparkles, Layers, ShieldCheck, ChevronRight, X } from 'lucide-react';
 import { getPosterSizeBadge, getPosterPriceDisplay } from '../utils/posterHelpers';
 import OptimizedImage from '../components/OptimizedImage';
 
@@ -366,15 +366,27 @@ export default function CategoryGalleryPage({
             marginBottom: '60px'
           }}>
             <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-              No se encontraron pósters con los filtros seleccionados.
+              {categoryPosters.length === 0
+                ? 'Esta colección no contiene obras disponibles actualmente.'
+                : 'No se encontraron pósters para tu búsqueda dentro de esta colección.'}
             </p>
-            <button
-              onClick={() => { setSearchQuery(''); setSelectedSizeFilter('ALL'); }}
-              className="btn-cyan"
-              style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-            >
-              Restablecer Filtros
-            </button>
+            {categoryPosters.length > 0 ? (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="btn-cyan"
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                Restablecer Filtros
+              </button>
+            ) : (
+              <button
+                onClick={() => onNavigate && onNavigate('catalog')}
+                className="btn-cyan"
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                Ver Catálogo Completo
+              </button>
+            )}
           </div>
         )}
 
