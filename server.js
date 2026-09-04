@@ -178,20 +178,28 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   }).catch(() => {});
 });
 
-import { prisma } from './services/catalogService.js';
+import { prisma } from './config/prisma.js';
 
 const shutdown = (signal) => {
   console.log(`🛑 [Graceful Shutdown] Señal ${signal} recibida. Cerrando conexiones...`);
+  
+  if (typeof server.closeIdleConnections === 'function') {
+    server.closeIdleConnections();
+  }
+
   server.close(async () => {
     try {
       await prisma.$disconnect();
       console.log('✅ Pool de PostgreSQL desconectado.');
-    } catch (_) {}
+    } catch (err) {
+      console.warn('⚠️ Error al desconectar pool de PostgreSQL:', err.message);
+    }
     console.log('✅ Servidor HTTP cerrado limpiamente.');
     process.exit(0);
   });
+
   setTimeout(() => {
-    console.warn('⚠️ [Graceful Shutdown] Forzando salida tras timeout.');
+    console.warn('⚠️ [Graceful Shutdown] Forzando salida tras timeout de 5000ms.');
     process.exit(1);
   }, 5000).unref();
 };

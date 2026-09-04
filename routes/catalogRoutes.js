@@ -8,7 +8,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, verifyAuthToken } from '../middleware/auth.js';
 import {
   getAllPosters,
   getPosterById,
@@ -30,6 +30,12 @@ import { PROJECT_ROOT, UPLOADS_DIR } from '../config/paths.js';
 
 const router = Router();
 
+function isRequestAuthorizedAdmin(req) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/, '').trim();
+  return Boolean(token && verifyAuthToken(token));
+}
+
 // ── Multer In-Memory Storage (Stateless Gateway) ─────────────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -44,67 +50,100 @@ const upload = multer({
 });
 
 // ── GET /api/catalog (Public — Central Source of Truth from PostgreSQL) ──────
-router.get('/catalog', async (req, res) => {
+router.get('/catalog', async (req, res, next) => {
   try {
-    const catalog = await getFullCatalog();
+    const wantsUnpublished = req.query.includeUnpublished === 'true';
+
+    if (wantsUnpublished && !isRequestAuthorizedAdmin(req)) {
+      return res.status(401).json({
+        success: false,
+        error: 'Acceso no autorizado. Se requiere sesión de administrador para consultar obras no publicadas.'
+      });
+    }
+
+    const catalog = await getFullCatalog({ includeUnpublished: wantsUnpublished });
     return res.status(200).json(catalog);
   } catch (err) {
     console.error('[API Error] GET /api/catalog:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al obtener el catálogo.', details: err.message });
   }
 });
 
 // ── GET /api/catalog/franchises (Public — All official franchises) ───────────
-router.get('/catalog/franchises', async (req, res) => {
+router.get('/catalog/franchises', async (req, res, next) => {
   try {
     const franchises = await getAllFranchises();
     return res.status(200).json({ success: true, count: franchises.length, franchises });
   } catch (err) {
     console.error('[API Error] GET /api/catalog/franchises:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al obtener las franquicias.', details: err.message });
   }
 });
 
 // ── POST /api/catalog/franchises (Admin — Upsert franchise) ──────────────────
-router.post('/catalog/franchises', requireAuth, async (req, res) => {
+router.post('/catalog/franchises', requireAuth, async (req, res, next) => {
   try {
-    const { id, slug, name, img, imageUrl, category } = req.body;
+    let { id, slug, name, img, imageUrl, category } = req.body;
     if (!name) {
       return res.status(400).json({ error: 'El nombre de la franquicia es obligatorio.' });
     }
-    const franchise = await upsertFranchise({ id, slug, name, img, imageUrl, category });
+
+    let finalImage = imageUrl || img;
+    if (finalImage && typeof finalImage === 'string' && finalImage.startsWith('data:image/')) {
+      const cleanSlug = (slug || id || name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const buffer = dataUrlToBuffer(finalImage);
+      const processed = await processImageBuffer(buffer, `franchise-${cleanSlug}`);
+      finalImage = processed.image;
+    }
+
+    const franchise = await upsertFranchise({ id, slug, name, imageUrl: finalImage, category });
     return res.status(200).json({ success: true, franchise });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/franchises:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al guardar la franquicia.', details: err.message });
   }
 });
 
 // ── DELETE /api/catalog/franchises/:id (Admin — Delete franchise) ─────────────
-router.delete('/catalog/franchises/:id', requireAuth, async (req, res) => {
+router.delete('/catalog/franchises/:id', requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     await deleteFranchise(id);
     return res.status(200).json({ success: true, message: 'Franquicia eliminada con éxito.' });
   } catch (err) {
     console.error('[API Error] DELETE /api/catalog/franchises/:id:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al eliminar la franquicia.', details: err.message });
   }
 });
 
 // ── GET /api/catalog/categories (Public — All categories with count) ──────────
-router.get('/catalog/categories', async (req, res) => {
+router.get('/catalog/categories', async (req, res, next) => {
   try {
     const categories = await getAllCategories();
     return res.status(200).json({ success: true, count: categories.length, categories });
   } catch (err) {
     console.error('[API Error] GET /api/catalog/categories:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al obtener las categorías.', details: err.message });
   }
 });
 
 // ── POST /api/catalog/categories (Admin — Upsert category) ────────────────────
-router.post('/catalog/categories', requireAuth, async (req, res) => {
+router.post('/catalog/categories', requireAuth, async (req, res, next) => {
   try {
     const { id, name, icon } = req.body;
     if (!name) {
@@ -114,43 +153,59 @@ router.post('/catalog/categories', requireAuth, async (req, res) => {
     return res.status(200).json({ success: true, categories });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/categories:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al guardar la categoría.', details: err.message });
   }
 });
 
 // ── DELETE /api/catalog/categories/:id (Admin — Delete category) ──────────────
-router.delete('/catalog/categories/:id', requireAuth, async (req, res) => {
+router.delete('/catalog/categories/:id', requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     const categories = await deleteCategory(id);
     return res.status(200).json({ success: true, message: 'Categoría eliminada con éxito.', categories });
   } catch (err) {
     console.error('[API Error] DELETE /api/catalog/categories/:id:', err);
-    return res.status(400).json({ error: err.message });
+    const statusCode = err.statusCode || 400;
+    if (statusCode >= 500 && process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+    return res.status(statusCode).json({ error: err.message });
   }
 });
 
 // ── GET /api/catalog/posters (Public / Admin listing with Cursor Pagination) ──
-router.get('/catalog/posters', async (req, res) => {
+router.get('/catalog/posters', async (req, res, next) => {
   try {
     const {
       categoria,
       franchiseId,
       search,
       onlyFeatured,
-      includeUnpublished,
+      includeUnpublished: includeUnpublishedQuery,
       orderBy,
       order,
       cursor,
       take,
     } = req.query;
 
+    const wantsUnpublished = includeUnpublishedQuery === 'true';
+
+    if (wantsUnpublished && !isRequestAuthorizedAdmin(req)) {
+      return res.status(401).json({
+        success: false,
+        error: 'Acceso no autorizado. Se requiere sesión de administrador para consultar obras no publicadas.'
+      });
+    }
+
     const result = await getAllPosters({
       categoria,
       franchiseId,
       search,
       onlyFeatured: onlyFeatured === 'true',
-      includeUnpublished: includeUnpublished === 'true',
+      includeUnpublished: wantsUnpublished,
       orderBy,
       order,
       cursor,
@@ -174,20 +229,32 @@ router.get('/catalog/posters', async (req, res) => {
     });
   } catch (err) {
     console.error('[API Error] GET /api/catalog/posters:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al consultar pósters en la base de datos.', details: err.message });
   }
 });
 
 // ── GET /api/catalog/posters/:id (Public details) ────────────────────────────
-router.get('/catalog/posters/:id', async (req, res) => {
+router.get('/catalog/posters/:id', async (req, res, next) => {
   try {
     const poster = await getPosterById(req.params.id);
     if (!poster) {
       return res.status(404).json({ error: 'Póster no encontrado' });
     }
+
+    // Privacidad estricta: si la obra no está publicada, requerir credenciales de admin
+    if (!poster.isPublished && !isRequestAuthorizedAdmin(req)) {
+      return res.status(404).json({ error: 'Póster no encontrado' });
+    }
+
     return res.status(200).json({ success: true, poster });
   } catch (err) {
     console.error('[API Error] GET /api/catalog/posters/:id:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al obtener el póster.', details: err.message });
   }
 });
@@ -257,6 +324,9 @@ router.post('/catalog/posters', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[API Error] POST /api/catalog/posters:', err);
     const status = err.statusCode || 500;
+    if (status >= 500 && process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(status).json({ error: err.message || 'Error al crear el póster en la base de datos.' });
   }
 });
@@ -306,6 +376,9 @@ router.put('/catalog/posters/:id', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error(`[API Error] PUT /api/catalog/posters/${req.params.id}:`, err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al actualizar el póster en la base de datos.', details: err.message });
   }
 });
@@ -340,7 +413,11 @@ router.patch('/catalog/posters/:id', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error(`[API Error] PATCH /api/catalog/posters/${req.params.id}:`, err);
-    return res.status(err.statusCode || 500).json({ error: err.message || 'Error al actualizar el póster.' });
+    const status = err.statusCode || 500;
+    if (status >= 500 && process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+    return res.status(status).json({ error: err.message || 'Error al actualizar el póster.' });
   }
 });
 
@@ -365,6 +442,9 @@ router.delete('/catalog/posters/:id', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error(`[API Error] DELETE /api/catalog/posters/${req.params.id}:`, err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al eliminar el póster de la base de datos.', details: err.message });
   }
 });
@@ -427,6 +507,9 @@ router.post('/catalog/save', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/save:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: err.message });
   }
 });
@@ -462,7 +545,11 @@ router.post('/catalog/upload', requireAuth, (req, res, next) => {
     return res.status(200).json({ success: true, image, thumb });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/upload:', err);
-    return res.status(500).json({ error: err.message });
+    const status = err.statusCode || 500;
+    if (status >= 500 && process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+    return res.status(status).json({ error: err.message });
   }
 });
 
@@ -538,6 +625,9 @@ router.post('/catalog/delete-image', requireAuth, async (req, res) => {
     return res.status(200).json({ success: true });
   } catch (e) {
     const statusCode = e.statusCode || 500;
+    if (statusCode >= 500 && process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(statusCode).json({ error: e.message });
   }
 });
@@ -596,6 +686,9 @@ router.post('/catalog/clean-orphans', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/clean-orphans:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al limpiar archivos huérfanos.', details: err.message });
   }
 });
@@ -624,6 +717,9 @@ router.get('/catalog/embeddings-status', async (req, res) => {
     });
   } catch (err) {
     console.error('[API Error] GET /api/catalog/embeddings-status:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: err.message });
   }
 });
@@ -638,6 +734,9 @@ router.post('/catalog/sync-embeddings', requireAuth, async (req, res) => {
     return res.status(200).json(result);
   } catch (err) {
     console.error('[API Error] POST /api/catalog/sync-embeddings:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: err.message });
   }
 });

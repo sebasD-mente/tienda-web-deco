@@ -11,16 +11,7 @@
  * └─────────────────────────────────────────────────────────────────┘
  */
 
-import { PrismaClient } from '@prisma/client';
-
-// ── Singleton Prisma ──────────────────────────────────────────────────────────
-// Una sola instancia compartida por toda la vida del proceso Node.
-// Esto evita saturar el pool de conexiones de PostgreSQL.
-const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development'
-    ? ['query', 'warn', 'error']   // En dev: muestra todas las queries SQL
-    : ['warn', 'error'],           // En prod: solo errores y advertencias
-});
+import { prisma } from '../config/prisma.js';
 
 // ── Includes reutilizables ────────────────────────────────────────────────────
 // Centralizar los `include` evita inconsistencias entre funciones.
@@ -744,7 +735,18 @@ export async function getAllFranchises() {
 export async function upsertFranchise({ id, slug, name, img, imageUrl, category }) {
   const cleanSlug = (slug || id || name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const validCategory = category ? normalizeCategory(category) : null;
-  const image = imageUrl || img || `/franchises/${cleanSlug}.webp`;
+  let image = imageUrl || img || `/franchises/${cleanSlug}.webp`;
+
+  if (typeof image === 'string' && image.startsWith('data:image/')) {
+    try {
+      const { dataUrlToBuffer, processImageBuffer } = await import('./imageService.js');
+      const buffer = dataUrlToBuffer(image);
+      const processed = await processImageBuffer(buffer, `franchise-${cleanSlug}`);
+      image = processed.image;
+    } catch (e) {
+      console.warn(`[CatalogService] Warning: Failed to convert base64 image for franchise ${cleanSlug}:`, e.message);
+    }
+  }
 
   return await prisma.franchise.upsert({
     where: { slug: cleanSlug },
@@ -855,14 +857,17 @@ export async function updateStoreSettings(newSettings = {}) {
 
 /**
  * Retorna el catálogo maestro completo unificado desde PostgreSQL.
+ * @param {object} [options]
+ * @param {boolean} [options.includeUnpublished=false] - Si es false, excluye borradores y descontinuados.
  * @returns {Promise<{ categories: Array, franchises: Array, settings: object, posters: Array, count: number, updatedAt: string }>}
  */
-export async function getFullCatalog() {
+export async function getFullCatalog(options = {}) {
+  const { includeUnpublished = false } = options;
   const [categories, franchises, settings, posters] = await Promise.all([
     getAllCategories(),
     getAllFranchises(),
     getStoreSettings(),
-    getAllPosters({ includeUnpublished: true })
+    getAllPosters({ includeUnpublished })
   ]);
 
   return {

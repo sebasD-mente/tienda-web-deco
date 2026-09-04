@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Shield, Plus, Upload, Trash2 } from 'lucide-react';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
+import { apiUploadPosterImage } from '../../utils/apiClient';
 
 export default function AdminFranchisesTab({
   franchises = [],
@@ -22,8 +23,16 @@ export default function AdminFranchisesTab({
     try {
       setIsUploadingIcon(true);
       const result = await optimizeImageFile(file);
-      setNewFranchiseImg(result.thumbDataUrl || result.fullDataUrl);
-      onShowToast('¡Logotipo optimizado!', 'success');
+      const uploadId = 'franchise-' + Date.now().toString(36);
+      const uploadRes = await apiUploadPosterImage(result.fullDataUrl, uploadId);
+      
+      if (uploadRes?.success && uploadRes?.image) {
+        setNewFranchiseImg(uploadRes.image);
+        onShowToast('¡Logotipo subido y optimizado a WebP!', 'success');
+      } else {
+        setNewFranchiseImg(result.thumbDataUrl || result.fullDataUrl);
+        onShowToast('Logotipo optimizado en memoria.', 'info');
+      }
     } catch (err) {
       onShowToast('Error al optimizar logo: ' + err.message, 'error');
     } finally {
@@ -50,11 +59,20 @@ export default function AdminFranchisesTab({
     }
 
     try {
+      let finalImg = newFranchiseImg;
+      if (typeof finalImg === 'string' && finalImg.startsWith('data:image/')) {
+        const uploadRes = await apiUploadPosterImage(finalImg, `franchise-${cleanId}`);
+        if (uploadRes?.success && uploadRes?.image) {
+          finalImg = uploadRes.image;
+        }
+      }
+
       await onCreateFranchise({
         id: cleanId,
         slug: cleanId,
         name: nameTrimmed,
-        img: newFranchiseImg
+        img: finalImg,
+        imageUrl: finalImg
       });
       setNewFranchiseName('');
       setNewFranchiseImg('');

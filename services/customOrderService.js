@@ -4,16 +4,12 @@
  * Cero Split-Brain: 100% sobre PostgreSQL (Prisma) y Google Cloud Storage.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/prisma.js';
 import { uploadBufferToGCS, deleteFromGCS } from './gcsService.js';
 import { processImageBuffer } from './imageService.js';
 import path from 'path';
 import fs from 'fs';
 import { PROJECT_ROOT } from '../config/paths.js';
-
-const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error']
-});
 
 /**
  * Genera un código de cotización único, legible y memorable (ej. "CP-4821")

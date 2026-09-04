@@ -193,14 +193,38 @@ export function getStoreKnowledge() {
 
 import { getAuthToken } from '../utils/apiClient.js';
 
+export function sanitizeKnowledgeForLocalStorage(data) {
+  if (!data || typeof data !== 'object') return data;
+
+  const cleanNode = (val) => {
+    if (typeof val === 'string' && val.startsWith('data:image/')) {
+      return '';
+    }
+    if (Array.isArray(val)) {
+      return val.map(cleanNode);
+    }
+    if (val && typeof val === 'object') {
+      const cleaned = {};
+      for (const [k, v] of Object.entries(val)) {
+        cleaned[k] = cleanNode(v);
+      }
+      return cleaned;
+    }
+    return val;
+  };
+
+  return cleanNode(data);
+}
+
 // Auto-hydrate from VPS SSD / PostgreSQL backend on startup
 if (typeof window !== 'undefined') {
   fetch('/api/jarvis')
     .then(r => r.ok ? r.json() : null)
     .then(serverData => {
       if (serverData && typeof serverData === 'object' && Object.keys(serverData).length > 0) {
-        localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(serverData));
-        window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: serverData }));
+        const sanitized = sanitizeKnowledgeForLocalStorage(serverData);
+        localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(sanitized));
+        window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: sanitized }));
         console.log('[Deco JARVIS] Memoria sincronizada desde backend PostgreSQL.');
       }
     })
@@ -212,8 +236,9 @@ if (typeof window !== 'undefined') {
 export async function saveStoreKnowledge(knowledge) {
   try {
     if (typeof localStorage !== 'undefined') {
+      const sanitized = sanitizeKnowledgeForLocalStorage(knowledge);
       const payload = {
-        ...knowledge,
+        ...sanitized,
         updatedAt: new Date().toISOString()
       };
 

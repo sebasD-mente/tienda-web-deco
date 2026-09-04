@@ -337,21 +337,146 @@ body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
   }
 }
 
-/* Responsive Admin Dashboard Layout */
-.admin-mobile-cards {
-  display: none !important;
+/* ── Árbol DOM Unificado y Responsivo para Inventario Admin (Cero Duplicación) ── */
+.admin-inv-header {
+  display: grid;
+  grid-template-columns: 60px minmax(180px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr) 120px 140px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
 }
 
-.admin-desktop-table {
-  display: block !important;
+.admin-inv-row {
+  display: grid;
+  grid-template-columns: 60px minmax(180px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr) 120px 140px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background 0.2s ease;
 }
 
+.admin-inv-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.admin-inv-thumb-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  background: #05070f;
+}
+
+.admin-inv-title {
+  font-weight: 800;
+  color: #fff;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-inv-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-inv-mobile-meta {
+  display: none;
+}
+
+.admin-inv-actions-wrapper {
+  display: contents;
+}
+
+.admin-inv-col-actions {
+  text-align: right;
+}
+
+/* Transformación fluida a Tarjetas Móviles sin duplicar nodos */
 @media (max-width: 768px) {
-  .admin-mobile-cards {
-    display: flex !important;
+  .admin-inventory-list {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
   }
-  .admin-desktop-table {
-    display: none !important;
+
+  .admin-inv-header {
+    display: none;
+  }
+
+  .admin-inv-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin-inv-row {
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    grid-template-areas:
+      "thumb info"
+      "actions actions";
+    gap: 10px 14px;
+    padding: 14px;
+    background: rgba(6, 10, 20, 0.75);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+  }
+
+  .admin-inv-col-thumb {
+    grid-area: thumb;
+  }
+
+  .admin-inv-thumb-box {
+    width: 68px;
+    height: 68px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 242, 254, 0.3);
+  }
+
+  .admin-inv-col-info {
+    grid-area: info;
+    min-width: 0;
+  }
+
+  .admin-inv-mobile-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+
+  .admin-inv-col-category,
+  .admin-inv-col-franchise {
+    display: none;
+  }
+
+  .admin-inv-actions-wrapper {
+    grid-area: actions;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 8px;
+    margin-top: 2px;
+  }
+
+  .admin-inv-col-actions {
+    text-align: right;
   }
 }
 

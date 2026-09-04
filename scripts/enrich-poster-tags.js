@@ -15,9 +15,7 @@
  *   node scripts/enrich-poster-tags.js --apply     (Aplica los cambios directamente en PostgreSQL)
  */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../config/prisma.js';
 
 // Mapeo cultural de entidades y términos canónicos para enriquecimiento preciso
 const CULTURAL_TAG_RULES = [

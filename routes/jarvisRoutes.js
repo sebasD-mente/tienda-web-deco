@@ -69,6 +69,10 @@ router.get(['/jarvis', '/jarvis/config'], async (req, res) => {
     };
     return res.status(200).json(safeMemory);
   } catch (err) {
+    console.error('[API Error] GET /api/jarvis:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: err.message });
   }
 });
@@ -87,6 +91,9 @@ router.post('/jarvis/save', requireAuth, async (req, res) => {
     return res.status(200).json(result);
   } catch (err) {
     console.error('[Deco J.A.R.V.I.S. Save Error]:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -97,11 +104,18 @@ router.post('/jarvis/save-key', requireAuth, async (req, res) => {
     const { apiKey } = req.body;
     const result = await saveJarvisMemory({ apiKey: (apiKey || '').trim() });
     if (!result.success) {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ error: 'Error interno del servidor.' });
+      }
       return res.status(500).json({ error: result.error });
     }
     console.log('[Deco J.A.R.V.I.S.] Saved Gemini API key to PostgreSQL store.');
     return res.status(200).json({ success: true, message: 'Clave de Gemini API guardada.' });
   } catch (err) {
+    console.error('[API Error] POST /api/jarvis/save-key:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: err.message });
   }
 });
@@ -145,7 +159,7 @@ router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
       replyText: 'Disculpa, ocurrió un inconveniente temporal al consultar el inventario, pero con gusto te asisto. ¿Qué temática de cuadros te gustaría ver?',
       actions: [],
       poweredBy: 'Deco Safe Error Recovery',
-      error: err.message
+      ...(process.env.NODE_ENV !== 'production' ? { error: err.message } : {})
     });
   }
 });

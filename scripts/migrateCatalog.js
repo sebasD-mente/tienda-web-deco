@@ -14,7 +14,7 @@
  *   3. npx prisma generate (cliente generado)
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/prisma.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -24,10 +24,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ← Cambia esta ruta si tu JSON está en otro lugar
 const CATALOG_PATH = path.resolve(__dirname, '../data/catalogStore.json');
-
-const prisma = new PrismaClient({
-  log: ['warn', 'error'],
-});
 
 // ── Tabla de precios base por tamaño (para posters con availableSizes) ────────
 // Refleja los precios estándar del catálogo actual

@@ -8,7 +8,7 @@ import {
 import ArcReactor from '../ArcReactor';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../utils/jarvisBrain';
-import { getAuthToken } from '../../utils/apiClient';
+import { getAuthToken, apiUploadPosterImage } from '../../utils/apiClient';
 import { 
   getStoreKnowledge, 
   saveStoreKnowledge, 
@@ -198,10 +198,17 @@ export default function AdminJarvisTab({ onShowToast }) {
     try {
       setIsUploadingRefImage(true);
       const res = await optimizeImageFile(file);
+      const uploadId = 'jarvis-ref-' + Date.now().toString(36);
+      const uploadRes = await apiUploadPosterImage(res.fullDataUrl, uploadId);
+
+      if (!uploadRes?.success || !uploadRes?.image) {
+        throw new Error(uploadRes?.error || 'No se pudo subir la imagen al almacenamiento persistente.');
+      }
+
       await addReferenceImage({
         title: refImageTitle.trim() || file.name,
         description: refImageDesc.trim() || 'Referencia visual de producto',
-        url: res.fullDataUrl
+        url: uploadRes.image
       });
       setRefImageTitle('');
       setRefImageDesc('');

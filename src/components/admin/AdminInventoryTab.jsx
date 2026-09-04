@@ -189,56 +189,42 @@ export default function AdminInventoryTab({
           </button>
         </div>
       ) : (
-        <>
-          {/* MOBILE VIEW (CARDS): Clean card list for screens <= 768px */}
-          <div className="admin-mobile-cards" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="admin-inventory-list glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Cabecera para pantallas grandes (oculta automáticamente en móviles vía CSS) */}
+          <div className="admin-inv-header">
+            <div className="admin-inv-col-thumb">Miniatura</div>
+            <div className="admin-inv-col-info">Título y Detalles</div>
+            <div className="admin-inv-col-category">Categoría</div>
+            <div className="admin-inv-col-franchise">Colección</div>
+            <div className="admin-inv-col-featured">Destacado</div>
+            <div className="admin-inv-col-actions">Acciones</div>
+          </div>
+
+          {/* Cuerpo con ÚNICO bucle de renderizado */}
+          <div className="admin-inv-body">
             {filteredPosters.map((poster) => {
               const franchiseObj = franchises.find(f => f.id === poster.franchise);
               return (
-                <div
-                  key={poster.id}
-                  className="glass-card"
-                  style={{
-                    padding: '14px',
-                    display: 'flex',
-                    gap: '14px',
-                    alignItems: 'flex-start',
-                    position: 'relative'
-                  }}
-                >
-                  {/* Square Thumbnail */}
-                  <div style={{
-                    width: '68px',
-                    height: '68px',
-                    borderRadius: '10px',
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                    border: '1px solid rgba(0, 242, 254, 0.3)',
-                    background: '#04070e'
-                  }}>
-                    <OptimizedImage
-                      src={poster.thumb || poster.image}
-                      alt={poster.title}
-                      objectFit="cover"
-                      style={{ width: '100%', height: '100%' }}
-                    />
+                <div key={poster.id} className="admin-inv-row">
+                  
+                  {/* 1. Miniatura con OptimizedImage ÚNICA */}
+                  <div className="admin-inv-col-thumb">
+                    <div className="admin-inv-thumb-box">
+                      <OptimizedImage
+                        src={poster.thumb || poster.image}
+                        alt={poster.title}
+                        objectFit="cover"
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    </div>
                   </div>
 
-                  {/* Details & Actions */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                      <span style={{
-                        background: 'rgba(0, 242, 254, 0.12)',
-                        color: 'var(--accent-cyan)',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.68rem',
-                        fontWeight: 800,
-                        textTransform: 'uppercase'
-                      }}>
+                  {/* 2. Título, Subtítulo y Metadatos */}
+                  <div className="admin-inv-col-info">
+                    <div className="admin-inv-mobile-meta">
+                      <span className="badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 8px', textTransform: 'uppercase' }}>
                         {poster.category}
                       </span>
-
                       {franchiseObj && (
                         <span style={{
                           background: 'rgba(255, 255, 255, 0.08)',
@@ -252,39 +238,42 @@ export default function AdminInventoryTab({
                         </span>
                       )}
                     </div>
-
-                    <h4 style={{
-                      color: '#fff',
-                      fontSize: '0.92rem',
-                      fontWeight: 800,
-                      margin: '0 0 2px 0',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}>
+                    <div className="admin-inv-title" title={poster.title}>
                       {poster.title}
-                    </h4>
-
-                    <p style={{
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.78rem',
-                      margin: '0 0 10px 0',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}>
+                    </div>
+                    <div className="admin-inv-subtitle" title={poster.subtitle}>
                       {poster.subtitle || 'Sin subtítulo'}
-                    </p>
+                    </div>
+                  </div>
 
-                    {/* Action Buttons Row */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      paddingTop: '8px',
-                      borderTop: '1px solid rgba(255, 255, 255, 0.06)'
-                    }}>
-                      {/* Best Seller Star Toggle */}
+                  {/* 3. Columna Categoría (Desktop) */}
+                  <div className="admin-inv-col-category">
+                    <span className="badge-cyan" style={{ fontSize: '0.72rem', padding: '3px 10px', textTransform: 'uppercase' }}>
+                      {poster.category}
+                    </span>
+                  </div>
+
+                  {/* 4. Columna Colección (Desktop) */}
+                  <div className="admin-inv-col-franchise">
+                    {franchiseObj ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <img
+                          src={franchiseObj.img}
+                          alt={franchiseObj.name}
+                          style={{ width: '18px', height: '18px', objectFit: 'contain' }}
+                        />
+                        <span style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 700 }}>
+                          {franchiseObj.name}
+                        </span>
+                      </div>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>—</span>
+                    )}
+                  </div>
+
+                  {/* 5 y 6. Acciones agrupadas con display: contents en Desktop */}
+                  <div className="admin-inv-actions-wrapper">
+                    <div className="admin-inv-col-featured">
                       <button
                         onClick={() => onToggleFeatured(poster.id, poster.title)}
                         style={{
@@ -296,23 +285,24 @@ export default function AdminInventoryTab({
                           fontSize: '0.74rem',
                           fontWeight: 800,
                           cursor: 'pointer',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
                           gap: '4px'
                         }}
-                        title="Alternar Best Seller"
+                        title="Alternar Destacado"
                       >
                         <Star size={13} fill={poster.isFeatured ? '#eab308' : 'none'} />
-                        <span>{poster.isFeatured ? 'Best Seller' : 'Normal'}</span>
+                        <span>{poster.isFeatured ? 'Destacado' : 'Normal'}</span>
                       </button>
+                    </div>
 
-                      {/* Edit & Delete */}
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="admin-inv-col-actions">
+                      <div style={{ display: 'inline-flex', gap: '8px' }}>
                         <button
                           onClick={() => onEditPoster(poster)}
                           className="btn-cyan"
                           style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                          title="Editar póster"
+                          title="Editar"
                         >
                           <Edit3 size={13} />
                           <span>Editar</span>
@@ -334,147 +324,12 @@ export default function AdminInventoryTab({
                       </div>
                     </div>
                   </div>
+
                 </div>
               );
             })}
           </div>
-
-          {/* DESKTOP TABLE VIEW: For screens > 768px */}
-          <div className="admin-desktop-table">
-            <div className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(255, 255, 255, 0.03)', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Miniatura</th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Título y Detalles</th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Categoría</th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Colección</th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Destacado</th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPosters.map((poster) => {
-                    const franchiseObj = franchises.find(f => f.id === poster.franchise);
-                    return (
-                      <tr
-                        key={poster.id}
-                        style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)', transition: 'background 0.2s ease' }}
-                        className="admin-table-row"
-                      >
-                        {/* Thumbnail */}
-                        <td style={{ padding: '12px 18px' }}>
-                          <div style={{
-                            width: '48px',
-                            height: '48px',
-                            borderRadius: '8px',
-                            overflow: 'hidden',
-                            border: '1px solid rgba(0, 242, 254, 0.25)',
-                            background: '#05070f'
-                          }}>
-                            <OptimizedImage
-                              src={poster.thumb || poster.image}
-                              alt={poster.title}
-                              objectFit="cover"
-                              style={{ width: '100%', height: '100%' }}
-                            />
-                          </div>
-                        </td>
-
-                        {/* Title & Subtitle */}
-                        <td style={{ padding: '12px 18px' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.9rem' }}>
-                            {poster.title}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {poster.subtitle || 'Sin subtítulo'}
-                          </div>
-                        </td>
-
-                        {/* Category */}
-                        <td style={{ padding: '12px 18px' }}>
-                          <span className="badge-cyan" style={{ fontSize: '0.72rem', padding: '3px 10px' }}>
-                            {poster.category}
-                          </span>
-                        </td>
-
-                        {/* Collection */}
-                        <td style={{ padding: '12px 18px' }}>
-                          {franchiseObj ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <img
-                                src={franchiseObj.img}
-                                alt={franchiseObj.name}
-                                style={{ width: '18px', height: '18px', objectFit: 'contain' }}
-                              />
-                              <span style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 700 }}>
-                                {franchiseObj.name}
-                              </span>
-                            </div>
-                          ) : (
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>—</span>
-                          )}
-                        </td>
-
-                        {/* Best Seller Toggle */}
-                        <td style={{ padding: '12px 18px' }}>
-                          <button
-                            onClick={() => onToggleFeatured(poster.id, poster.title)}
-                            style={{
-                              background: poster.isFeatured ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
-                              border: poster.isFeatured ? '1px solid #eab308' : '1px solid rgba(255, 255, 255, 0.1)',
-                              color: poster.isFeatured ? '#eab308' : 'var(--text-muted)',
-                              borderRadius: '6px',
-                              padding: '5px 10px',
-                              fontSize: '0.78rem',
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '5px'
-                            }}
-                          >
-                            <Star size={14} fill={poster.isFeatured ? '#eab308' : 'none'} />
-                            <span>{poster.isFeatured ? 'Destacado' : 'Normal'}</span>
-                          </button>
-                        </td>
-
-                        {/* Actions */}
-                        <td style={{ padding: '12px 18px', textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: '8px' }}>
-                            <button
-                              onClick={() => onEditPoster(poster)}
-                              className="btn-cyan"
-                              style={{ padding: '6px 12px', fontSize: '0.78rem' }}
-                              title="Editar"
-                            >
-                              <Edit3 size={14} />
-                              <span>Editar</span>
-                            </button>
-                            <button
-                              onClick={() => onDeletePoster(poster.id, poster.title)}
-                              style={{
-                                background: 'rgba(239, 68, 68, 0.12)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                color: '#ef4444',
-                                borderRadius: '8px',
-                                padding: '6px 10px',
-                                cursor: 'pointer'
-                              }}
-                              title="Eliminar"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

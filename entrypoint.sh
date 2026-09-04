@@ -66,6 +66,10 @@ if [ -d /app/data_seed ]; then
   done
 fi
 
+# ── Step 5.5: Run idempotent Prisma migrations ────────────────────────────
+echo "[Boot] Running prisma migrate deploy..."
+npx prisma migrate deploy || echo "[Boot] WARNING: Prisma migrate deploy skipped or failed."
+
 echo ""
 echo "[Boot] Bootstrap complete. Starting Node.js server..."
 echo "=============================================="

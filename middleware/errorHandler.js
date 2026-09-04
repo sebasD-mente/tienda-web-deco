@@ -40,36 +40,35 @@ function handleDuplicateKeyError(err) {
 
 // ── Respuesta en desarrollo (verbose) ─────────────────────────────────────────
 function sendDevError(err, res) {
-  res.status(err.statusCode).json({
-    success:        false,
-    status:         err.status,
-    message:        err.message,
-    meta:           err.meta,
-    isOperational:  err.isOperational,
-    stack:          err.stack,       // Stack trace completo visible solo en DEV
-    error:          err              // Objeto de error completo para debugging
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    status: err.status || 'error',
+    error: err.message || 'Error interno del servidor.',
+    details: err.message,
+    meta: err.meta,
+    isOperational: err.isOperational,
+    stack: err.stack,
+    raw: err
   });
 }
 
-// ── Respuesta en produccion (limpia, sin detalles internos) ───────────────────
+// ── Respuesta en produccion (limpia, sin detalles internos - CWE-209) ─────────
 function sendProdError(err, res) {
-  if (err.isOperational) {
-    // Error conocido y controlado: enviamos el mensaje al cliente
-    res.status(err.statusCode).json({
-      success:  false,
-      status:   err.status,
-      message:  err.message,
-      ...(Object.keys(err.meta || {}).length > 0 && { meta: err.meta })
-    });
-  } else {
-    // Error de programacion o desconocido: NO filtramos detalles internos
-    console.error('ERROR CRITICO NO OPERACIONAL:', err);
-    res.status(500).json({
-      success:  false,
-      status:   'error',
-      message:  'Algo salio mal. Por favor intenta mas tarde.'
+  const statusCode = err.statusCode || 500;
+  if (statusCode >= 400 && statusCode < 500) {
+    return res.status(statusCode).json({
+      success: false,
+      status: err.status || 'fail',
+      error: err.message || 'Solicitud inválida.',
+      message: err.message || 'Solicitud inválida.',
+      ...(err.meta && Object.keys(err.meta).length > 0 ? { meta: err.meta } : {})
     });
   }
+
+  return res.status(500).json({
+    error: 'Error interno del servidor.'
+  });
 }
 
 // ── Middleware principal (firma obligatoria de 4 args para Express) ────────────
@@ -81,8 +80,8 @@ function sendProdError(err, res) {
  */
 export function errorHandler(err, req, res, next) {
   // Valores por defecto si el error no es un AppError
-  err.statusCode = err.statusCode || 500;
-  err.status     = err.status     || 'error';
+  err.statusCode = err.statusCode || (typeof err.status === 'number' ? err.status : 500);
+  err.status     = err.status     || (err.statusCode >= 400 && err.statusCode < 500 ? 'fail' : 'error');
 
   // ── Normalizar errores conocidos de Node / librerías ──────────────────────
   let error = err;
@@ -93,18 +92,19 @@ export function errorHandler(err, req, res, next) {
   if (err.name === 'ValidationError')               error = handleValidationError(err);
   if (err.code === 11000)                           error = handleDuplicateKeyError(err);
 
+  const isProd = process.env.NODE_ENV === 'production';
   // ── Siempre loguear en servidor (nunca silenciar errores) ─────────────────
-  const logPrefix = IS_DEV ? '[DEV ERROR]' : '[PROD ERROR]';
+  const logPrefix = isProd ? '[PROD ERROR]' : '[DEV ERROR]';
   console.error(`${logPrefix} ${req.method} ${req.originalUrl} — ${error.statusCode}: ${error.message}`);
-  if (!error.isOperational || IS_DEV) {
+  if (!error.isOperational || !isProd) {
     console.error(error.stack);
   }
 
   // ── Enviar respuesta segun entorno ────────────────────────────────────────
-  if (IS_DEV) {
-    sendDevError(error, res);
-  } else {
+  if (isProd) {
     sendProdError(error, res);
+  } else {
+    sendDevError(error, res);
   }
 }
 
@@ -113,3 +113,5 @@ export function errorHandler(err, req, res, next) {
 export function notFoundHandler(req, res, next) {
   next(new AppError(`La ruta ${req.originalUrl} no existe en este servidor.`, 404));
 }
+
+export default errorHandler;

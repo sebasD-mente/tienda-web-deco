@@ -163,6 +163,9 @@ router.post('/', uploadOrderImages, async (req, res) => {
     });
   } catch (err) {
     console.error('[API Error] POST /api/custom-orders:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({
       success: false,
       error: 'Error al registrar el pedido personalizado.',
@@ -181,6 +184,9 @@ router.get('/', requireAuth, async (req, res) => {
     return res.status(200).json(orders);
   } catch (err) {
     console.error('[API Error] GET /api/custom-orders:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({
       error: 'Error al obtener las cotizaciones.',
       details: err.message
@@ -201,6 +207,9 @@ router.get('/:id', requireAuth, async (req, res) => {
     return res.status(200).json(order);
   } catch (err) {
     console.error('[API Error] GET /api/custom-orders/:id:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al obtener el pedido.', details: err.message });
   }
 });
@@ -219,6 +228,9 @@ router.patch('/:id/status', requireAuth, async (req, res) => {
     return res.status(200).json({ success: true, order: updated });
   } catch (err) {
     console.error('[API Error] PATCH /api/custom-orders/:id/status:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al actualizar el estado.', details: err.message });
   }
 });
@@ -236,6 +248,9 @@ router.delete('/:id', requireAuth, async (req, res) => {
     return res.status(200).json({ success: true, message: 'Pedido eliminado correctamente.' });
   } catch (err) {
     console.error('[API Error] DELETE /api/custom-orders/:id:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: 'Error al eliminar el pedido.', details: err.message });
   }
 });

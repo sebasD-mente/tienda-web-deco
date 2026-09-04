@@ -15,6 +15,10 @@ router.get('/settings', async (req, res) => {
     const settings = await getStoreSettings();
     return res.status(200).json(settings);
   } catch (err) {
+    console.error('[API Error] GET /api/settings:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: err.message });
   }
 });
@@ -34,6 +38,10 @@ router.post('/settings/save', requireAuth, async (req, res) => {
     console.log(`[Deco Settings] Updated store settings: WhatsApp = ${updatedSettings.whatsappPhone}`);
     return res.status(200).json({ success: true, settings: updatedSettings });
   } catch (err) {
+    console.error('[API Error] POST /api/settings/save:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
     return res.status(500).json({ error: err.message });
   }
 });

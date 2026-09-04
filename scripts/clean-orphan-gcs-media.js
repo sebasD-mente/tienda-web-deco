@@ -1,7 +1,5 @@
-﻿import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/prisma.js';
 import { getStorageClient } from '../services/gcsService.js';
-
-const prisma = new PrismaClient();
 const BUCKET_NAME = (process.env.GCS_BUCKET_NAME || 'decovintage-master-media').trim().replace(/^gs:\/\//, '').replace(/\/+$/, '');
 
 async function runCleanup() {
