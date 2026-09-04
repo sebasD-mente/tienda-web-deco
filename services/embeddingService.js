@@ -621,8 +621,16 @@ export async function findSimilarPosters(userQuery, limit = 8, customApiKey, min
     // 4. Filtrar por umbral de relevancia
     const relevantPosters = scoredPosters.filter(p => p.score >= minThreshold || p.lexicalScore >= 0.35 || p.vectorScore >= 0.48);
 
-    // 5. Ordenar descendente por score
-    relevantPosters.sort((a, b) => b.score - a.score);
+    // 5. Ordenar descendente por score, desempatando por score léxico y fecha de creación más reciente
+    relevantPosters.sort((a, b) => {
+      const diff = b.score - a.score;
+      if (Math.abs(diff) > 0.005) return diff;
+      const lexDiff = b.lexicalScore - a.lexicalScore;
+      if (Math.abs(lexDiff) > 0.005) return lexDiff;
+      const dateA = new Date(a.poster?.createdAt || 0).getTime();
+      const dateB = new Date(b.poster?.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
 
     return relevantPosters.slice(0, limit);
   } catch (err) {
