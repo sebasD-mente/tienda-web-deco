@@ -255,7 +255,8 @@ export function buildSemanticPosterText(p) {
   // Clasificación temática inteligente de contexto
   const isMusicPoster = category === 'MUSICA' || normCat.includes('musica') || normCat.includes('music') || (Array.isArray(p.tags) && p.tags.some(t => normalizeText(t) === 'rock'));
   const isBarPoster = category === 'BEBIDAS_Y_BAR' || normCat.includes('bebida') || normCat.includes('bar') || (Array.isArray(p.tags) && p.tags.some(t => ['cafe', 'gato'].includes(normalizeText(t))));
-  const isClassicCarPoster = (Array.isArray(p.tags) && p.tags.some(t => ['autos', 'combi', 'corvette', 'mustang'].includes(normalizeText(t)))) ||
+  const isClassicCarPoster = category === 'AUTOS' || normCat === 'autos' || normCat.includes('auto') ||
+    (Array.isArray(p.tags) && p.tags.some(t => ['autos', 'combi', 'corvette', 'mustang'].includes(normalizeText(t)))) ||
     normTitle.includes('corvette') || normTitle.includes('combi') || normTitle.includes('mustang') || normTitle.includes('fastback');
 
   const isF1Poster = !isClassicCarPoster && (category === 'BASKETBALL_Y_FORMULA_1' || normCat.includes('formula')) &&
@@ -450,7 +451,8 @@ export function computeLexicalSimilarity(query, p, matchedEntities = []) {
   const franchise = normalizeText(p.franchise?.name || p.franchise);
   const desc = normalizeText(p.descripcion || p.description);
 
-  const isClassicCarPoster = (Array.isArray(p.tags) && p.tags.some(t => ['autos', 'combi', 'corvette', 'mustang'].includes(normalizeText(t)))) ||
+  const isClassicCarPoster = cat === 'autos' || cat.includes('auto') ||
+    (Array.isArray(p.tags) && p.tags.some(t => ['autos', 'combi', 'corvette', 'mustang'].includes(normalizeText(t)))) ||
     title.includes('corvette') || title.includes('combi') || title.includes('mustang') || title.includes('fastback');
 
   const isF1Poster = !isClassicCarPoster && (cat.includes('formula') || cat === 'basketball y formula 1') &&

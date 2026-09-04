@@ -67,7 +67,7 @@ export function normalizeCategory(catStr) {
   // Mapeos canónicos conocidos para mantener compatibilidad histórica y sincronización con PostgreSQL
   if (clean === 'futbol' || clean.includes('futbol') || clean.includes('soccer')) return 'FUTBOL';
   if (clean.includes('f1') || clean.includes('formula 1') || clean.includes('formula uno') || clean.includes('basketball') || clean.includes('baloncesto') || clean.includes('nba')) return 'BASKETBALL_Y_FORMULA_1';
-  if (clean === 'autos' || clean.includes('automov') || clean.includes('coches')) return 'BASKETBALL_Y_FORMULA_1';
+  if (clean === 'autos' || clean === 'auto' || clean.includes('automov') || clean.includes('coches') || clean.includes('carro')) return 'AUTOS';
   if (clean.includes('videojuego') || clean.includes('video juego') || clean.includes('gaming') || clean.includes('gamer')) return 'VIDEO_JUEGOS';
   if (clean === 'vintage' || clean.includes('retro') || clean.includes('antiguo')) return 'VINTAGE';
   if (clean === 'superheroes' || clean.includes('superh') || clean.includes('super heroe')) return 'SUPERHEROES';
@@ -501,6 +501,7 @@ export async function deletePoster(id) {
 export const DEFAULT_CATEGORIES = [
   { id: 'SUPERHEROES', name: 'SUPER HÉROES', icon: '⚡' },
   { id: 'ANIME', name: 'ANIME', icon: '⛩️' },
+  { id: 'AUTOS', name: 'AUTOS', icon: '🚗' },
   { id: 'MUSICA', name: 'MÚSICA', icon: '🎵' },
   { id: 'SERIESYPELICULAS', name: 'SERIES Y PELÍCULAS', icon: '🎬' },
   { id: 'BASKETBALL_Y_FORMULA_1', name: 'FÓRMULA 1 Y BASKETBALL', icon: '🏎️' },
@@ -515,6 +516,7 @@ export const DEFAULT_CATEGORIES = [
 const CATEGORY_DISPLAY_NAMES = {
   SUPERHEROES: 'SUPER HÉROES',
   ANIME: 'ANIME',
+  AUTOS: 'AUTOS',
   MUSICA: 'MÚSICA',
   SERIESYPELICULAS: 'SERIES Y PELÍCULAS',
   OBRASDEARTE: 'OBRAS DE ARTE',
@@ -524,13 +526,13 @@ const CATEGORY_DISPLAY_NAMES = {
   BASKETBALL_Y_FORMULA_1: 'FÓRMULA 1 Y BASKETBALL',
   FUTBOL: 'FÚTBOL',
   VIDEO_JUEGOS: 'VIDEOJUEGOS',
-  VINTAGE: 'VINTAGE & RETRO',
-  AUTOS: 'FÓRMULA 1 Y AUTOS'
+  VINTAGE: 'VINTAGE & RETRO'
 };
 
 const CATEGORY_ICONS = {
   SUPERHEROES: '⚡',
   ANIME: '⛩️',
+  AUTOS: '🚗',
   MUSICA: '🎵',
   SERIESYPELICULAS: '🎬',
   OBRASDEARTE: '🖼️',
@@ -540,8 +542,7 @@ const CATEGORY_ICONS = {
   BASKETBALL_Y_FORMULA_1: '🏎️',
   FUTBOL: '⚽',
   VIDEO_JUEGOS: '🎮',
-  VINTAGE: '🕰️',
-  AUTOS: '🏎️'
+  VINTAGE: '🕰️'
 };
 
 // ── Categorías y Franquicias en PostgreSQL ────────────────────────────────────
@@ -579,7 +580,7 @@ export async function getAllCategories() {
       categoryMap.set(id, {
         id,
         name: typeof cat === 'object' && cat.name ? cat.name : (CATEGORY_DISPLAY_NAMES[id] || id.replace(/_/g, ' ')),
-        icon: typeof cat === 'object' && cat.icon ? cat.icon : (CATEGORY_ICONS[id] || '🏷️')
+        icon: typeof cat === 'object' && cat.icon && cat.icon !== '🏷️' ? cat.icon : (CATEGORY_ICONS[id] || '🏷️')
       });
     }
   });

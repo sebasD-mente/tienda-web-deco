@@ -42,7 +42,7 @@ export const JARVIS_TOOL_DECLARATIONS = [
         },
         categoria: {
           type: 'STRING',
-          description: 'Categoría oficial (ej: BASKETBALL_Y_FORMULA_1, SUPERHEROES, ANIME, MUSICA, SERIESYPELICULAS, FUTBOL, VIDEO_JUEGOS, VINTAGE, BEBIDAS_Y_BAR, OBRASDEARTE, INFANTILYDIBUJOSANIMADOS). Nota: Para automovilismo, bólidos, autos de carreras, Ferrari, Red Bull, F1 y autos clásicos (Corvette, Combi, Mustang Fastback), la categoría oficial en inventario es BASKETBALL_Y_FORMULA_1.'
+          description: 'Categoría oficial (ej: AUTOS, BASKETBALL_Y_FORMULA_1, SUPERHEROES, ANIME, MUSICA, SERIESYPELICULAS, FUTBOL, VIDEO_JUEGOS, VINTAGE, BEBIDAS_Y_BAR, OBRASDEARTE, INFANTILYDIBUJOSANIMADOS). Nota: Para autos clásicos, muscle cars y vehículos de calle (Corvette, Combi, Mustang Fastback), la categoría oficial es AUTOS. Para monoplazas de F1 (Ferrari, Red Bull, etc.) y basketball, la categoría es BASKETBALL_Y_FORMULA_1.'
         },
         posterIds: {
           type: 'ARRAY',
@@ -438,7 +438,7 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
 1. VERACIDAD TOTAL: Recomienda ÚNICAMENTE obras que realmente existan en el catálogo y coincidan con lo solicitado.
 2. COLECCIONES OFICIALES DE AUTOS, MÚSICA, CAFÉ, DEPORTES Y FÓRMULA 1:
    - En nuestro inventario oficial disponemos de colecciones activas que incluyen:
-     * AUTOS CLÁSICOS Y DEPORTIVOS: Corvette C1 (Parada en la Ruta 66), Combi Vintage (Volkswagen), Mustang Fastback (Midnight Muscle) y Ford Mustang (All American Muscle).
+     * AUTOS CLÁSICOS Y DEPORTIVOS: Corvette C1 (Parada en la Ruta 66), Combi Vintage (Volkswagen), Mustang Fastback (Midnight Muscle) y Ford Mustang (All American Muscle) (clasificados en la categoría oficial 'AUTOS').
      * FÓRMULA 1 Y VELOCIDAD: Ferrari, Red Bull, Checo Pérez, Max Verstappen, Lewis Hamilton, Charles Leclerc, Carlos Sainz, Ayrton Senna (clasificados en 'BASKETBALL_Y_FORMULA_1').
      * MÚSICA Y ROCK: Obras legendarias de The Beatles en categoría 'MUSICA' (Sombrillas en la Campiña, Perfil de Leyendas, Abbey Road).
      * BEBIDAS Y CAFÉ: Piezas como Catfé (Gato con Café y buenas vibras) y Vintage Coffee (Coffee House) en categoría 'BEBIDAS_Y_BAR'.
@@ -596,8 +596,10 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
           const rawTerm = (args.termino || '').trim();
           const normTerm = normalizeText(rawTerm);
           let cat = (args.categoria || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
-          if (cat === 'AUTOS' || cat === 'FORMULA_1' || cat === 'F1' || cat === 'CARRERAS' || cat === 'AUTOMOVILISMO') {
+          if (cat === 'FORMULA_1' || cat === 'F1' || cat === 'CARRERAS' || cat === 'AUTOMOVILISMO') {
             cat = 'BASKETBALL_Y_FORMULA_1';
+          } else if (cat === 'AUTO' || cat === 'CARROS' || cat === 'COCHES') {
+            cat = 'AUTOS';
           }
 
           // Detección de novedades
