@@ -28,6 +28,7 @@ export default function AdminJarvisTab({ onShowToast }) {
   const [jarvisSubTab, setJarvisSubTab] = useState('greeting'); // 'greeting' | 'prompts' | 'docs' | 'images' | 'directives' | 'apikey'
   const [knowledgeData, setKnowledgeData] = useState(() => getStoreKnowledge());
   const [geminiKeyInput, setGeminiKeyInput] = useState(getGeminiApiKey());
+  const [hasServerApiKey, setHasServerApiKey] = useState(false);
   
   // RAG Vector Status
   const [ragStatus, setRagStatus] = useState({ total: 0, synced: 0, pending: 0, isFullySynced: true });
@@ -72,8 +73,19 @@ export default function AdminJarvisTab({ onShowToast }) {
     } catch (e) {}
   };
 
+  const fetchServerStatus = async () => {
+    try {
+      const res = await fetch('/api/version');
+      if (res.ok) {
+        const data = await res.json();
+        setHasServerApiKey(Boolean(data.hasApiKey));
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
     fetchRAGStatus();
+    fetchServerStatus();
   }, []);
 
   // 1. Greeting Handlers
@@ -337,9 +349,9 @@ export default function AdminJarvisTab({ onShowToast }) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              background: geminiKeyInput ? 'rgba(0, 245, 160, 0.12)' : 'rgba(234, 179, 8, 0.12)',
-              border: geminiKeyInput ? '1px solid rgba(0, 245, 160, 0.4)' : '1px solid rgba(234, 179, 8, 0.4)',
-              color: geminiKeyInput ? '#00f5a0' : '#eab308',
+              background: (hasServerApiKey || geminiKeyInput) ? 'rgba(0, 245, 160, 0.12)' : 'rgba(234, 179, 8, 0.12)',
+              border: (hasServerApiKey || geminiKeyInput) ? '1px solid rgba(0, 245, 160, 0.4)' : '1px solid rgba(234, 179, 8, 0.4)',
+              color: (hasServerApiKey || geminiKeyInput) ? '#00f5a0' : '#eab308',
               padding: '6px 14px',
               borderRadius: 'var(--radius-full)',
               fontSize: '0.78rem',
@@ -350,10 +362,10 @@ export default function AdminJarvisTab({ onShowToast }) {
                 width: '8px',
                 height: '8px',
                 borderRadius: '50%',
-                background: geminiKeyInput ? '#00f5a0' : '#eab308',
-                boxShadow: geminiKeyInput ? '0 0 10px #00f5a0' : 'none'
+                background: (hasServerApiKey || geminiKeyInput) ? '#00f5a0' : '#eab308',
+                boxShadow: (hasServerApiKey || geminiKeyInput) ? '0 0 10px #00f5a0' : 'none'
               }} />
-              {geminiKeyInput ? 'J.A.R.V.I.S. ONLINE (IA ACTIVA)' : 'J.A.R.V.I.S. MODO CATÁLOGO'}
+              {(hasServerApiKey || geminiKeyInput) ? 'J.A.R.V.I.S. ONLINE (IA ACTIVA)' : 'J.A.R.V.I.S. MODO CATÁLOGO'}
             </span>
           </div>
         </div>
@@ -726,7 +738,7 @@ export default function AdminJarvisTab({ onShowToast }) {
               </h3>
             </div>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
-              Conecta tu clave de Google Gemini para potenciar el razonamiento cognitivo de J.A.R.V.I.S. con el modelo de alta velocidad <strong>Gemini 2.5 Flash</strong>.
+              Conecta tu clave de Google Gemini para potenciar el razonamiento cognitivo de J.A.R.V.I.S. con el pool de alta velocidad <strong>Gemini 3.1 Flash-Lite / 3.6 Flash</strong>.
             </p>
 
             <form onSubmit={handleSaveGeminiKey} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>

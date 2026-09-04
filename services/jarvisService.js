@@ -42,7 +42,7 @@ export const JARVIS_TOOL_DECLARATIONS = [
         },
         categoria: {
           type: 'STRING',
-          description: 'Categoría oficial (ej: BASKETBALL_Y_FORMULA_1, SUPERHEROES, ANIME, SERIESYPELICULAS, MUSICA, OBRASDEARTE, INFANTILYDIBUJOSANIMADOS). Nota: Para automovilismo, bólidos, autos de carreras, Ferrari, Red Bull y F1, la categoría oficial en inventario es BASKETBALL_Y_FORMULA_1.'
+          description: 'Categoría oficial (ej: BASKETBALL_Y_FORMULA_1, SUPERHEROES, ANIME, SERIESYPELICULAS, FUTBOL, VIDEO_JUEGOS, VINTAGE, BEBIDAS_Y_BAR, OBRASDEARTE, INFANTILYDIBUJOSANIMADOS). Nota: Para automovilismo, bólidos, autos de carreras, Ferrari, Red Bull y F1, la categoría oficial en inventario es BASKETBALL_Y_FORMULA_1.'
         },
         posterIds: {
           type: 'ARRAY',

@@ -27,13 +27,33 @@ const SYNONYMS = {
   'delorean': ['volver al futuro', 'back to the future', 'doc brown', 'marty mcfly', 'cine'],
   'starwars': ['star wars', 'darth vader', 'yoda', 'jedi', 'sith', 'skywalker', 'mandalorian'],
   'star wars': ['starwars', 'darth vader', 'yoda', 'jedi', 'mandalorian'],
-  'f1': ['formula 1', 'formula uno', 'senna', 'ayrton senna', 'red bull', 'ferrari', 'monaco'],
-  'formula 1': ['f1', 'formula uno', 'carreras', 'senna', 'monaco'],
-  'carros': ['autos', 'vehiculos', 'coches', 'jdm', 'supercars', 'motor'],
-  'coches': ['autos', 'carros', 'vehiculos', 'jdm'],
+  'f1': ['formula 1', 'formula uno', 'senna', 'ayrton senna', 'red bull', 'ferrari', 'monaco', 'carreras', 'carlos sainz', 'leclerc', 'hamilton', 'verstappen', 'checo perez', 'autos'],
+  'formula 1': ['f1', 'formula uno', 'carreras', 'senna', 'monaco', 'red bull', 'ferrari', 'leclerc', 'verstappen', 'checo perez', 'carlos sainz', 'autos'],
+  'autos': ['f1', 'formula 1', 'formula uno', 'carreras', 'ferrari', 'red bull', 'carros', 'coches', 'automovilismo', 'bolidos', 'senna', 'leclerc', 'checo perez', 'verstappen', 'sainz'],
+  'auto': ['autos', 'f1', 'formula 1', 'carreras', 'ferrari', 'red bull', 'carros', 'coches'],
+  'carros': ['autos', 'vehiculos', 'coches', 'f1', 'formula 1', 'carreras', 'ferrari', 'red bull'],
+  'coches': ['autos', 'carros', 'vehiculos', 'f1', 'formula 1'],
+  'bicho': ['cr7', 'cristiano ronaldo', 'cristiano', 'el bicho', 'comandante', 'futbol', 'real madrid', 'portugal', 'siuuu'],
+  'el bicho': ['bicho', 'cr7', 'cristiano ronaldo', 'futbol'],
+  'cr7': ['cristiano ronaldo', 'bicho', 'el bicho', 'comandante', 'futbol', 'real madrid', 'portugal', 'siuuu'],
+  'cristiano': ['cristiano ronaldo', 'cr7', 'bicho', 'futbol'],
+  'messi': ['lionel messi', 'la pulga', 'pulga', 'futbol', 'argentina', 'barcelona', 'inter miami', 'd10s', 'goat'],
+  'pulga': ['messi', 'lionel messi', 'futbol'],
+  'futbol': ['messi', 'cristiano ronaldo', 'cr7', 'bicho', 'soccer'],
+  'jordan': ['michael jordan', 'basketball', 'nba', 'bulls', 'chicago bulls', '23'],
+  'michael jordan': ['jordan', 'basketball', 'nba', 'bulls'],
+  'basketball': ['michael jordan', 'jordan', 'nba', 'baloncesto'],
+  'fnaf': ['five nights at freddy', 'five nights at freddys', 'freddy fazbear', 'terror'],
+  'cars': ['rayo mcqueen', 'mcqueen', 'carreras', 'copa piston', 'disney'],
+  'mcqueen': ['rayo mcqueen', 'cars', 'carreras'],
+  'zelda': ['the legend of zelda', 'link', 'trifuerza', 'nintendo', 'videojuegos'],
+  'mario': ['super mario', 'mario bros', 'nintendo', 'luigi', 'videojuegos'],
+  'sonic': ['sonic the hedgehog', 'sega', 'videojuegos'],
+  'avengers': ['vengadores', 'marvel', 'iron man', 'spider-man', 'thor', 'capitan america'],
+  'vengadores': ['avengers', 'marvel', 'iron man', 'spider-man'],
   'peliculas': ['series y peliculas', 'cine', 'cinema', 'hollywood', 'movies'],
   'pelicula': ['series y peliculas', 'cine', 'cinema', 'hollywood', 'movies'],
-  'anime': ['manga', 'japon', 'shonen', 'otaku', 'dragon ball', 'naruto', 'one piece']
+  'anime': ['manga', 'japon', 'shonen', 'otaku', 'dragon ball', 'naruto', 'one piece', 'demon slayer', 'attack on titan']
 };
 
 /**
@@ -87,22 +107,34 @@ function levenshteinDistance(a, b) {
  */
 function isFuzzyMatch(queryWord, targetWord) {
   if (!queryWord || !targetWord) return false;
-  if (targetWord.includes(queryWord)) return true;
-  if (queryWord.includes(targetWord)) return true;
+  if (queryWord === targetWord) return true;
 
   // Exact without spaces/hyphens
   const cleanQ = queryWord.replace(/\s+/g, '');
   const cleanT = targetWord.replace(/\s+/g, '');
-  if (cleanT.includes(cleanQ) || cleanQ.includes(cleanT)) return true;
+  if (cleanQ === cleanT) return true;
+
+  // Substring inclusion: only for words of meaningful length (>= 3 chars)
+  // to avoid single-letter tokens ('s', 'to', 'at', 'de') falsely matching words like 'autos'
+  if (cleanQ.length >= 3 && cleanT.length >= 3) {
+    if (cleanT.includes(cleanQ)) return true;
+    if (cleanQ.includes(cleanT) && cleanT.length >= cleanQ.length * 0.75) return true;
+  }
 
   // Typo thresholds:
-  // length 1-3: exact only
-  if (queryWord.length <= 3) return false;
+  // length <= 3: exact only
+  if (cleanQ.length <= 3 || cleanT.length <= 3) return false;
 
-  const maxDist = queryWord.length <= 6 ? 1 : 2;
-  const dist = levenshteinDistance(queryWord, targetWord);
+  const maxLen = Math.max(cleanQ.length, cleanT.length);
+  const minLen = Math.min(cleanQ.length, cleanT.length);
+  if (maxLen - minLen > 2) return false;
+
+  const maxDist = cleanQ.length <= 5 ? 1 : 2;
+  const dist = levenshteinDistance(cleanQ, cleanT);
   return dist <= maxDist;
 }
+
+const STOP_WORDS = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'en', 'para', 'con', 'por', 'y', 'o', 'a', 'al', 'que', 'se', 'su', 'sus', 'es']);
 
 /**
  * Main Search Function with Ranking
@@ -113,14 +145,16 @@ export function searchPosters(rawQuery, posters = []) {
 
   const rawClean = rawQuery.trim().toLowerCase();
   const normalizedQuery = normalizeText(rawQuery);
-  const queryTokens = normalizedQuery.split(' ').filter(t => t.length > 0);
+  const queryTokens = normalizedQuery.split(' ').filter(t => t.length > 0 && !STOP_WORDS.has(t));
 
   // Expand query tokens with known synonyms
   const expandedTokens = new Set(queryTokens);
   queryTokens.forEach(token => {
     if (SYNONYMS[token]) {
       SYNONYMS[token].forEach(syn => {
-        normalizeText(syn).split(' ').forEach(st => expandedTokens.add(st));
+        normalizeText(syn).split(' ').forEach(st => {
+          if (st.length >= 2 && !STOP_WORDS.has(st)) expandedTokens.add(st);
+        });
       });
     }
   });
@@ -128,7 +162,9 @@ export function searchPosters(rawQuery, posters = []) {
   // Also check full query string synonym
   if (SYNONYMS[rawClean]) {
     SYNONYMS[rawClean].forEach(syn => {
-      normalizeText(syn).split(' ').forEach(st => expandedTokens.add(st));
+      normalizeText(syn).split(' ').forEach(st => {
+        if (st.length >= 2 && !STOP_WORDS.has(st)) expandedTokens.add(st);
+      });
     });
   }
 
@@ -192,8 +228,8 @@ export function searchPosters(rawQuery, posters = []) {
         tokenMatched = true;
       }
 
-      // Match in Description
-      if (normDesc.includes(token)) {
+      // Match in Description (only meaningful tokens)
+      if (token.length >= 3 && !STOP_WORDS.has(token) && normDesc.includes(token)) {
         score += 10;
         tokenMatched = true;
       }

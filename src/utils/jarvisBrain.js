@@ -1,7 +1,5 @@
 import { apiAskJarvis } from './apiClient.js';
-import { getStoredPosters, getStoredCategories } from './catalogStorage.js';
-import { getStoreKnowledge } from '../data/storeKnowledge.js';
-import { getStoreWhatsAppPhone } from '../config/constants.js';
+import { getStoredPosters } from './catalogStorage.js';
 
 const API_KEY_STORAGE_KEY = 'deco_gemini_api_key_v1';
 

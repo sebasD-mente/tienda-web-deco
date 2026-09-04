@@ -4,8 +4,8 @@ import { searchPosters } from '../utils/searchEngine';
 import ArcReactor from './ArcReactor';
 
 const POPULAR_SEARCHES = [
-  'Porsche', 'Spider-Man', 'Skyline GTR', 'Avengers', 
-  'Dragon Ball', 'Star Wars', 'DeLorean', 'Batman', 'Fórmula 1', 'Cyberpunk'
+  'Ferrari', 'Spider-Man', 'Red Bull', 'Avengers', 
+  'Dragon Ball', 'Star Wars', 'Cristiano Ronaldo', 'Batman', 'Fórmula 1', 'Messi'
 ];
 
 export default function Navbar({

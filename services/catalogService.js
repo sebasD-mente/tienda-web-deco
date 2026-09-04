@@ -39,25 +39,48 @@ const POSTER_INCLUDE_LIGHT = {
   franchise: true,
 };
 
+/**
+ * Invalida de forma segura la caché en memoria de vectores RAG tras mutaciones en BD.
+ */
+async function safeInvalidateEmbeddingsCache() {
+  try {
+    const { invalidateEmbeddingsCache } = await import('./embeddingService.js');
+    if (typeof invalidateEmbeddingsCache === 'function') {
+      invalidateEmbeddingsCache();
+    }
+  } catch (err) {
+    console.warn('[Deco Catalog] No se pudo invalidar la caché de embeddings:', err.message);
+  }
+}
+
 export function normalizeCategory(catStr) {
   if (!catStr) return 'GENERAL';
   const raw = String(catStr).trim();
   if (!raw) return 'GENERAL';
 
-  // Mapeos canónicos conocidos para mantener compatibilidad histórica
-  const lower = raw.toLowerCase();
-  if (lower === 'autos' || lower.includes('automov') || lower.includes('coches')) return 'AUTOS';
-  if (lower === 'superheroes' || lower.includes('superh') || lower.includes('super heroe')) return 'SUPERHEROES';
-  if (lower === 'anime' || lower.includes('manga') || lower.includes('otaku')) return 'ANIME';
-  if (lower === 'musica' || lower === 'música' || lower.includes('rock') || lower.includes('banda')) return 'MUSICA';
-  if (lower === 'seriesypeliculas' || lower.includes('serie') || lower.includes('pelicula')) return 'SERIESYPELICULAS';
-  if (lower === 'obrasdearte' || lower.includes('obra de arte') || lower.includes('cuadro clasico')) return 'OBRASDEARTE';
-  if (lower === 'infantilydibujosanimados' || lower.includes('infantil') || lower.includes('dibujo animado')) return 'INFANTILYDIBUJOSANIMADOS';
-  if (lower === 'cine' || lower.includes('cinema')) return 'CINE';
-  if (lower.includes('bebida') || lower.includes('bar') || lower.includes('licor') || lower.includes('trago')) return 'BEBIDAS_Y_BAR';
+  // Desaccentuar mediante Unicode NFD y normalizar a minúsculas
+  const clean = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 
-  // Para cualquier categoría personalizada nueva (ej. BEBIDAS_Y_BAR, GAMING, RETRO, etc.)
-  return raw.toUpperCase().replace(/[\s-]+/g, '_').replace(/[^A-Z0-9_]/g, '') || 'GENERAL';
+  // Mapeos canónicos conocidos para mantener compatibilidad histórica y sincronización con PostgreSQL
+  if (clean === 'futbol' || clean.includes('futbol') || clean.includes('soccer')) return 'FUTBOL';
+  if (clean.includes('f1') || clean.includes('formula 1') || clean.includes('formula uno') || clean.includes('basketball') || clean.includes('baloncesto') || clean.includes('nba')) return 'BASKETBALL_Y_FORMULA_1';
+  if (clean === 'autos' || clean.includes('automov') || clean.includes('coches')) return 'BASKETBALL_Y_FORMULA_1';
+  if (clean.includes('videojuego') || clean.includes('video juego') || clean.includes('gaming') || clean.includes('gamer')) return 'VIDEO_JUEGOS';
+  if (clean === 'vintage' || clean.includes('retro') || clean.includes('antiguo')) return 'VINTAGE';
+  if (clean === 'superheroes' || clean.includes('superh') || clean.includes('super heroe')) return 'SUPERHEROES';
+  if (clean === 'anime' || clean.includes('manga') || clean.includes('otaku')) return 'ANIME';
+  if (clean === 'musica' || clean.includes('rock') || clean.includes('banda')) return 'MUSICA';
+  if (clean === 'seriesypeliculas' || clean.includes('serie') || clean.includes('pelicula')) return 'SERIESYPELICULAS';
+  if (clean === 'obrasdearte' || clean.includes('obra de arte') || clean.includes('cuadro clasico')) return 'OBRASDEARTE';
+  if (clean === 'infantilydibujosanimados' || clean.includes('infantil') || clean.includes('dibujo animado')) return 'INFANTILYDIBUJOSANIMADOS';
+  if (clean === 'cine' || clean.includes('cinema')) return 'CINE';
+  if (clean.includes('bebida') || clean.includes('bar') || clean.includes('licor') || clean.includes('trago')) return 'BEBIDAS_Y_BAR';
+
+  // Para cualquier categoría personalizada nueva
+  return clean.toUpperCase().replace(/[\s-]+/g, '_').replace(/[^A-Z0-9_]/g, '') || 'GENERAL';
 }
 
 /**
@@ -286,6 +309,7 @@ export async function updatePosterStatus(id, newStatus) {
       include: POSTER_INCLUDE_LIGHT,
     });
 
+    await safeInvalidateEmbeddingsCache();
     return formatPosterForClient(updated);
   } catch (error) {
     if (error.code === 'P2025') {
@@ -419,6 +443,7 @@ export async function upsertPosterFromAdmin(data) {
         include: POSTER_INCLUDE_FULL,
       });
     });
+    await safeInvalidateEmbeddingsCache();
     return formatPosterForClient(updated);
   }
 
@@ -448,6 +473,8 @@ export async function upsertPosterFromAdmin(data) {
     },
     include: POSTER_INCLUDE_FULL,
   });
+
+  await safeInvalidateEmbeddingsCache();
   return formatPosterForClient(created);
 }
 
@@ -460,6 +487,7 @@ export async function upsertPosterFromAdmin(data) {
 export async function deletePoster(id) {
   try {
     await prisma.poster.delete({ where: { id } });
+    await safeInvalidateEmbeddingsCache();
   } catch (error) {
     if (error.code === 'P2025') {
       const err = new Error(`No se encontró la obra con ID "${id}".`);
@@ -474,11 +502,13 @@ export const DEFAULT_CATEGORIES = [
   { id: 'SUPERHEROES', name: 'SUPER HÉROES', icon: '⚡' },
   { id: 'ANIME', name: 'ANIME', icon: '⛩️' },
   { id: 'SERIESYPELICULAS', name: 'SERIES Y PELÍCULAS', icon: '🎬' },
-  { id: 'OBRASDEARTE', name: 'OBRAS DE ARTE', icon: '🖼️' },
+  { id: 'BASKETBALL_Y_FORMULA_1', name: 'FÓRMULA 1 Y BASKETBALL', icon: '🏎️' },
+  { id: 'FUTBOL', name: 'FÚTBOL', icon: '⚽' },
   { id: 'INFANTILYDIBUJOSANIMADOS', name: 'INFANTIL Y DIBUJOS ANIMADOS', icon: '🧸' },
   { id: 'BEBIDAS_Y_BAR', name: 'BEBIDAS Y BAR', icon: '🍸' },
-  { id: 'MUSICA', name: 'MÚSICA', icon: '🎵' },
-  { id: 'CINE', name: 'CINE', icon: '🎥' }
+  { id: 'OBRASDEARTE', name: 'OBRAS DE ARTE', icon: '🖼️' },
+  { id: 'VIDEO_JUEGOS', name: 'VIDEOJUEGOS', icon: '🎮' },
+  { id: 'VINTAGE', name: 'VINTAGE & RETRO', icon: '🕰️' }
 ];
 
 const CATEGORY_DISPLAY_NAMES = {
@@ -490,7 +520,11 @@ const CATEGORY_DISPLAY_NAMES = {
   INFANTILYDIBUJOSANIMADOS: 'INFANTIL Y DIBUJOS ANIMADOS',
   CINE: 'CINE',
   BEBIDAS_Y_BAR: 'BEBIDAS Y BAR',
-  AUTOS: 'AUTOS'
+  BASKETBALL_Y_FORMULA_1: 'FÓRMULA 1 Y BASKETBALL',
+  FUTBOL: 'FÚTBOL',
+  VIDEO_JUEGOS: 'VIDEOJUEGOS',
+  VINTAGE: 'VINTAGE & RETRO',
+  AUTOS: 'FÓRMULA 1 Y AUTOS'
 };
 
 const CATEGORY_ICONS = {
@@ -502,6 +536,10 @@ const CATEGORY_ICONS = {
   INFANTILYDIBUJOSANIMADOS: '🧸',
   CINE: '🎥',
   BEBIDAS_Y_BAR: '🍸',
+  BASKETBALL_Y_FORMULA_1: '🏎️',
+  FUTBOL: '⚽',
+  VIDEO_JUEGOS: '🎮',
+  VINTAGE: '🕰️',
   AUTOS: '🏎️'
 };
 
