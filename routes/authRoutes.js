@@ -12,13 +12,19 @@ import {
   generateAuthToken,
   verifyAuthToken
 } from '../middleware/auth.js';
+import {
+  rateLimitLogin,
+  recordLoginFailure,
+  resetLoginFailures
+} from '../middleware/rateLimit.js';
 
 const router = Router();
 
-// POST /api/auth/login
-router.post('/auth/login', (req, res) => {
+// POST /api/auth/login (Protegido con rate limiting contra ataques de fuerza bruta)
+router.post('/auth/login', rateLimitLogin, (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
+    recordLoginFailure(req);
     return res.status(400).json({ success: false, error: 'Usuario y contraseña requeridos.' });
   }
 
@@ -29,6 +35,7 @@ router.post('/auth/login', (req, res) => {
   const passMatch = safeCompare(password.trim(), expectedPass);
 
   if (userMatch && passMatch) {
+    resetLoginFailures(req);
     const token = generateAuthToken();
     console.log('[Deco Auth] Admin authenticated successfully.');
     return res.status(200).json({
@@ -38,6 +45,7 @@ router.post('/auth/login', (req, res) => {
     });
   }
 
+  recordLoginFailure(req);
   return res.status(401).json({ success: false, error: 'Usuario o contraseña incorrectos.' });
 });
 

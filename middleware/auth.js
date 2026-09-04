@@ -22,7 +22,19 @@ export function getAdminPass() {
 }
 
 export function getAuthSecret() {
-  return (process.env.ADMIN_SECRET || 'deco_vintage_default_jwt_secret_key_2026').trim();
+  const secret = (process.env.ADMIN_SECRET || '').trim();
+  if (!secret) {
+    throw new Error('💥 [FATAL SECURITY] Variable de entorno ADMIN_SECRET no configurada. El servidor requiere ADMIN_SECRET para autenticación.');
+  }
+  return secret;
+}
+
+// Fail-Fast: Abortar arranque si ADMIN_SECRET no está configurada en el entorno
+if (!process.env.ADMIN_SECRET || !process.env.ADMIN_SECRET.trim()) {
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('💥 [FATAL SECURITY] Error al iniciar el servidor: La variable de entorno ADMIN_SECRET no está configurada.');
+    throw new Error('FATAL: Variable de entorno ADMIN_SECRET no configurada. Operación abortada por seguridad.');
+  }
 }
 
 export const ADMIN_USER = getAdminUser();
@@ -58,7 +70,7 @@ export function generateAuthToken() {
   const adminUser = getAdminUser();
   const authSecret = getAuthSecret();
   if (!authSecret || !adminUser) {
-    throw new Error('AUTH_SECRET and ADMIN_USER environment variables must be set.');
+    throw new Error('ADMIN_SECRET and ADMIN_USER environment variables must be set.');
   }
   const payload = JSON.stringify({ user: adminUser, exp: Date.now() + 30 * 24 * 60 * 60 * 1000 });
   const b64 = Buffer.from(payload).toString('hex');
@@ -75,7 +87,12 @@ export function generateAuthToken() {
  */
 export function verifyAuthToken(token) {
   const adminUser = getAdminUser();
-  const authSecret = getAuthSecret();
+  let authSecret;
+  try {
+    authSecret = getAuthSecret();
+  } catch (e) {
+    return false;
+  }
   if (!authSecret || !adminUser) return false;
   if (!token || typeof token !== 'string' || !token.includes('.')) return false;
   const parts = token.split('.');

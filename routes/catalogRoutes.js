@@ -26,7 +26,7 @@ import {
 } from '../services/catalogService.js';
 import { processImageBuffer, dataUrlToBuffer } from '../services/imageService.js';
 import { deleteFromGCS } from '../services/gcsService.js';
-import { PROJECT_ROOT } from '../config/paths.js';
+import { PROJECT_ROOT, UPLOADS_DIR } from '../config/paths.js';
 
 const router = Router();
 
@@ -467,10 +467,52 @@ router.post('/catalog/upload', requireAuth, (req, res, next) => {
 });
 
 // ── POST /api/catalog/delete-image (Protected Admin) ────────────────────────
-// Removes WebP files from Google Cloud Storage or legacy local disk.
+// Removes WebP files from Google Cloud Storage or legacy local disk with strict anti-traversal validation.
 router.post('/catalog/delete-image', requireAuth, async (req, res) => {
   try {
     const { imagePath, thumbPath } = req.body;
+
+    const sanitizeAndValidateLocalPath = (rawPath) => {
+      if (!rawPath || typeof rawPath !== 'string') return null;
+
+      // 1. Detección inmediata de secuencias relativas "../", null bytes o encoding malicioso (CWE-22)
+      let decoded = rawPath;
+      try {
+        decoded = decodeURIComponent(rawPath);
+      } catch (e) {
+        const err = new Error('Ruta inválida: secuencias relativas "../" o caracteres nulos no permitidos.');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      if (rawPath.includes('..') || rawPath.includes('\0') || decoded.includes('..') || decoded.includes('\0')) {
+        const err = new Error('Ruta inválida: secuencias relativas "../" o caracteres nulos no permitidos.');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      // Solo procesar si apunta al prefijo de uploads locales
+      if (!rawPath.startsWith('/posters/uploads/')) {
+        return null;
+      }
+
+      // 2. Extraer subruta relativa dentro del directorio de uploads
+      const subPath = rawPath.replace(/^\/?posters\/uploads\/?/, '');
+
+      // 3. Resolución canónica estricta dentro de UPLOADS_DIR
+      const canonicalBase = path.resolve(UPLOADS_DIR);
+      const resolvedTarget = path.resolve(canonicalBase, subPath);
+
+      // 4. Verificación de contención estricta de frontera
+      const relative = path.relative(canonicalBase, resolvedTarget);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        const err = new Error('Acceso denegado: el archivo reside fuera del directorio de uploads permitido.');
+        err.statusCode = 403;
+        throw err;
+      }
+
+      return resolvedTarget;
+    };
 
     // 1. Limpieza en Google Cloud Storage si es URL de GCS
     if (imagePath && imagePath.startsWith('https://storage.googleapis.com/')) {
@@ -480,19 +522,23 @@ router.post('/catalog/delete-image', requireAuth, async (req, res) => {
       await deleteFromGCS(thumbPath);
     }
 
-    // 2. Limpieza en disco local si es ruta relativa legacy
-    if (imagePath && imagePath.startsWith('/posters/uploads/')) {
-      const fullFile = path.resolve(PROJECT_ROOT, 'public', imagePath.replace(/^\//, ''));
-      if (fs.existsSync(fullFile)) fs.unlinkSync(fullFile);
+    // 2. Limpieza en disco local con validación canónica estricta anti-traversal
+    const safeImageFile = sanitizeAndValidateLocalPath(imagePath);
+    if (safeImageFile && fs.existsSync(safeImageFile)) {
+      const stat = fs.statSync(safeImageFile);
+      if (stat.isFile()) fs.unlinkSync(safeImageFile);
     }
-    if (thumbPath && thumbPath.startsWith('/posters/uploads/')) {
-      const thumbFile = path.resolve(PROJECT_ROOT, 'public', thumbPath.replace(/^\//, ''));
-      if (fs.existsSync(thumbFile)) fs.unlinkSync(thumbFile);
+
+    const safeThumbFile = sanitizeAndValidateLocalPath(thumbPath);
+    if (safeThumbFile && fs.existsSync(safeThumbFile)) {
+      const stat = fs.statSync(safeThumbFile);
+      if (stat.isFile()) fs.unlinkSync(safeThumbFile);
     }
 
     return res.status(200).json({ success: true });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    const statusCode = e.statusCode || 500;
+    return res.status(statusCode).json({ error: e.message });
   }
 });
 

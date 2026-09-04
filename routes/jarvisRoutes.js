@@ -8,7 +8,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { rateLimitAI } from '../middleware/rateLimit.js';
 import {
-  getAllPosters,
+  prisma,
   getFullCatalog
 } from '../services/catalogService.js';
 import {
@@ -39,8 +39,7 @@ router.get('/version', async (req, res) => {
 router.get('/health', async (req, res) => {
   let postersCount = 0;
   try {
-    const livePosters = await getAllPosters({ includeUnpublished: true });
-    postersCount = Array.isArray(livePosters) ? livePosters.length : (livePosters?.count || 0);
+    postersCount = await prisma.poster.count();
   } catch (e) {
     postersCount = 0;
   }

@@ -17,17 +17,114 @@ import {
 
 const router = Router();
 
-// Configuración de Multer en memoria para archivos de imagen
+import path from 'path';
+
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp'
+]);
+
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+
+/**
+ * Valida la firma binaria (magic bytes) de la imagen en memoria.
+ */
+function isValidImageSignature(buffer) {
+  if (!buffer || buffer.length < 12) return false;
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return true;
+  // PNG: 89 50 4E 47
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return true;
+  // WebP: RIFF....WEBP
+  const riff = buffer.toString('ascii', 0, 4);
+  const webp = buffer.toString('ascii', 8, 12);
+  if (riff === 'RIFF' && webp === 'WEBP') return true;
+
+  return false;
+}
+
+// Configuración endurecida de Multer en memoria para pedidos personalizados
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 } // 25 MB max por imagen
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10 MB max por archivo
+    files: 5                     // Máximo 5 archivos por pedido
+  },
+  fileFilter: (req, file, cb) => {
+    // 1. Verificación de tipo MIME declarado
+    if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      return cb(new Error('Formato no permitido. Solo se aceptan imágenes JPEG, PNG o WebP.'), false);
+    }
+    // 2. Verificación de extensión de archivo
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (ext && !ALLOWED_EXTENSIONS.has(ext)) {
+      return cb(new Error('Extensión no permitida. Solo se aceptan extensiones .jpg, .jpeg, .png, .webp.'), false);
+    }
+    cb(null, true);
+  }
 });
+
+/**
+ * Middleware receptor de imágenes con límite estricto de 5 y manejo de errores.
+ * Soporta 'images' (array) y mantiene compatibilidad con 'image_0'...'image_4'.
+ */
+const uploadOrderImages = (req, res, next) => {
+  const fields = [
+    { name: 'images', maxCount: 5 },
+    { name: 'image_0', maxCount: 1 },
+    { name: 'image_1', maxCount: 1 },
+    { name: 'image_2', maxCount: 1 },
+    { name: 'image_3', maxCount: 1 },
+    { name: 'image_4', maxCount: 1 },
+  ];
+
+  upload.fields(fields)(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            success: false,
+            error: 'Archivo demasiado grande. El límite máximo es de 10 MB por imagen.'
+          });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+          return res.status(400).json({
+            success: false,
+            error: 'Demasiadas imágenes. El límite máximo es de 5 imágenes por pedido.'
+          });
+        }
+        return res.status(400).json({ success: false, error: `Error de subida: ${err.message}` });
+      }
+      return res.status(400).json({ success: false, error: err.message });
+    }
+
+    // Normalizar archivos a req.files plano
+    const files = [];
+    if (req.files) {
+      if (Array.isArray(req.files.images)) files.push(...req.files.images);
+      for (let i = 0; i < 5; i++) {
+        if (Array.isArray(req.files[`image_${i}`])) files.push(...req.files[`image_${i}`]);
+      }
+    }
+
+    if (files.length > 5) {
+      return res.status(400).json({
+        success: false,
+        error: 'Demasiadas imágenes. El límite máximo es de 5 imágenes por pedido.'
+      });
+    }
+
+    req.files = files;
+    next();
+  });
+};
 
 /**
  * POST /api/custom-orders
  * Endpoint público: Recibe las especificaciones y archivos de imagen del cliente.
  */
-router.post('/', upload.any(), async (req, res) => {
+router.post('/', uploadOrderImages, async (req, res) => {
   try {
     let items = [];
     if (req.body.items) {
@@ -39,6 +136,16 @@ router.post('/', upload.any(), async (req, res) => {
     const customerPhone = req.body.customerPhone || null;
     const customerNotes = req.body.customerNotes || null;
     const files = req.files || [];
+
+    // Verificación estricta de firma binaria (magic bytes) para cada archivo en memoria
+    for (const file of files) {
+      if (!isValidImageSignature(file.buffer)) {
+        return res.status(400).json({
+          success: false,
+          error: `El archivo "${file.originalname || 'subido'}" no contiene una firma binaria válida de imagen (JPEG, PNG, WebP).`
+        });
+      }
+    }
 
     const order = await createCustomOrder({
       items,

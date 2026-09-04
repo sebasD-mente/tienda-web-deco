@@ -46,3 +46,66 @@ export function rateLimitAI(req, res, next) {
 
   next();
 }
+
+// ── Rate Limiter para Login Admin (Protección anti fuerza bruta) ──────────────
+const loginFailures = new Map();
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutos
+const MAX_LOGIN_FAILURES = 5;
+
+// Periodic garbage collection para limpiar registros expirados de login cada 5 minutos
+const loginCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of loginFailures.entries()) {
+    if (now > record.resetTime) {
+      loginFailures.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
+
+if (loginCleanupTimer && loginCleanupTimer.unref) {
+  loginCleanupTimer.unref();
+}
+
+/**
+ * Middleware: Bloquea IPs que alcancen 5 o más intentos fallidos en una ventana de 15 minutos.
+ */
+export function rateLimitLogin(req, res, next) {
+  const ip = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const record = loginFailures.get(ip);
+
+  if (record && now < record.resetTime && record.count >= MAX_LOGIN_FAILURES) {
+    return res.status(429).json({
+      error: 'Demasiados intentos de inicio de sesión. Por favor intenta de nuevo en 15 minutos.'
+    });
+  }
+
+  next();
+}
+
+/**
+ * Registra un fallo de login para la IP del cliente.
+ */
+export function recordLoginFailure(req) {
+  const ip = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const record = loginFailures.get(ip);
+
+  if (!record || now > record.resetTime) {
+    loginFailures.set(ip, { count: 1, resetTime: now + LOGIN_WINDOW_MS });
+  } else {
+    record.count++;
+  }
+}
+
+/**
+ * Restablece los fallos de login para la IP del cliente tras una autenticación exitosa.
+ */
+export function resetLoginFailures(req) {
+  const ip = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
+  loginFailures.delete(ip);
+}
+
+// Alias canónico compatible
+export const loginRateLimiter = rateLimitLogin;
+

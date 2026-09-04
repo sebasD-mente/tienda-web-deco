@@ -34,6 +34,38 @@ const POSTER_INCLUDE_FULL = {
   franchise: true,
 };
 
+/**
+ * Proyección selectiva para consultas de catálogo público y clientes.
+ * Excluye explícitamente el vector RAG `embedding` (768 flotantes), reduciendo
+ * drásticamente la transferencia desde PostgreSQL y la memoria de Node.js.
+ */
+export const POSTER_SELECT_CLIENT = {
+  id:            true,
+  legacyId:      true,
+  titulo:        true,
+  subtitulo:     true,
+  descripcion:   true,
+  categoria:     true,
+  franchiseId:   true,
+  tags:          true,
+  imageUrl:      true,
+  thumbUrl:      true,
+  precioMinimo:  true,
+  precioDisplay: true,
+  estado:        true,
+  isPublished:   true,
+  isFeatured:    true,
+  rating:        true,
+  reviewsCount:  true,
+  createdAt:     true,
+  updatedAt:     true,
+  sizes: {
+    where:   { isActive: true },
+    orderBy: { precio: 'asc' },
+  },
+  franchise:     true,
+};
+
 /** Include ligero: solo franchise, sin sizes. Usado en listados de admin. */
 const POSTER_INCLUDE_LIGHT = {
   franchise: true,
@@ -225,7 +257,7 @@ export async function getAllPosters(opts = {}) {
     const takeNumber = Math.min(Math.max(parseInt(take, 10) || 24, 1), 100);
     const queryArgs = {
       where,
-      include: POSTER_INCLUDE_FULL,
+      select: POSTER_SELECT_CLIENT,
       orderBy: [{ [orderBy]: order }, { id: 'desc' }],
       take: takeNumber + 1, // Tomamos 1 extra para determinar hasMore
     };
@@ -251,7 +283,7 @@ export async function getAllPosters(opts = {}) {
   // Consulta regular sin paginación (para exports internos, JARVIS o panel completo)
   const posters = await prisma.poster.findMany({
     where,
-    include: POSTER_INCLUDE_FULL,
+    select: POSTER_SELECT_CLIENT,
     orderBy: [{ [orderBy]: order }, { id: 'desc' }],
   });
 
@@ -271,12 +303,12 @@ export async function getPosterById(idOrLegacyId) {
   if (isUUID(idOrLegacyId)) {
     poster = await prisma.poster.findUnique({
       where:   { id: idOrLegacyId },
-      include: POSTER_INCLUDE_FULL,
+      select:  POSTER_SELECT_CLIENT,
     });
   } else {
     poster = await prisma.poster.findUnique({
       where:   { legacyId: idOrLegacyId },
-      include: POSTER_INCLUDE_FULL,
+      select:  POSTER_SELECT_CLIENT,
     });
   }
 
@@ -440,7 +472,7 @@ export async function upsertPosterFromAdmin(data) {
             sizes: { create: sizesData }
           })
         },
-        include: POSTER_INCLUDE_FULL,
+        select: POSTER_SELECT_CLIENT,
       });
     });
     await safeInvalidateEmbeddingsCache();
@@ -471,7 +503,7 @@ export async function upsertPosterFromAdmin(data) {
       }),
       sizes: { create: sizesData.length > 0 ? sizesData : buildSizesForUpsert(null, ['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE']) },
     },
-    include: POSTER_INCLUDE_FULL,
+    select: POSTER_SELECT_CLIENT,
   });
 
   await safeInvalidateEmbeddingsCache();

@@ -199,7 +199,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
         };
 
         if (p.imageFile) {
-          formData.append(`image_${idx}`, p.imageFile);
+          formData.append('images', p.imageFile);
         } else if (p.uploadedImage && p.uploadedImage.startsWith('data:image/')) {
           itemData.uploadedImage = p.uploadedImage;
         }

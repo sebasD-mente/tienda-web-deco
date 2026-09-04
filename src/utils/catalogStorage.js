@@ -54,37 +54,55 @@ let _cachedCategories = null;
 let _cachedFranchises = null;
 let _cachedSettings   = null;
 
+// Promesa compartida en vuelo para deduplicar peticiones concurrentes (anti double-fetch)
+let _syncPromise = null;
+
 // ── Sincronización inicial ─────────────────────────────────────────────────────
 
 /**
  * Descarga el catálogo completo desde el backend (PostgreSQL + JSON para
  * categorías/franquicias/settings). Actualiza la cache interna y emite el
  * evento de actualización para que los componentes React se refresquen.
+ * Si ya existe una petición en curso, reutiliza la misma promesa en vuelo.
  *
  * @returns {Promise<boolean>} true si la sincronización fue exitosa.
  */
-export async function syncCatalogFromServer() {
-  try {
-    const serverCatalog = await apiGetCatalog();
-    if (serverCatalog && Array.isArray(serverCatalog.posters)) {
-      _cachedPosters    = serverCatalog.posters;
-      _cachedCategories = serverCatalog.categories || BASE_CATEGORIES;
-      _cachedFranchises = serverCatalog.franchises || BASE_FRANCHISES;
-      _cachedSettings   = serverCatalog.settings   || BASE_SETTINGS;
-
-      if (_cachedSettings?.whatsappPhone) {
-        saveStoreWhatsAppPhone(_cachedSettings.whatsappPhone);
-      }
-
-      emitCatalogUpdate();
-      console.info(`[Deco Storage] Catálogo sincronizado: ${_cachedPosters.length} pósters desde PostgreSQL.`);
-      return true;
-    }
-  } catch (err) {
-    console.warn('[Deco Storage] Error en sincronización con backend:', err.message);
+export function syncCatalogFromServer() {
+  if (_syncPromise) {
+    return _syncPromise;
   }
-  return false;
+
+  _syncPromise = (async () => {
+    try {
+      const serverCatalog = await apiGetCatalog();
+      if (serverCatalog && Array.isArray(serverCatalog.posters)) {
+        _cachedPosters    = serverCatalog.posters;
+        _cachedCategories = serverCatalog.categories || BASE_CATEGORIES;
+        _cachedFranchises = serverCatalog.franchises || BASE_FRANCHISES;
+        _cachedSettings   = serverCatalog.settings   || BASE_SETTINGS;
+
+        if (_cachedSettings?.whatsappPhone) {
+          saveStoreWhatsAppPhone(_cachedSettings.whatsappPhone);
+        }
+
+        emitCatalogUpdate();
+        console.info(`[Deco Storage] Catálogo sincronizado: ${_cachedPosters.length} pósters desde PostgreSQL.`);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.warn('[Deco Storage] Error en sincronización con backend:', err.message);
+      return false;
+    } finally {
+      _syncPromise = null;
+    }
+  })();
+
+  return _syncPromise;
 }
+
+// Alias canónico exportado para cumplir con el contrato de interfaz
+export const syncCatalogFromApi = syncCatalogFromServer;
 
 // Auto-sincronizar al cargar el módulo en el navegador
 if (typeof window !== 'undefined') {
