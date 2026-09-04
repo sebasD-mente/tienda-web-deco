@@ -120,6 +120,10 @@ model JarvisMemory {
   id              String   @id @default("default")
   apiKey          String?
   systemPrompt    String?  @db.Text
+  initialGreeting String?  @db.Text
+  quickPrompts    Json     @default("[]")
+  referenceImages Json     @default("[]")
+  company         Json?
   ownerDirectives Json     @default("[]")
   customDocuments Json     @default("[]")
   faqEntries      Json     @default("[]")

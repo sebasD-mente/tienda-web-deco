@@ -5,34 +5,28 @@ import { getStoreWhatsAppPhone } from '../config/constants.js';
 
 const API_KEY_STORAGE_KEY = 'deco_gemini_api_key_v1';
 
-export function getGeminiApiKey() {
+// Purgado defensivo automático contra XSS: jamás persistir claves API en almacenamiento de navegador
+if (typeof localStorage !== 'undefined') {
   try {
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem(API_KEY_STORAGE_KEY);
-      if (saved && !saved.startsWith('AIzaSyD0nw') && saved.trim().length >= 20) return saved.trim();
-      if (saved && (saved.startsWith('AIzaSyD0nw') || saved.trim().length < 20)) {
-        localStorage.removeItem(API_KEY_STORAGE_KEY);
-      }
-    }
+    localStorage.removeItem(API_KEY_STORAGE_KEY);
+    localStorage.removeItem('deco_gemini_api_key');
   } catch (e) {}
+}
+
+/**
+ * El frontend jamás debe gestionar o leer claves de API de Gemini;
+ * el backend en VPS Hostinger / Dokploy es el único custodio autorizado.
+ */
+export function getGeminiApiKey() {
   return '';
 }
 
-export function saveGeminiApiKey(apiKey) {
-  try {
-    if (!apiKey) {
-      localStorage.removeItem(API_KEY_STORAGE_KEY);
-    } else {
-      localStorage.setItem(API_KEY_STORAGE_KEY, apiKey.trim());
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('deco-gemini-key-updated', { detail: apiKey }));
-    }
-    return true;
-  } catch (e) {
-    console.error('Failed to save API key:', e);
-    return false;
-  }
+/**
+ * No-op de seguridad: el guardado de claves se realiza exclusivamente
+ * mediante la ruta autenticada de administración /api/jarvis/save-key.
+ */
+export function saveGeminiApiKey() {
+  return true;
 }
 
 

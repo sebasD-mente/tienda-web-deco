@@ -31,8 +31,7 @@ router.get('/version', async (req, res) => {
   res.json({
     version:   'v7.1-genai-flash',
     engine:    '@google/genai-gemini-flash',
-    hasApiKey: !!key,
-    keyPrefix: (key || '').substring(0, 10)
+    hasApiKey: !!key
   });
 });
 
@@ -55,14 +54,20 @@ router.get('/health', async (req, res) => {
 });
 
 // ── GET /api/jarvis  &  /api/jarvis/config ───────────────────────────────────
-// PUBLIC — returns merged training memory with sensitive fields stripped.
+// PUBLIC — returns merged training memory with strict whitelist (zero secret leakage).
 router.get(['/jarvis', '/jarvis/config'], async (req, res) => {
   try {
-    const memory     = await getJarvisMemory();
-    const safeMemory = { ...memory };
-    delete safeMemory.apiKey;
-    delete safeMemory.googleClientSecret;
-    delete safeMemory.googleRefreshToken;
+    const memory = await getJarvisMemory();
+    const safeMemory = {
+      company:         memory.company || null,
+      initialGreeting: memory.initialGreeting || '',
+      quickPrompts:    Array.isArray(memory.quickPrompts) ? memory.quickPrompts : [],
+      customDocuments: Array.isArray(memory.customDocuments) ? memory.customDocuments : [],
+      referenceImages: Array.isArray(memory.referenceImages) ? memory.referenceImages : [],
+      ownerDirectives: Array.isArray(memory.ownerDirectives) ? memory.ownerDirectives : [],
+      faqEntries:      Array.isArray(memory.faqEntries) ? memory.faqEntries : [],
+      updatedAt:       memory.updatedAt || new Date().toISOString()
+    };
     return res.status(200).json(safeMemory);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -107,7 +112,6 @@ router.post('/jarvis/save-key', requireAuth, async (req, res) => {
 router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
   try {
     const { prompt, history } = req.body || {};
-    const clientKey       = req.headers['x-gemini-key'] || req.body?.apiKey;
     const masterServerKey = getJarvisApiKey();
 
     // 1. Obtener catálogo y memoria de entrenamiento en VIVO directamente desde PostgreSQL
@@ -115,16 +119,13 @@ router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
     const jarvisMemory = await getJarvisMemory();
     const dbApiKey     = (jarvisMemory?.apiKey || '').trim();
 
-    // Build candidate key pool — DB key (from Admin panel) + Server Env key (Dokploy) + Client key
+    // Build candidate key pool — DB key (from Admin panel) + Server Env key (Dokploy)
     const candidateKeys = [];
     if (dbApiKey && dbApiKey.length > 0) {
       candidateKeys.push(dbApiKey);
     }
     if (masterServerKey && masterServerKey.trim().length > 0 && !candidateKeys.includes(masterServerKey.trim())) {
       candidateKeys.push(masterServerKey.trim());
-    }
-    if (clientKey && clientKey.trim().length > 0 && !candidateKeys.includes(clientKey.trim())) {
-      candidateKeys.push(clientKey.trim());
     }
 
     const result = await chatWithJarvis(prompt, history, candidateKeys, liveCatalog, jarvisMemory);
