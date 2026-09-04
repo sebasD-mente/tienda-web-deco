@@ -117,13 +117,13 @@ export const ENTITY_ALIASES = [
   },
   {
     canonical: 'Formula 1',
-    keywords: ['f1', 'formula 1', 'senna', 'ayrton senna', 'hamilton', 'verstappen', 'checo', 'perez', 'ferrari', 'red bull', 'mclaren', 'monaco'],
-    synonyms: 'Formula 1 F1 Automovilismo Gran Premio Ayrton Senna Ferrari Red Bull Carreras'
+    keywords: ['f1', 'formula 1', 'formula uno', 'senna', 'ayrton senna', 'hamilton', 'lewis hamilton', 'verstappen', 'max verstappen', 'checo', 'checo perez', 'sergio perez', 'perez', 'ferrari', 'red bull', 'red bull racing', 'bull racing', 'leclerc', 'charles leclerc', 'sainz', 'carlos sainz', 'mclaren', 'monaco', 'gran premio', 'carreras', 'bolidos', 'automovilismo', 'pista'],
+    synonyms: 'Formula 1 F1 Automovilismo Gran Premio Ayrton Senna Ferrari Red Bull Carreras Bólidos Max Verstappen Checo Perez Lewis Hamilton Charles Leclerc Carlos Sainz Velocidad Pista'
   },
   {
     canonical: 'Autos',
-    keywords: ['auto', 'autos', 'carro', 'carros', 'porsche', 'gtr', 'supra', 'nissan', 'bmw', 'mercedes', 'mustang', 'jdm'],
-    synonyms: 'Autos Coches Vehiculos Deportivos Porsche 911 Nissan GTR Supra JDM Motor'
+    keywords: ['auto', 'autos', 'carro', 'carros', 'coche', 'coches', 'automovilismo', 'carreras', 'bolido', 'bolidos', 'motor', 'porsche', 'gtr', 'supra', 'nissan', 'bmw', 'mercedes', 'mustang', 'ford mustang', 'jdm', 'ferrari', 'red bull'],
+    synonyms: 'Autos Coches Vehiculos Deportivos Porsche 911 Nissan GTR Supra JDM Motor Automovilismo Formula 1 F1 Ferrari Red Bull Carreras Bólidos Velocidad'
   },
   {
     canonical: 'El Padrino',
@@ -204,17 +204,32 @@ export function buildSemanticPosterText(p) {
   const tags = Array.isArray(p.tags) && p.tags.length > 0 ? `Etiquetas: ${p.tags.join(', ')}.` : '';
   const desc = (p.descripcion || p.description) ? `Descripción: ${p.descripcion || p.description}.` : '';
 
-  // Buscar si el título o subtítulo coincide con alguna entidad para enriquecer su vector
   const normTitle = normalizeText(title);
   const normSub = normalizeText(p.subtitulo || p.subtitle);
+  const normCat = normalizeText(category);
+
+  // Detección virtual de F1 / Automovilismo para pósters de BASKETBALL_Y_FORMULA_1 sin tags en BD
+  const isF1Poster = (category === 'BASKETBALL_Y_FORMULA_1' || normCat.includes('formula')) &&
+    !normTitle.includes('jordan') && !normTitle.includes('michael');
+
+  const virtualRacingTags = isF1Poster
+    ? 'Etiquetas: Formula 1, F1, Automovilismo, Autos, Carreras, Bólidos, Gran Premio, Motores, Velocidad, Pista.'
+    : '';
+
+  const effectiveTags = tags || virtualRacingTags;
+
+  // Buscar si el título o subtítulo coincide con alguna entidad para enriquecer su vector
   const matchedEntity = ENTITY_ALIASES.find(ent => 
     normTitle.includes(normalizeText(ent.canonical)) ||
     ent.keywords.some(kw => normTitle.includes(normalizeText(kw)) || normSub.includes(normalizeText(kw)))
   );
 
-  const entityBonus = matchedEntity ? `Alias y Términos Clave de Búsqueda: ${matchedEntity.synonyms}.` : '';
+  let entityBonus = matchedEntity ? `Alias y Términos Clave de Búsqueda: ${matchedEntity.synonyms}.` : '';
+  if (isF1Poster && !matchedEntity) {
+    entityBonus = 'Alias y Términos Clave de Búsqueda: Formula 1 F1 Automovilismo Gran Premio Ayrton Senna Ferrari Red Bull Carreras Bólidos Max Verstappen Checo Perez Lewis Hamilton Charles Leclerc Carlos Sainz Velocidad Pista.';
+  }
 
-  return `Obra: ${title}. Categoría: ${category}. ${subtitle} ${franchiseStr} ${tags} ${entityBonus} ${desc}`
+  return `Obra: ${title}. Categoría: ${category}. ${subtitle} ${franchiseStr} ${effectiveTags} ${entityBonus} ${desc}`
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 2048);
@@ -378,13 +393,26 @@ export function computeLexicalSimilarity(query, p, matchedEntities = []) {
   const cat = normalizeText(p.categoria || p.category);
   const franchise = normalizeText(p.franchise?.name || p.franchise);
   const desc = normalizeText(p.descripcion || p.description);
-  const tags = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
+
+  // Virtual tags para F1 / Automovilismo en BASKETBALL_Y_FORMULA_1
+  const isF1Poster = (cat.includes('formula') || cat === 'basketball y formula 1') &&
+    !title.includes('jordan') && !title.includes('michael');
+
+  const rawTags = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
+  const virtualTags = isF1Poster
+    ? ['formula 1', 'f1', 'automovilismo', 'autos', 'auto', 'carro', 'carros', 'carreras', 'bolidos', 'coche', 'coches', 'gran premio', 'ferrari', 'red bull', 'motor', 'velocidad', 'racing']
+    : [];
+  const tags = [...rawTags, ...virtualTags];
 
   // 1. Verificación directa de entidades reconocidas (ej: "el bicho" -> Cristiano Ronaldo)
   for (const ent of matchedEntities) {
     const canonicalNorm = normalizeText(ent.canonical);
     if (title.includes(canonicalNorm) || franchise.includes(canonicalNorm)) {
       return 1.0; // Coincidencia perfecta de entidad
+    }
+    // Si la entidad es Fórmula 1 o Autos, y el póster es de F1, Mustang o McQueen
+    if ((canonicalNorm === 'formula 1' || canonicalNorm === 'autos') && (isF1Poster || title.includes('mustang') || title.includes('mcqueen'))) {
+      return 0.95; // Coincidencia semántica directa de temática motor/F1
     }
   }
 

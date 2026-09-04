@@ -42,7 +42,7 @@ export const JARVIS_TOOL_DECLARATIONS = [
         },
         categoria: {
           type: 'STRING',
-          description: 'Categoría oficial (ej: AUTOS, ANIME, SUPERHEROES, SERIESYPELICULAS, MUSICA, OBRASDEARTE, INFANTILYDIBUJOSANIMADOS)'
+          description: 'Categoría oficial (ej: BASKETBALL_Y_FORMULA_1, SUPERHEROES, ANIME, SERIESYPELICULAS, MUSICA, OBRASDEARTE, INFANTILYDIBUJOSANIMADOS). Nota: Para automovilismo, bólidos, autos de carreras, Ferrari, Red Bull y F1, la categoría oficial en inventario es BASKETBALL_Y_FORMULA_1.'
         },
         posterIds: {
           type: 'ARRAY',
@@ -436,22 +436,25 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
 
 === POLÍTICA CRÍTICA DE CATÁLOGO E INVENTARIO (CERO ALUCINACIONES) ===
 1. VERACIDAD TOTAL: Recomienda ÚNICAMENTE obras que realmente existan en el catálogo y coincidan con lo solicitado.
-2. SI EL CLIENTE PIDE UNA TEMÁTICA, PERSONAJE O CATEGORÍA QUE NO ESTÁ DISPONIBLE EN EL CATÁLOGO (por ejemplo, autos si no hay modelos de autos en el inventario, o una banda de rock específica):
-   - ESTRICTAMENTE PROHIBIDO inventar obras o mostrar tarjetas no relacionadas (como mostrar superhéroes o películas si pidió autos). En estos casos, ESTRICTAMENTE PROHIBIDO invocar 'explorar_catalogo' con obras no relacionadas.
+2. COLECCIÓN DE AUTOMOVILISMO, AUTOS, CARRERAS Y FÓRMULA 1 (CATEGORÍA BASKETBALL_Y_FORMULA_1):
+   - En nuestro inventario oficial disponemos de una colección espectacular de automovilismo, bólidos y Fórmula 1 clasificada en la categoría 'BASKETBALL_Y_FORMULA_1' (Ferrari, Red Bull, Checo Pérez, Max Verstappen, Lewis Hamilton, Charles Leclerc, Carlos Sainz, etc.) además de clásicos como el Ford Mustang.
+   - Si el cliente pide autos, carros, bólidos, carreras, Fórmula 1, F1, Ferrari o Red Bull, SÍ DISPONEMOS DE OBRAS EN EL CATÁLOGO. ESTRICTAMENTE PROHIBIDO afirmar que no hay stock de autos o enviarlo a hacer cuadros personalizados como primera opción. Invoca 'explorar_catalogo' con las obras de automovilismo y F1 disponibles.
+3. SI EL CLIENTE PIDE UNA TEMÁTICA O PERSONAJE QUE NO ESTÁ DISPONIBLE EN EL CATÁLOGO (por ejemplo, una banda musical o artista no presente en el inventario):
+   - ESTRICTAMENTE PROHIBIDO inventar obras inexistentes o mostrar tarjetas no relacionadas (como mostrar superhéroes si pidió una banda ausente). En estos casos, ESTRICTAMENTE PROHIBIDO invocar 'explorar_catalogo' con obras no relacionadas.
    - En su lugar, responde de forma súper amable, transparente y entusiasta diciendo que actualmente no cuentan con diseños de esa temática en el catálogo oficial listo para entrega, pero destaca con fuerza que contamos con el servicio de **CUADROS PERSONALIZADOS**.
    - Explícale que podemos fabricar cualquier cuadro con la foto de su propio vehículo, personaje, anime o imagen que el cliente desee en madera MDF 5.5mm rígida con impresión HP Látex y cinta industrial Tesa incluida en cualquier medida (desde Mini Q25 hasta Mediano Q65 o Gigante Q210), e invítalo a enviar su diseño o cotizarlo.
-3. SI EL CLIENTE PIDE VER O RECOMENDAR OBRAS QUE SÍ EXISTEN EN EL CATÁLOGO:
+4. SI EL CLIENTE PIDE VER O RECOMENDAR OBRAS QUE SÍ EXISTEN EN EL CATÁLOGO:
    - Invoca 'explorar_catalogo' pasando los IDs exactos de las obras disponibles en 'OBRAS DISPONIBLES COINCIDENTES' (o término de búsqueda), y llena el parámetro 'mensaje_conversacional' con una introducción conversacional fresca y adaptada a lo que pidió.
-   - Si el catálogo tiene varias opciones del mismo personaje o tema (por ejemplo, múltiples cuadros de Cristiano Ronaldo / El Bicho, Lionel Messi, Mario Bros, Dragon Ball, etc.), ¡preséntalas y muéstralas todas en las tarjetas!
-4. PREGUNTAS DE SEGUIMIENTO Y CONTINUIDAD ("¿y cuáles otros hay?", "¿tienes más?", "¿qué más hay de él?", "muéstrame otros"):
+   - Si el catálogo tiene varias opciones del mismo personaje o tema (por ejemplo, múltiples cuadros de Cristiano Ronaldo / El Bicho, Lionel Messi, Mario Bros, Dragon Ball, Ferrari, Red Bull, etc.), ¡preséntalas y muéstralas todas en las tarjetas!
+5. PREGUNTAS DE SEGUIMIENTO Y CONTINUIDAD ("¿y cuáles otros hay?", "¿tienes más?", "¿qué más hay de él?", "muéstrame otros"):
    - Si el cliente pregunta por otros diseños o más opciones del mismo personaje/tema sobre el que estaban hablando, NUNCA digas que solo hay uno si en las obras coincidentes o catálogo existen más diseños. Revisa las obras disponibles e invoca 'explorar_catalogo' mostrando los otros diseños.
-5. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración).
-6. COTIZACIONES Y MEDIDAS PERSONALIZADAS (FRICCIÓN CERO):
+6. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración).
+7. COTIZACIONES Y MEDIDAS PERSONALIZADAS (FRICCIÓN CERO):
    - Si el cliente menciona cualquier medida (ej: 50x70cm, 80x120cm, o dimensiones en cm) o pide cotizar un cuadro personalizado con su propia foto o diseño:
    - ASUME SIEMPRE por defecto material 'mdf' (Madera MDF rígida 5.5mm). NUNCA frenes la venta haciéndole preguntas previas sobre qué material prefiere antes de cotizar.
    - Dispara DE INMEDIATO la herramienta 'capturar_orden_personalizada' con anchoCm, altoCm y material='mdf'.
    - En tu respuesta conversacional, dale la bienvenida a su diseño, explícale que le cotizaste en madera MDF de 5.5mm con tecnología HP Látex y cinta Tesa incluida, y menciona amablemente que si lo requiere impermeable para exterior o baño también se puede fabricar en PVC sintético por un valor adicional.
-7. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
+8. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
 
 === HILO Y CONTINUIDAD DE LA CONVERSACIÓN ===
 - Mantén la coherencia con lo que el usuario te ha dicho previamente en sus mensajes anteriores.
@@ -582,24 +585,46 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
         if (matched.length === 0 && (args.termino || args.categoria)) {
           const rawTerm = (args.termino || '').trim();
           const normTerm = normalizeText(rawTerm);
-          const cat = (args.categoria || '').toUpperCase().trim();
+          let cat = (args.categoria || '').toUpperCase().trim();
+          if (cat === 'AUTOS' || cat === 'FORMULA_1' || cat === 'F1' || cat === 'CARRERAS' || cat === 'AUTOMOVILISMO') {
+            cat = 'BASKETBALL_Y_FORMULA_1';
+          }
 
-          // Buscar entidad canónica por si el término fue un alias (ej: "el bicho" -> Cristiano Ronaldo)
+          // Buscar entidad canónica por si el término fue un alias (ej: "el bicho" -> Cristiano Ronaldo, "autos" -> F1)
           const matchedEntity = ENTITY_ALIASES.find(ent =>
             ent.keywords.some(kw => normTerm.includes(normalizeText(kw))) ||
             normalizeText(ent.canonical).includes(normTerm)
           );
           const canonicalNorm = matchedEntity ? normalizeText(matchedEntity.canonical) : null;
 
+          const isF1OrAutoQuery = normTerm.includes('auto') || normTerm.includes('carro') || normTerm.includes('f1') ||
+            normTerm.includes('formula 1') || normTerm.includes('carrera') || normTerm.includes('ferrari') ||
+            normTerm.includes('red bull') || normTerm.includes('checo') || normTerm.includes('verstappen') ||
+            normTerm.includes('hamilton') || normTerm.includes('leclerc') || normTerm.includes('sainz') ||
+            normTerm.includes('senna') || normTerm.includes('racing') || canonicalNorm === 'formula 1' || canonicalNorm === 'autos';
+
           matched = cleanPosters.filter(p => {
             if (!p) return false;
             const pCat = (p.category || p.categoria || '').toUpperCase();
-            const matchCat = cat && pCat.includes(cat);
             const pTitle = normalizeText(p.title || p.titulo);
             const pSub = normalizeText(p.subtitle || p.subtitulo);
             const pDesc = normalizeText(p.description || p.descripcion);
             const pTags = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
 
+            const isF1Poster = (pCat === 'BASKETBALL_Y_FORMULA_1' || pCat.includes('FORMULA')) &&
+              !pTitle.includes('jordan') && !pTitle.includes('michael');
+
+            // Si el usuario preguntó por autos/F1 y esta obra es Michael Jordan, excluir
+            if (isF1OrAutoQuery && (pTitle.includes('jordan') || pTitle.includes('michael'))) {
+              return false;
+            }
+
+            // Si es consulta de autos/F1 y es un póster de F1 o Mustang
+            if (isF1OrAutoQuery && (isF1Poster || pTitle.includes('mustang') || pTitle.includes('mcqueen'))) {
+              return true;
+            }
+
+            const matchCat = cat && pCat.includes(cat);
             const matchEntity = canonicalNorm && (pTitle.includes(canonicalNorm) || pTags.includes(canonicalNorm));
 
             const matchTerm = normTerm && (
@@ -784,22 +809,35 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
   if (matchedDoc) {
     localReply = `¡Claro que sí! Con respecto a **${matchedDoc.title}**:\n\n${matchedDoc.content}\n\n¿Te gustaría que te ayude a preparar o cotizar algún cuadro para esta ocasión?`;
 
-  } else if (qLower.includes('auto') || qLower.includes('carro') || qLower.includes('f1') || qLower.includes('carrera') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('bmw') || qLower.includes('gtr') || qLower.includes('ferrari') || qLower.includes('senna') || qLower.includes('verstappen') || qLower.includes('racing')) {
+  } else if (qLower.includes('auto') || qLower.includes('carro') || qLower.includes('f1') || qLower.includes('formula') || qLower.includes('carrera') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('bmw') || qLower.includes('gtr') || qLower.includes('ferrari') || qLower.includes('senna') || qLower.includes('verstappen') || qLower.includes('racing') || qLower.includes('red bull') || qLower.includes('checo') || qLower.includes('leclerc') || qLower.includes('sainz') || qLower.includes('hamilton')) {
     const autoPosters = cleanPosters.filter(p => {
       const cat = (p.category || p.categoria || '').toUpperCase();
       const tags = (Array.isArray(p.tags) ? p.tags : []).map(t => String(t).toLowerCase());
       const title = (p.title || p.titulo || '').toLowerCase();
-      return cat === 'AUTOS' || cat === 'BASKETBALL_Y_FORMULA_1' ||
-        tags.some(t => t.includes('auto') || t.includes('carro') || t.includes('f1') || t.includes('carrera') || t.includes('ferrari') || t.includes('senna') || t.includes('racing')) ||
-        title.includes('f1') || title.includes('senna') || title.includes('ferrari') || title.includes('red bull') || title.includes('porsche');
-    }).slice(0, 4);
+
+      // Michael Jordan es baloncesto, no auto/F1
+      if (cat === 'BASKETBALL_Y_FORMULA_1' && (title.includes('jordan') || title.includes('michael'))) {
+        return false;
+      }
+
+      const isF1Poster = cat === 'BASKETBALL_Y_FORMULA_1' ||
+        title.includes('f1') || title.includes('senna') || title.includes('ferrari') ||
+        title.includes('red bull') || title.includes('verstappen') || title.includes('checo') ||
+        title.includes('hamilton') || title.includes('leclerc') || title.includes('sainz') ||
+        title.includes('racing') || title.includes('mustang') || title.includes('porsche') ||
+        title.includes('mcqueen');
+
+      const matchTag = tags.some(t => t.includes('auto') || t.includes('carro') || t.includes('f1') || t.includes('carrera') || t.includes('ferrari') || t.includes('senna') || t.includes('racing'));
+
+      return isF1Poster || matchTag;
+    }).slice(0, 6);
     
     if (autoPosters.length > 0) {
       localActions.push({ type: 'catalog_matches', posters: autoPosters, motivo: 'Cuadros destacados de automovilismo y Fórmula 1' });
-      localReply = `¡Excelente elección! Nos apasiona el mundo motor. Aquí tienes estas increíbles opciones de automovilismo de nuestro catálogo oficial:\n\n` +
+      localReply = `¡Excelente elección! Nos apasiona el mundo motor. Aquí tienes estas increíbles opciones de automovilismo y Fórmula 1 de nuestro catálogo oficial:\n\n` +
                    `* **Impresión:** HP Látex de alta resolución ecológica y resistente al agua.\n` +
                    `* **Estructura:** Madera MDF rígida de 5.5mm con bordes pulidos y cinta doble cara Tesa incluida para colgar sin clavos.\n` +
-                   `* **Medida más vendida:** Mediano (30x45cm) por solo **Q65.00**.\n\n` +
+                   `* **Medida más vendida:** Mediano (30x45cm) por solo **Q65.00** ⭐.\n\n` +
                    `¡También podemos fabricar cualquier cuadro con la foto de tu propio vehículo en medida personalizada!`;
     } else {
       localReply = `¡Excelente elección! Nos apasiona el mundo motor, la Fórmula 1 y los autos clásicos y deportivos. Actualmente no contamos con diseños de autos listos en nuestro catálogo estándar, ¡pero con gusto podemos fabricarte cualquier cuadro **100% personalizado** con la foto de tu propio vehículo, modelo preferido o arte digital!\n\n` +
@@ -899,6 +937,14 @@ const CANDIDATE_MODELS = [
  * @returns {Promise<{ replyText: string, actions: any[], poweredBy: string }>}
  */
 export async function chatWithJarvis(prompt, history, candidateKeys, catalog, jarvisMemory) {
+  const safeCandidateKeys = Array.isArray(candidateKeys)
+    ? candidateKeys.filter(Boolean)
+    : (candidateKeys ? [candidateKeys] : []);
+  if (safeCandidateKeys.length === 0) {
+    const defaultKey = getJarvisApiKey();
+    if (defaultKey) safeCandidateKeys.push(defaultKey);
+  }
+
   // 1. Asegurar que siempre tengamos la lista de pósters en vivo desde PostgreSQL
   let liveCatalog = catalog;
   if (!liveCatalog || !Array.isArray(liveCatalog.posters) || liveCatalog.posters.length === 0) {
@@ -915,7 +961,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
   // 2. Búsqueda Semántica Vectorial previa (RAG) para inyectar el Top-12 relevante con contexto
   let topRelevantPosters = [];
   try {
-    const scoredMatches = await findSimilarPosters(prompt, 12, candidateKeys[0], undefined, history);
+    const scoredMatches = await findSimilarPosters(prompt, 12, safeCandidateKeys[0], undefined, history);
     if (scoredMatches && scoredMatches.length > 0) {
       topRelevantPosters = scoredMatches.map((m) => m.poster);
     }
@@ -928,7 +974,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
   let   lastError         = null;
 
   // ── Engine 1: Google GenAI SDK — multi-key + multi-model failover ───────────
-  for (const keyToUse of candidateKeys) {
+  for (const keyToUse of safeCandidateKeys) {
     let keyAuthFailed = false;
 
     for (const modelConfig of CANDIDATE_MODELS) {

@@ -23,8 +23,8 @@ export const DEFAULT_STORE_KNOWLEDGE = {
     },
     {
       "id": "qp-3",
-      "label": "Colección de Autos",
-      "prompt": "Recomiéndame los mejores cuadros de autos"
+      "label": "Autos y Fórmula 1",
+      "prompt": "Recomiéndame los mejores cuadros de autos y Fórmula 1"
     },
     {
       "id": "qp-4",
