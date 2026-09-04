@@ -2,16 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { X, ShoppingBag, MessageSquare, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OFFICIAL_SIZES } from '../data/catalogData';
+import { getPosterAvailableSizes } from '../utils/posterHelpers';
 
 export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhatsApp, onOpenCart }) {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
-  const availableSizes = Array.isArray(poster?.availableSizes) && poster.availableSizes.length > 0
-    ? OFFICIAL_SIZES.filter(s => poster.availableSizes.includes(s.id))
-    : (Array.isArray(poster?.sizes) && poster.sizes.length > 0
-        ? OFFICIAL_SIZES.filter(s => poster.sizes.some(ps => (ps.sizeId || ps.id) === s.id))
-        : OFFICIAL_SIZES);
+  const availableSizes = getPosterAvailableSizes(poster);
 
   const [selectedSizeId, setSelectedSizeId] = useState(
     availableSizes.find(s => s.id === 'GRANDE')?.id || availableSizes[0]?.id || 'MEDIANO'
@@ -19,11 +16,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
 
   useEffect(() => {
     if (poster) {
-      const valid = Array.isArray(poster.availableSizes) && poster.availableSizes.length > 0
-        ? OFFICIAL_SIZES.filter(s => poster.availableSizes.includes(s.id))
-        : (Array.isArray(poster.sizes) && poster.sizes.length > 0
-            ? OFFICIAL_SIZES.filter(s => poster.sizes.some(ps => (ps.sizeId || ps.id) === s.id))
-            : OFFICIAL_SIZES);
+      const valid = getPosterAvailableSizes(poster);
       if (!valid.some(s => s.id === selectedSizeId)) {
         setSelectedSizeId(valid.find(s => s.id === 'GRANDE')?.id || valid[0]?.id || 'MEDIANO');
       }
@@ -229,7 +222,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
                         {availableSizes[0].name} ({availableSizes[0].dimensions})
                       </div>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        {availableSizes[0].badge || 'Formato Oficial Grande para Salas y Oficinas'}
+                        {availableSizes[0].badge || (availableSizes[0].dimensions?.includes('30 x 30') ? 'Formato Cuadrado Oficial' : 'Formato Oficial')}
                       </div>
                     </div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#00f2fe' }}>

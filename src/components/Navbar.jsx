@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, ShoppingBag, X, Menu, ArrowRight, Sparkles, Tag, Layers, ExternalLink, Home, LayoutGrid, Sliders, ChevronRight, MessageSquare } from 'lucide-react';
 import { searchPosters } from '../utils/searchEngine';
+import { getPosterSizeBadge, getPosterPriceDisplay } from '../utils/posterHelpers';
 import ArcReactor from './ArcReactor';
 
 const POPULAR_SEARCHES = [
@@ -947,10 +948,10 @@ export default function Navbar({
 
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>
-                            Desde Q25.00
+                            {getPosterPriceDisplay(poster)}
                           </div>
                           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                            6 Tamaños
+                            {getPosterSizeBadge(poster)}
                           </span>
                         </div>
                       </div>

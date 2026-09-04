@@ -1,6 +1,7 @@
 import React, { useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { CATEGORIES as DEFAULT_CATEGORIES, CATALOG_POSTERS as DEFAULT_POSTERS } from '../data/catalogData';
+import { getPosterSizeBadge, getPosterPriceDisplay } from '../utils/posterHelpers';
 import OptimizedImage from './OptimizedImage';
 
 // Fisher-Yates shuffle algorithm for fair distribution
@@ -287,7 +288,7 @@ export default function CategoryShelf({
                         backdropFilter: 'blur(8px)',
                         zIndex: 2
                       }}>
-                        {poster.sizeBadge || (poster.availableSizes?.length === 1 ? '45 x 60 cm' : '6 Tamaños')}
+                        {getPosterSizeBadge(poster)}
                       </div>
                     </div>
 
@@ -323,7 +324,7 @@ export default function CategoryShelf({
                         borderTop: '1px solid rgba(255, 255, 255, 0.05)'
                       }}>
                         <span style={{ fontSize: '0.98rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
-                          {poster.priceDisplay || (poster.availableSizes?.length === 1 ? 'Q 125.00' : 'Desde Q 25.00')}
+                          {getPosterPriceDisplay(poster)}
                         </span>
                         
                         <span style={{

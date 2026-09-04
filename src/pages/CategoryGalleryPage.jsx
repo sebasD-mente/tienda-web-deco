@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Search, Filter, Sparkles, Layers, ShieldCheck, ChevronRight, X } from 'lucide-react';
+import { getPosterSizeBadge, getPosterPriceDisplay } from '../utils/posterHelpers';
 import OptimizedImage from '../components/OptimizedImage';
 
 export default function CategoryGalleryPage({
@@ -285,7 +286,7 @@ export default function CategoryGalleryPage({
                     style={{ background: 'transparent' }}
                   />
 
-                  {/* Size Pill */}
+                  {/* Available Size Pill Badge */}
                   <div style={{
                     position: 'absolute',
                     top: '12px',
@@ -300,7 +301,7 @@ export default function CategoryGalleryPage({
                     backdropFilter: 'blur(8px)',
                     zIndex: 2
                   }}>
-                    {poster.sizeBadge || (poster.availableSizes?.length === 1 ? '45 x 60 cm' : '6 Tamaños')}
+                    {getPosterSizeBadge(poster)}
                   </div>
                 </div>
 
@@ -337,7 +338,7 @@ export default function CategoryGalleryPage({
                     borderTop: '1px solid rgba(255, 255, 255, 0.06)'
                   }}>
                     <span style={{ fontSize: '0.98rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
-                      {poster.priceDisplay || (poster.availableSizes?.length === 1 ? 'Q 125.00' : 'Desde Q 25.00')}
+                      {getPosterPriceDisplay(poster)}
                     </span>
                     
                     <span style={{

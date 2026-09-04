@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Search, Sparkles, Layers, Shield, ChevronRight, X } from 'lucide-react';
+import { getPosterSizeBadge, getPosterPriceDisplay } from '../utils/posterHelpers';
 import OptimizedImage from '../components/OptimizedImage';
 
 export default function FranchiseGalleryPage({
@@ -287,7 +288,7 @@ export default function FranchiseGalleryPage({
                     backdropFilter: 'blur(8px)',
                     letterSpacing: '0.04em'
                   }}>
-                    {poster.sizeBadge || `${poster.availableSizes?.length || 6} Tamaños`}
+                    {getPosterSizeBadge(poster)}
                   </div>
                 </div>
 
@@ -334,7 +335,7 @@ export default function FranchiseGalleryPage({
                     borderTop: '1px solid rgba(255, 255, 255, 0.06)'
                   }}>
                     <span style={{ fontSize: '0.98rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
-                      {poster.priceDisplay || (poster.availableSizes?.length === 1 ? 'Q 125.00' : 'Desde Q 25.00')}
+                      {getPosterPriceDisplay(poster)}
                     </span>
                     
                     <span style={{
