@@ -79,10 +79,9 @@ function renderCleanMessageText(text) {
     .replace(/^###\s+/gm, '')
     .replace(/^##\s+/gm, '')
     .replace(/\*{3,}/g, '')
-    .replace(/,\s*señor\b/gi, '')
-    .replace(/\bseñor\b/gi, '')
-    .replace(/,\s*caballero\b/gi, '')
-    .replace(/\bcaballero\b/gi, '');
+    .replace(/(?:^|\n|[.!?]\s+)(?:señor|caballero)[,\s]+/gim, '')
+    .replace(/,\s*(?:señor|caballero)\b/gi, '')
+    .replace(/\b(?:señor|caballero)\s*([.!?])/gi, '$1');
 
   const lines = cleaned.split('\n');
 
@@ -357,20 +356,65 @@ export default function JarvisAgent({
     handleSendMessage(promptText);
   };
 
-  const handleQuickAddMedium = (poster) => {
-    const mediumSize = OFFICIAL_SIZES.find(s => s.id === 'MEDIANO') || {
+  const resolveQuickAddSize = (poster) => {
+    if (!poster) {
+      return { id: 'MEDIANO', name: 'Mediano', dimensions: '30 x 45 cm', price: 65.00 };
+    }
+
+    const rawSizes = Array.isArray(poster.sizes) ? poster.sizes.filter(s => s && s.isAvailable !== false) : [];
+    
+    if (rawSizes.length > 0) {
+      // 1. Preferir Mediano si está disponible
+      const mediano = rawSizes.find(s => s.sizeId === 'MEDIANO' || s.id === 'MEDIANO' || (s.name && s.name.toLowerCase().includes('mediano')));
+      if (mediano) {
+        const off = OFFICIAL_SIZES.find(o => o.id === 'MEDIANO');
+        return {
+          id: mediano.sizeId || mediano.id || 'MEDIANO',
+          name: mediano.name || off?.name || 'Mediano',
+          dimensions: mediano.dimensions || off?.dimensions || '30 x 45 cm',
+          price: Number(mediano.price || off?.price || 65.00)
+        };
+      }
+      // 2. Si no tiene mediano (ej: solo Portada Álbum o Mini), tomar el primer tamaño disponible
+      const first = rawSizes[0];
+      const offMatch = OFFICIAL_SIZES.find(o => o.id === (first.sizeId || first.id));
+      return {
+        id: first.sizeId || first.id || offMatch?.id || 'STANDARD',
+        name: first.name || offMatch?.name || 'Estándar',
+        dimensions: first.dimensions || offMatch?.dimensions || '',
+        price: Number(first.price || offMatch?.price || poster.minPrice || poster.price || 65.00)
+      };
+    }
+
+    // Fallback si no tiene arreglo sizes: revisar si es música o portada de álbum
+    const isSquare = (poster.category || poster.categoria) === 'MUSICA' ||
+      (poster.title || '').toLowerCase().includes('álbum') ||
+      (poster.title || '').toLowerCase().includes('album');
+    const fallbackId = isSquare ? 'PORTADA_ALBUM' : 'MEDIANO';
+    const off = OFFICIAL_SIZES.find(s => s.id === fallbackId) || OFFICIAL_SIZES[3] || {
       id: 'MEDIANO',
       name: 'Mediano',
       dimensions: '30 x 45 cm',
       price: 65.00
     };
 
+    return {
+      id: off.id,
+      name: off.name,
+      dimensions: off.dimensions,
+      price: Number(poster.minPrice || poster.price || off.price)
+    };
+  };
+
+  const handleQuickAddMedium = (poster) => {
+    const selectedSize = resolveQuickAddSize(poster);
+
     if (onAddToCart) {
       onAddToCart({
         poster,
-        size: mediumSize,
+        size: selectedSize,
         material: 'mdf',
-        price: 65.00,
+        price: selectedSize.price,
         quantity: 1
       });
       if (soundEnabled) playTechSound('blip');
@@ -790,45 +834,50 @@ export default function JarvisAgent({
 
                                     {/* Dual Action Buttons (Titanium Commercial Integration) */}
                                     <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '10px' }}>
-                                      {/* Direct Add to Cart Button (Mediano 30x45 Q65) */}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleQuickAddMedium(p)}
-                                        style={{
-                                          flex: 1.2,
-                                          padding: '9px 6px',
-                                          background: addedPosterId === p.id 
-                                            ? 'linear-gradient(135deg, #00f5a0 0%, #00d2ff 100%)' 
-                                            : 'linear-gradient(135deg, rgba(0, 245, 160, 0.2) 0%, rgba(0, 210, 255, 0.3) 100%)',
-                                          border: addedPosterId === p.id 
-                                            ? '1px solid #00f5a0' 
-                                            : '1px solid rgba(0, 245, 160, 0.6)',
-                                          color: addedPosterId === p.id ? '#040812' : '#00f5a0',
-                                          borderRadius: '8px',
-                                          fontSize: '0.76rem',
-                                          fontWeight: 800,
-                                          cursor: 'pointer',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          gap: '5px',
-                                          transition: 'all 0.2s ease',
-                                          boxShadow: addedPosterId === p.id ? '0 0 14px rgba(0, 245, 160, 0.5)' : 'none'
-                                        }}
-                                        title="Agregar tamaño Mediano (30x45cm) por Q65 al carrito"
-                                      >
-                                        {addedPosterId === p.id ? (
-                                          <>
-                                            <CheckCircle2 size={13} />
-                                            <span>¡Agregado!</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <ShoppingBag size={13} />
-                                            <span>+ Carrito (Q65)</span>
-                                          </>
-                                        )}
-                                      </button>
+                                      {/* Direct Add to Cart Button (Dynamic Size & Price) */}
+                                      {(() => {
+                                        const quickSize = resolveQuickAddSize(p);
+                                        return (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleQuickAddMedium(p)}
+                                            style={{
+                                              flex: 1.2,
+                                              padding: '9px 6px',
+                                              background: addedPosterId === p.id 
+                                                ? 'linear-gradient(135deg, #00f5a0 0%, #00d2ff 100%)' 
+                                                : 'linear-gradient(135deg, rgba(0, 245, 160, 0.2) 0%, rgba(0, 210, 255, 0.3) 100%)',
+                                              border: addedPosterId === p.id 
+                                                ? '1px solid #00f5a0' 
+                                                : '1px solid rgba(0, 245, 160, 0.6)',
+                                              color: addedPosterId === p.id ? '#040812' : '#00f5a0',
+                                              borderRadius: '8px',
+                                              fontSize: '0.76rem',
+                                              fontWeight: 800,
+                                              cursor: 'pointer',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              gap: '5px',
+                                              transition: 'all 0.2s ease',
+                                              boxShadow: addedPosterId === p.id ? '0 0 14px rgba(0, 245, 160, 0.5)' : 'none'
+                                            }}
+                                            title={`Agregar ${quickSize.name} (${quickSize.dimensions || ''}) por Q${quickSize.price} al carrito`}
+                                          >
+                                            {addedPosterId === p.id ? (
+                                              <>
+                                                <CheckCircle2 size={13} />
+                                                <span>¡Agregado!</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <ShoppingBag size={13} />
+                                                <span>+ Carrito (Q{quickSize.price})</span>
+                                              </>
+                                            )}
+                                          </button>
+                                        );
+                                      })()}
 
                                       {/* View Product Details Modal Button */}
                                       <button

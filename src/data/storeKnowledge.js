@@ -209,7 +209,7 @@ if (typeof window !== 'undefined') {
     });
 }
 
-export function saveStoreKnowledge(knowledge) {
+export async function saveStoreKnowledge(knowledge) {
   try {
     if (typeof localStorage !== 'undefined') {
       const payload = {
@@ -220,24 +220,27 @@ export function saveStoreKnowledge(knowledge) {
       localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(payload));
       window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: payload }));
 
-      // Save to VPS Backend PostgreSQL
+      // Save to VPS Backend PostgreSQL with real confirmation
       const token = getAuthToken();
-      fetch('/api/jarvis/save', {
+      const res = await fetch('/api/jarvis/save', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(payload)
-      }).catch((err) => {
-        console.error('[storeKnowledge] Error guardando en backend:', err);
       });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}: Falló el guardado en base de datos PostgreSQL`);
+      }
 
       return true;
     }
   } catch (e) {
-    console.error('[storeKnowledge] Error al guardar memoria:', e);
-    return false;
+    console.error('[storeKnowledge] Error al guardar memoria en backend:', e);
+    throw e;
   }
   return false;
 }

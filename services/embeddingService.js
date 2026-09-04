@@ -16,16 +16,48 @@ export const MIN_SIMILARITY_THRESHOLD = 0.45;
 
 let isSyncingEmbeddings = false;
 
+// ── IN-MEMORY VECTOR CACHE (Cero latencia & Cero sobrecarga de RAM/Event Loop) ──
+let cachedPostersWithEmbeddings = null;
+let cacheExpiryTime = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos de TTL
+
+export function invalidateEmbeddingsCache() {
+  cachedPostersWithEmbeddings = null;
+  cacheExpiryTime = 0;
+}
+
+export async function getCachedPublishedPosters() {
+  const now = Date.now();
+  if (cachedPostersWithEmbeddings && now < cacheExpiryTime && Array.isArray(cachedPostersWithEmbeddings) && cachedPostersWithEmbeddings.length > 0) {
+    return cachedPostersWithEmbeddings;
+  }
+
+  const rawPosters = await prisma.poster.findMany({
+    where: {
+      isPublished: true,
+      estado: { not: 'DESCONTINUADO' },
+    },
+    include: {
+      sizes: true,
+      franchise: true,
+    },
+  });
+
+  cachedPostersWithEmbeddings = rawPosters;
+  cacheExpiryTime = now + CACHE_TTL_MS;
+  return rawPosters;
+}
+
 // ── DICCIONARIO DE ENTIDADES, ALIAS Y NICKNAMES CULTURALES ──────────────────
 export const ENTITY_ALIASES = [
   {
     canonical: 'Cristiano Ronaldo',
-    keywords: ['bicho', 'el bicho', 'cr7', 'cristiano ronaldo', 'cristiano', 'comandante', 'el comandante', 'siuuu', 'siu', 'mister champions', 'ronaldo', '7'],
+    keywords: ['bicho', 'el bicho', 'cr7', 'cristiano ronaldo', 'cristiano', 'comandante', 'el comandante', 'siuuu', 'siu', 'mister champions', 'ronaldo', 'el 7'],
     synonyms: 'Cristiano Ronaldo El Bicho CR7 El Comandante Siuuu Real Madrid Manchester United Portugal Futbolista Leyenda Balon de Oro Champions'
   },
   {
     canonical: 'Messi',
-    keywords: ['messi', 'lionel messi', 'la pulga', 'pulga', 'd10s', 'goat', 'lio', 'leo messi', 'campeon del mundo', '10'],
+    keywords: ['messi', 'lionel messi', 'la pulga', 'pulga', 'd10s', 'goat', 'lio', 'leo messi', 'campeon del mundo', 'el 10'],
     synonyms: 'Lionel Messi La Pulga D10S GOAT Leo Argentina Barcelona Inter Miami Mundial Campeon del Mundo Balon de Oro Futbolista'
   },
   {
@@ -50,7 +82,7 @@ export const ENTITY_ALIASES = [
   },
   {
     canonical: 'Rayo McQueen',
-    keywords: ['rayo mcqueen', 'mcqueen', 'rayo', 'el rayo', 'copa piston', 'cars', 'radiador springs', 'mate', '95', 'cuchau', 'cuchao'],
+    keywords: ['rayo mcqueen', 'mcqueen', 'rayo', 'el rayo', 'copa piston', 'cars', 'radiador springs', 'mate', 'el 95', 'cuchau', 'cuchao'],
     synonyms: 'Rayo McQueen Lightning McQueen Cars Copa Piston Radiador Springs Mate Disney Pixar Carreras 95'
   },
   {
@@ -219,6 +251,7 @@ export async function generateEmbedding(text, customApiKey) {
       },
       outputDimensionality: EMBEDDING_DIMENSIONS,
     }),
+    signal: AbortSignal.timeout(3500),
   });
 
   if (!res.ok) {
@@ -422,17 +455,8 @@ export async function findSimilarPosters(userQuery, limit = 8, customApiKey, min
       console.warn('[Embedding Search] Query embedding failed, falling back to lexical search:', embErr.message);
     }
 
-    // 2. Obtener todas las obras publicadas de PostgreSQL
-    const rawPosters = await prisma.poster.findMany({
-      where: {
-        isPublished: true,
-        estado: { not: 'DESCONTINUADO' },
-      },
-      include: {
-        sizes: true,
-        franchise: true,
-      },
-    });
+    // 2. Obtener obras publicadas con caché inteligente en RAM (5 min TTL)
+    const rawPosters = await getCachedPublishedPosters();
 
     if (!rawPosters || rawPosters.length === 0) {
       return [];
@@ -600,6 +624,8 @@ export async function syncPendingEmbeddings(customApiKey, batchSize = 16, forceR
 
     const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`[RAG Auto-Sync] ✅ Sincronización finalizada: ${successCount} obras vectorizadas en ${durationSec}s.`);
+
+    invalidateEmbeddingsCache();
 
     return {
       total: allPosters.length,

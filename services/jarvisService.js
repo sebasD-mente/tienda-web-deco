@@ -62,13 +62,13 @@ export const JARVIS_TOOL_DECLARATIONS = [
   },
   {
     name: 'capturar_orden_personalizada',
-    description: 'Calcula la cotización exacta en Quetzales y captura los parámetros para un cuadro personalizado con medidas especiales (en cm), tipo de material y detalles de diseño.',
+    description: 'Calcula la cotización exacta en Quetzales y captura los parámetros para un cuadro personalizado con medidas especiales (en cm), tipo de material y detalles de diseño. Si el usuario menciona medidas o dimensiones, invoca de inmediato esta herramienta asumiendo material mdf por defecto sin frenar la venta con preguntas.',
     parameters: {
       type: 'OBJECT',
       properties: {
         anchoCm: { type: 'NUMBER', description: 'Ancho en centímetros (ej: 50)' },
         altoCm:  { type: 'NUMBER', description: 'Alto en centímetros (ej: 30)' },
-        material: { type: 'STRING', description: 'Material: mdf o pvc. Por defecto mdf.', enum: ['mdf', 'pvc'] },
+        material: { type: 'STRING', description: 'Material: mdf o pvc. Por defecto asume mdf si el cliente no especificó otro.', enum: ['mdf', 'pvc'] },
         detallesDiseno: { type: 'STRING', description: 'Descripción o detalles del diseño personalizado solicitado por el cliente' }
       },
       required: ['anchoCm', 'altoCm']
@@ -213,6 +213,10 @@ export async function getJarvisMemory() {
           id: 'default',
           apiKey: seed.apiKey || null,
           systemPrompt: seed.systemPrompt || null,
+          initialGreeting: seed.initialGreeting || null,
+          quickPrompts: seed.quickPrompts || [],
+          referenceImages: seed.referenceImages || [],
+          company: seed.company || {},
           ownerDirectives: seed.ownerDirectives || [],
           customDocuments: seed.customDocuments || [],
           faqEntries: seed.faqEntries || []
@@ -225,6 +229,16 @@ export async function getJarvisMemory() {
       ...seed,
       apiKey: dbRecord.apiKey || seed.apiKey || '',
       systemPrompt: dbRecord.systemPrompt || seed.systemPrompt || '',
+      initialGreeting: dbRecord.initialGreeting || seed.initialGreeting || '',
+      quickPrompts: Array.isArray(dbRecord.quickPrompts) && dbRecord.quickPrompts.length > 0
+        ? dbRecord.quickPrompts
+        : (seed.quickPrompts || []),
+      referenceImages: Array.isArray(dbRecord.referenceImages) && dbRecord.referenceImages.length > 0
+        ? dbRecord.referenceImages
+        : (seed.referenceImages || []),
+      company: dbRecord.company && typeof dbRecord.company === 'object' && Object.keys(dbRecord.company).length > 0
+        ? dbRecord.company
+        : (seed.company || {}),
       ownerDirectives: Array.isArray(dbRecord.ownerDirectives) && dbRecord.ownerDirectives.length > 0
         ? dbRecord.ownerDirectives
         : (seed.ownerDirectives || []),
@@ -270,6 +284,10 @@ export async function saveJarvisMemory(payload) {
     const updateData = {
       apiKey: merged.apiKey !== undefined ? (merged.apiKey || '').trim() : undefined,
       systemPrompt: merged.systemPrompt !== undefined ? merged.systemPrompt : undefined,
+      initialGreeting: merged.initialGreeting !== undefined ? (merged.initialGreeting || '').trim() : undefined,
+      quickPrompts: Array.isArray(merged.quickPrompts) ? merged.quickPrompts : undefined,
+      referenceImages: Array.isArray(merged.referenceImages) ? merged.referenceImages : undefined,
+      company: (merged.company && typeof merged.company === 'object') ? merged.company : undefined,
       ownerDirectives: Array.isArray(merged.ownerDirectives) ? merged.ownerDirectives : undefined,
       customDocuments: Array.isArray(merged.customDocuments) ? merged.customDocuments : undefined,
       faqEntries: Array.isArray(merged.faqEntries) ? merged.faqEntries : undefined
@@ -428,7 +446,11 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
 4. PREGUNTAS DE SEGUIMIENTO Y CONTINUIDAD ("¿y cuáles otros hay?", "¿tienes más?", "¿qué más hay de él?", "muéstrame otros"):
    - Si el cliente pregunta por otros diseños o más opciones del mismo personaje/tema sobre el que estaban hablando, NUNCA digas que solo hay uno si en las obras coincidentes o catálogo existen más diseños. Revisa las obras disponibles e invoca 'explorar_catalogo' mostrando los otros diseños.
 5. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración).
-6. Si el cliente pide cotizar o fabricar medidas personalizadas especiales (ej: 50x70cm, 80x120cm, foto propia), invoca 'capturar_orden_personalizada'.
+6. COTIZACIONES Y MEDIDAS PERSONALIZADAS (FRICCIÓN CERO):
+   - Si el cliente menciona cualquier medida (ej: 50x70cm, 80x120cm, o dimensiones en cm) o pide cotizar un cuadro personalizado con su propia foto o diseño:
+   - ASUME SIEMPRE por defecto material 'mdf' (Madera MDF rígida 5.5mm). NUNCA frenes la venta haciéndole preguntas previas sobre qué material prefiere antes de cotizar.
+   - Dispara DE INMEDIATO la herramienta 'capturar_orden_personalizada' con anchoCm, altoCm y material='mdf'.
+   - En tu respuesta conversacional, dale la bienvenida a su diseño, explícale que le cotizaste en madera MDF de 5.5mm con tecnología HP Látex y cinta Tesa incluida, y menciona amablemente que si lo requiere impermeable para exterior o baño también se puede fabricar en PVC sintético por un valor adicional.
 7. Si el cliente pregunta por el estado, avance, entrega o seguimiento de una orden de pedido en taller (ej: "¿Cómo va mi pedido DV-2026-101?", "quiero consultar mi orden..."), invoca 'consultar_estado_taller'.
 
 === HILO Y CONTINUIDAD DE LA CONVERSACIÓN ===
@@ -468,8 +490,29 @@ export function formatChatHistory(rawHistory, maxTurns = 8) {
   const normalized = [];
   for (const msg of rawHistory) {
     const role = (msg.sender === 'user' || msg.sender === 'client' || msg.role === 'user') ? 'user' : 'model';
-    const text = (msg.text || msg.content || '').trim();
+    let text = (msg.text || msg.content || '').trim();
     if (text.length > 0 && !text.includes('no se encuentra disponible temporalmente')) {
+      // Inyectar contexto multi-turno de obras mostradas y cotizaciones previas al modelo
+      const actions = Array.isArray(msg.actions) ? msg.actions : (Array.isArray(msg.metadata?.actions) ? msg.metadata.actions : []);
+      if (role === 'model' && actions.length > 0) {
+        const catalogAction = actions.find(a => a && a.type === 'catalog_matches' && Array.isArray(a.posters) && a.posters.length > 0);
+        if (catalogAction) {
+          const postersList = catalogAction.posters.map((p, idx) => {
+            const num = idx + 1;
+            const t = p.title || p.titulo || 'Póster';
+            const price = p.priceDisplay || (p.minPrice ? `Desde Q${p.minPrice}.00` : 'Q65.00');
+            const id = p.id || '';
+            return `${num}. "${t}" (ID: ${id}, Precio: ${price})`;
+          }).join('; ');
+          text += `\n[Contexto de obras mostradas en este turno al cliente: ${postersList}]`;
+        }
+
+        const quoteAction = actions.find(a => a && a.type === 'custom_quote' && a.quote);
+        if (quoteAction && quoteAction.quote) {
+          text += `\n[Contexto de cotización calculada en este turno: Medida ${quoteAction.quote.width}x${quoteAction.quote.height}cm, Material ${quoteAction.quote.material}, Total: Q${quoteAction.quote.totalPrice}.00, Anticipo: Q${quoteAction.quote.deposit50}.00]`;
+        }
+      }
+
       normalized.push({ role, text });
     }
   }
@@ -667,11 +710,37 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
   let   localReply = '';
   const localActions = [];
 
-  // Check entity aliases first for instant high-accuracy local matching
+  // 1. Check for custom dimensions calculation first (e.g. 50x70, 80x120)
+  const dimMatch = qLower.match(/(\d{2,3})\s*(?:x|\*|por)\s*(\d{2,3})/);
+
+  if (dimMatch) {
+    const w     = parseInt(dimMatch[1], 10);
+    const h     = parseInt(dimMatch[2], 10);
+    const isPvc = qLower.includes('pvc') || qLower.includes('impermeable');
+    const dynamicRate = catalog?.settings?.customCm2Price || 0.048;
+    const quote = calculateCustomPrice(w, h, isPvc ? 'pvc' : 'mdf', dynamicRate);
+    localActions.push({ type: 'custom_quote', quote });
+    localReply = `¡Con gusto! Para una medida personalizada de **${w}x${h}cm** en **${quote.material}**:\n\n` +
+                 `* **Precio Total:** Q${quote.totalPrice}.00\n` +
+                 `* **Anticipo 50%:** Q${quote.deposit50}.00 (el saldo contra entrega en Ciudad de Guatemala o previo a envío departamental).\n` +
+                 `* **Incluye:** Cinta industrial Tesa en el reverso lista para colgar sin clavos ni taladros e impresión HP Látex con protección UV.\n\n` +
+                 `¿Deseas que te ayudemos a procesar este diseño personalizado por WhatsApp?`;
+    return {
+      replyText: localReply,
+      actions: localActions,
+      poweredBy: 'Deco High-Availability Fallback Engine'
+    };
+  }
+
+  // 2. Check entity aliases with strict word-boundary matching
   const normQ = normalizeText(prompt);
+  const qWords = normQ.split(/[^a-z0-9]+/i).filter(Boolean);
   const matchedEntity = ENTITY_ALIASES.find(ent =>
-    ent.keywords.some(kw => normQ.includes(normalizeText(kw))) ||
-    normalizeText(ent.canonical).includes(normQ)
+    ent.keywords.some(kw => {
+      const normKw = normalizeText(kw);
+      if (normKw.includes(' ')) return normQ.includes(normKw);
+      return qWords.includes(normKw);
+    }) || normalizeText(ent.canonical).includes(normQ)
   );
 
   if (matchedEntity) {
@@ -701,7 +770,7 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
     }
   }
 
-  // Check custom documents and events
+  // 3. Check custom documents and events
   const rawDocs    = jarvisMemory.customDocuments || [];
   const matchedDoc = rawDocs.find(d => {
     const tNorm = (d.title   || '').toLowerCase();
@@ -712,30 +781,21 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
            (qLower.includes('centranorte') && (tNorm.includes('centranorte') || cNorm.includes('centranorte')));
   });
 
-  // Check for custom dimensions calculation (e.g. 50x70, 80x120)
-  const dimMatch = qLower.match(/(\d{2,3})\s*(?:x|\*|por)\s*(\d{2,3})/);
-
-  if (dimMatch) {
-    const w     = parseInt(dimMatch[1], 10);
-    const h     = parseInt(dimMatch[2], 10);
-    const isPvc = qLower.includes('pvc') || qLower.includes('impermeable');
-    const dynamicRate = catalog?.settings?.customCm2Price || 0.048;
-    const quote = calculateCustomPrice(w, h, isPvc ? 'pvc' : 'mdf', dynamicRate);
-    localActions.push({ type: 'custom_quote', quote });
-    localReply = `¡Con gusto! Para una medida personalizada de **${w}x${h}cm** en **${quote.material}**:\n\n` +
-                 `* **Precio Total:** Q${quote.totalPrice}.00\n` +
-                 `* **Anticipo 50%:** Q${quote.deposit50}.00 (el saldo contra entrega en Ciudad de Guatemala o previo a envío departamental).\n` +
-                 `* **Incluye:** Cinta industrial Tesa en el reverso lista para colgar sin clavos ni taladros e impresión HP Látex con protección UV.\n\n` +
-                 `¿Deseas que te ayudemos a procesar este diseño personalizado por WhatsApp?`;
-
-  } else if (matchedDoc) {
+  if (matchedDoc) {
     localReply = `¡Claro que sí! Con respecto a **${matchedDoc.title}**:\n\n${matchedDoc.content}\n\n¿Te gustaría que te ayude a preparar o cotizar algún cuadro para esta ocasión?`;
 
-  } else if (qLower.includes('auto') || qLower.includes('carro') || qLower.includes('f1') || qLower.includes('carrera') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('bmw') || qLower.includes('gtr')) {
-    const autoPosters = cleanPosters.filter(p => (p.category || p.categoria) === 'AUTOS' || (p.tags && p.tags.some(t => String(t).toLowerCase().includes('auto') || String(t).toLowerCase().includes('carro') || String(t).toLowerCase().includes('f1')))).slice(0, 4);
+  } else if (qLower.includes('auto') || qLower.includes('carro') || qLower.includes('f1') || qLower.includes('carrera') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('bmw') || qLower.includes('gtr') || qLower.includes('ferrari') || qLower.includes('senna') || qLower.includes('verstappen') || qLower.includes('racing')) {
+    const autoPosters = cleanPosters.filter(p => {
+      const cat = (p.category || p.categoria || '').toUpperCase();
+      const tags = (Array.isArray(p.tags) ? p.tags : []).map(t => String(t).toLowerCase());
+      const title = (p.title || p.titulo || '').toLowerCase();
+      return cat === 'AUTOS' || cat === 'BASKETBALL_Y_FORMULA_1' ||
+        tags.some(t => t.includes('auto') || t.includes('carro') || t.includes('f1') || t.includes('carrera') || t.includes('ferrari') || t.includes('senna') || t.includes('racing')) ||
+        title.includes('f1') || title.includes('senna') || title.includes('ferrari') || title.includes('red bull') || title.includes('porsche');
+    }).slice(0, 4);
     
     if (autoPosters.length > 0) {
-      localActions.push({ type: 'catalog_matches', posters: autoPosters, motivo: 'Cuadros destacados de automovilismo' });
+      localActions.push({ type: 'catalog_matches', posters: autoPosters, motivo: 'Cuadros destacados de automovilismo y Fórmula 1' });
       localReply = `¡Excelente elección! Nos apasiona el mundo motor. Aquí tienes estas increíbles opciones de automovilismo de nuestro catálogo oficial:\n\n` +
                    `* **Impresión:** HP Látex de alta resolución ecológica y resistente al agua.\n` +
                    `* **Estructura:** Madera MDF rígida de 5.5mm con bordes pulidos y cinta doble cara Tesa incluida para colgar sin clavos.\n` +
@@ -824,13 +884,8 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CANDIDATE_MODELS = [
-  'gemini-3.1-flash-lite',
-  'gemini-3.8-flash',
-  'gemini-3.6-flash',
-  'gemini-flash-lite-latest',
-  'gemini-3.5-flash-lite',
-  'gemini-3.7-flash',
-  'gemini-flash-latest'
+  { name: 'gemini-3.1-flash-lite', timeoutMs: 4000 },
+  { name: 'gemini-3.6-flash', timeoutMs: 7000 }
 ];
 
 /**
@@ -876,7 +931,9 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
   for (const keyToUse of candidateKeys) {
     let keyAuthFailed = false;
 
-    for (const modelName of CANDIDATE_MODELS) {
+    for (const modelConfig of CANDIDATE_MODELS) {
+      const modelName = typeof modelConfig === 'string' ? modelConfig : modelConfig.name;
+      const timeoutMs = modelConfig.timeoutMs || 5000;
       try {
         const ai = new GoogleGenAI({ apiKey: keyToUse });
 
@@ -887,7 +944,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
 
         let timerId = null;
         const callTimeout = new Promise((_, reject) => {
-          timerId = setTimeout(() => reject(new Error(`Model ${modelName} call exceeded 5s timeout`)), 5000);
+          timerId = setTimeout(() => reject(new Error(`Model ${modelName} call exceeded ${timeoutMs}ms timeout`)), timeoutMs);
         });
 
         let resAI = null;
@@ -978,7 +1035,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
         return {
           replyText:  replyText || '¡Con gusto te asisto! ¿Qué diseño o temática tienes en mente?',
           actions:    executedActions,
-          poweredBy:  `Google Gemini 3.6 Flash (@google/genai - ${modelName})`
+          poweredBy:  `Google Gemini (@google/genai - ${modelName})`
         };
 
       } catch (genAiErr) {
