@@ -45,6 +45,7 @@ COPY middleware/ ./middleware/
 COPY routes/ ./routes/
 COPY services/ ./services/
 COPY utils/ ./utils/
+COPY validators/ ./validators/
 COPY prisma/ ./prisma/
 COPY scripts/ ./scripts/
 COPY data/ ./data/
