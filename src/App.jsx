@@ -12,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { getStoredPosters, getStoredCategories, getStoredFranchises, syncCatalogFromServer } from './utils/catalogStorage';
 import { getAuthToken, clearAuthToken, apiAdminVerify } from './utils/apiClient';
 import { generateWhatsAppLink } from './config/constants';
+import { getRouteFromPath, getPathFromRoute } from './utils/routes';
 
 const CART_STORAGE_KEY = 'deco_vintage_cart_v2';
 
@@ -62,9 +63,11 @@ function PageLoader() {
 }
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'catalog' | 'category' | 'franchise' | 'about' | 'custom' | 'admin'
-  const [selectedCategoryId, setSelectedCategoryId] = useState('SUPERHEROES');
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState('avengers');
+  // Initialize route directly from browser URL (supports direct links & F5 reload)
+  const initialRoute = getRouteFromPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const [currentPage, setCurrentPage] = useState(initialRoute.page); // 'home' | 'catalog' | 'category' | 'franchise' | 'about' | 'custom' | 'admin'
+  const [selectedCategoryId, setSelectedCategoryId] = useState(initialRoute.categoryId || 'SUPERHEROES');
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState(initialRoute.franchiseId || 'avengers');
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem(CART_STORAGE_KEY);
@@ -121,10 +124,17 @@ export default function App() {
     return () => window.removeEventListener('deco-catalog-updated', handleUpdate);
   }, []);
 
-  // Initialize initial history entry on first load
+  // Initialize initial history entry with correct URL on first load
   useEffect(() => {
+    const currentRoute = getRouteFromPath(window.location.pathname);
+    const currentPath = getPathFromRoute(currentRoute.page, currentRoute.categoryId, currentRoute.franchiseId);
     if (!window.history.state) {
-      window.history.replaceState({ type: 'page', page: 'home' }, '');
+      window.history.replaceState({
+        type: 'page',
+        page: currentRoute.page,
+        categoryId: currentRoute.categoryId,
+        franchiseId: currentRoute.franchiseId
+      }, '', currentPath);
     }
   }, []);
 
@@ -140,14 +150,19 @@ export default function App() {
         return;
       }
 
-      // 2. Otherwise navigate to the previous page state
+      // 2. Otherwise navigate to the previous page state or parse URL pathname
       const state = event.state;
       if (state && state.type === 'page') {
         setCurrentPage(state.page || 'home');
         if (state.categoryId) setSelectedCategoryId(state.categoryId);
         if (state.franchiseId) setSelectedFranchiseId(state.franchiseId);
-        window.scrollTo(0, 0);
+      } else {
+        const route = getRouteFromPath(window.location.pathname);
+        setCurrentPage(route.page);
+        if (route.categoryId) setSelectedCategoryId(route.categoryId);
+        if (route.franchiseId) setSelectedFranchiseId(route.franchiseId);
       }
+      window.scrollTo(0, 0);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -205,8 +220,12 @@ export default function App() {
     }
   };
 
-  const handleNavigate = async (page, categoryId = null) => {
-    if (page === 'admin') {
+  const handleNavigate = async (page, categoryId = null, franchiseId = null) => {
+    let targetPage = page;
+    if (page === 'custom-posters') targetPage = 'custom';
+    if (page === 'about-posters') targetPage = 'about';
+
+    if (targetPage === 'admin') {
       const token = getAuthToken();
       if (!token) {
         setIsAdminAuthenticated(false);
@@ -222,27 +241,38 @@ export default function App() {
       }
       setIsAdminAuthenticated(true);
     }
-    if (page === 'category' && categoryId) {
-      setSelectedCategoryId(categoryId);
+
+    const targetCatId = categoryId || (targetPage === 'category' ? selectedCategoryId : null);
+    const targetFranId = franchiseId || (targetPage === 'franchise' ? selectedFranchiseId : null);
+
+    if (targetPage === 'category' && targetCatId) {
+      setSelectedCategoryId(targetCatId);
+    }
+    if (targetPage === 'franchise' && targetFranId) {
+      setSelectedFranchiseId(targetFranId);
     }
 
-    // Push new page state to browser history if moving to a different view
-    if (page !== currentPage || (page === 'category' && categoryId !== selectedCategoryId)) {
+    const newUrl = getPathFromRoute(targetPage, targetCatId, targetFranId);
+    const currentPath = window.location.pathname;
+
+    // Push new page state & update browser address bar URL
+    if (newUrl !== currentPath || targetPage !== currentPage) {
       window.history.pushState({
         type: 'page',
-        page,
-        categoryId: categoryId || (page === 'category' ? selectedCategoryId : null)
-      }, '');
+        page: targetPage,
+        categoryId: targetCatId,
+        franchiseId: targetFranId
+      }, '', newUrl);
     }
 
-    setCurrentPage(page);
+    setCurrentPage(targetPage);
     window.scrollTo(0, 0);
   };
 
   const handleAdminLoginSuccess = () => {
     setIsAdminAuthenticated(true);
     setShowAdminLoginModal(false);
-    window.history.pushState({ type: 'page', page: 'admin' }, '');
+    window.history.pushState({ type: 'page', page: 'admin' }, '', '/admin');
     setCurrentPage('admin');
     window.scrollTo(0, 0);
   };
@@ -250,18 +280,19 @@ export default function App() {
   const handleAdminLogout = () => {
     setIsAdminAuthenticated(false);
     clearAuthToken();
-    window.history.pushState({ type: 'page', page: 'home' }, '');
+    window.history.pushState({ type: 'page', page: 'home' }, '', '/');
     setCurrentPage('home');
     window.scrollTo(0, 0);
   };
 
   const handleSelectCategory = (catId) => {
     setSelectedCategoryId(catId);
+    const newUrl = getPathFromRoute('category', catId, null);
     window.history.pushState({
       type: 'page',
       page: 'category',
       categoryId: catId
-    }, '');
+    }, '', newUrl);
     setCurrentPage('category');
     window.scrollTo(0, 0);
   };
@@ -269,11 +300,12 @@ export default function App() {
   const handleSelectFranchise = (fId) => {
     const cleanId = typeof fId === 'object' ? fId.id : fId;
     setSelectedFranchiseId(cleanId);
+    const newUrl = getPathFromRoute('franchise', null, cleanId);
     window.history.pushState({
       type: 'page',
       page: 'franchise',
       franchiseId: cleanId
-    }, '');
+    }, '', newUrl);
     setCurrentPage('franchise');
     window.scrollTo(0, 0);
   };
@@ -336,7 +368,7 @@ export default function App() {
         onSearch={(query) => {
           setSearchQuery(query);
           if (currentPage !== 'catalog' && currentPage !== 'home') {
-            setCurrentPage('catalog');
+            handleNavigate('catalog');
           }
         }}
         searchQuery={searchQuery}

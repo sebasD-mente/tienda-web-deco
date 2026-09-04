@@ -138,6 +138,28 @@ export default function JarvisAgent({
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
   const typingTimerRef = useRef(null);
+  const textInputRef = useRef(null);
+  const prevIsTypingRef = useRef(false);
+
+  // Auto-focus the text input when Jarvis finishes responding or when chat opens
+  useEffect(() => {
+    if (prevIsTypingRef.current && !isTyping && isOpen) {
+      const timer = setTimeout(() => {
+        textInputRef.current?.focus();
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+    prevIsTypingRef.current = isTyping;
+  }, [isTyping, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        textInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // Sync knowledge live on admin edits and initial mount
   useEffect(() => {
@@ -1297,6 +1319,7 @@ export default function JarvisAgent({
 
           {/* Text Input with Anti-Panic Lock */}
           <input
+            ref={textInputRef}
             type="text"
             autoFocus
             disabled={isTyping}
