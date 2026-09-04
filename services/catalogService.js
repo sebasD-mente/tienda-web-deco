@@ -501,6 +501,7 @@ export async function deletePoster(id) {
 export const DEFAULT_CATEGORIES = [
   { id: 'SUPERHEROES', name: 'SUPER HÉROES', icon: '⚡' },
   { id: 'ANIME', name: 'ANIME', icon: '⛩️' },
+  { id: 'MUSICA', name: 'MÚSICA', icon: '🎵' },
   { id: 'SERIESYPELICULAS', name: 'SERIES Y PELÍCULAS', icon: '🎬' },
   { id: 'BASKETBALL_Y_FORMULA_1', name: 'FÓRMULA 1 Y BASKETBALL', icon: '🏎️' },
   { id: 'FUTBOL', name: 'FÚTBOL', icon: '⚽' },

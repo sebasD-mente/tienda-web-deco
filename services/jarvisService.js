@@ -21,7 +21,7 @@ import {
   getFullCatalog,
   prisma
 } from './catalogService.js';
-import { findSimilarPosters, ENTITY_ALIASES, normalizeText } from './embeddingService.js';
+import { findSimilarPosters, ENTITY_ALIASES, normalizeText, isNoveltyQuery } from './embeddingService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -38,11 +38,11 @@ export const JARVIS_TOOL_DECLARATIONS = [
       properties: {
         termino: {
           type: 'STRING',
-          description: 'Término o palabra clave de búsqueda (ej: Spider-Man, Batman, Anime, Nirvana)'
+          description: 'Término o palabra clave de búsqueda (ej: Spider-Man, Batman, Anime, The Beatles, Corvette, Autos, Novedades)'
         },
         categoria: {
           type: 'STRING',
-          description: 'Categoría oficial (ej: BASKETBALL_Y_FORMULA_1, SUPERHEROES, ANIME, SERIESYPELICULAS, FUTBOL, VIDEO_JUEGOS, VINTAGE, BEBIDAS_Y_BAR, OBRASDEARTE, INFANTILYDIBUJOSANIMADOS). Nota: Para automovilismo, bólidos, autos de carreras, Ferrari, Red Bull y F1, la categoría oficial en inventario es BASKETBALL_Y_FORMULA_1.'
+          description: 'Categoría oficial (ej: BASKETBALL_Y_FORMULA_1, SUPERHEROES, ANIME, MUSICA, SERIESYPELICULAS, FUTBOL, VIDEO_JUEGOS, VINTAGE, BEBIDAS_Y_BAR, OBRASDEARTE, INFANTILYDIBUJOSANIMADOS). Nota: Para automovilismo, bólidos, autos de carreras, Ferrari, Red Bull, F1 y autos clásicos (Corvette, Combi, Mustang Fastback), la categoría oficial en inventario es BASKETBALL_Y_FORMULA_1.'
         },
         posterIds: {
           type: 'ARRAY',
@@ -436,20 +436,29 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
 
 === POLÍTICA CRÍTICA DE CATÁLOGO E INVENTARIO (CERO ALUCINACIONES) ===
 1. VERACIDAD TOTAL: Recomienda ÚNICAMENTE obras que realmente existan en el catálogo y coincidan con lo solicitado.
-2. COLECCIÓN DE AUTOMOVILISMO, AUTOS, CARRERAS Y FÓRMULA 1 (CATEGORÍA BASKETBALL_Y_FORMULA_1):
-   - En nuestro inventario oficial disponemos de una colección espectacular de automovilismo, bólidos y Fórmula 1 clasificada en la categoría 'BASKETBALL_Y_FORMULA_1' (Ferrari, Red Bull, Checo Pérez, Max Verstappen, Lewis Hamilton, Charles Leclerc, Carlos Sainz, etc.) además de clásicos como el Ford Mustang.
-   - Si el cliente pide autos, carros, bólidos, carreras, Fórmula 1, F1, Ferrari o Red Bull, SÍ DISPONEMOS DE OBRAS EN EL CATÁLOGO. ESTRICTAMENTE PROHIBIDO afirmar que no hay stock de autos o enviarlo a hacer cuadros personalizados como primera opción. Invoca 'explorar_catalogo' con las obras de automovilismo y F1 disponibles.
-3. SI EL CLIENTE PIDE UNA TEMÁTICA O PERSONAJE QUE NO ESTÁ DISPONIBLE EN EL CATÁLOGO (por ejemplo, una banda musical o artista no presente en el inventario):
-   - ESTRICTAMENTE PROHIBIDO inventar obras inexistentes o mostrar tarjetas no relacionadas (como mostrar superhéroes si pidió una banda ausente). En estos casos, ESTRICTAMENTE PROHIBIDO invocar 'explorar_catalogo' con obras no relacionadas.
+2. COLECCIONES OFICIALES DE AUTOS, MÚSICA, CAFÉ, DEPORTES Y FÓRMULA 1:
+   - En nuestro inventario oficial disponemos de colecciones activas que incluyen:
+     * AUTOS CLÁSICOS Y DEPORTIVOS: Corvette C1 (Parada en la Ruta 66), Combi Vintage (Volkswagen), Mustang Fastback (Midnight Muscle) y Ford Mustang (All American Muscle).
+     * FÓRMULA 1 Y VELOCIDAD: Ferrari, Red Bull, Checo Pérez, Max Verstappen, Lewis Hamilton, Charles Leclerc, Carlos Sainz, Ayrton Senna (clasificados en 'BASKETBALL_Y_FORMULA_1').
+     * MÚSICA Y ROCK: Obras legendarias de The Beatles en categoría 'MUSICA' (Sombrillas en la Campiña, Perfil de Leyendas, Abbey Road).
+     * BEBIDAS Y CAFÉ: Piezas como Catfé (Gato con Café y buenas vibras) y Vintage Coffee (Coffee House) en categoría 'BEBIDAS_Y_BAR'.
+     * ANIME, SUPERHÉROES, CINE Y VIDEOJUEGOS: Dragon Ball, One Piece, Attack on Titan, Marvel, DC, Mario Bros, etc.
+   - Si el cliente pide autos, carros, bólidos, música, The Beatles, café, gatos o F1, SÍ DISPONEMOS DE OBRAS EN EL CATÁLOGO. ESTRICTAMENTE PROHIBIDO afirmar que no hay stock o mandarlo a cuadros personalizados como primera opción si la obra existe. Invoca 'explorar_catalogo' con las obras disponibles en 'OBRAS DISPONIBLES COINCIDENTES'.
+3. NOVEDADES Y ÚLTIMAS OBRAS INCORPORADAS:
+   - Si el cliente pregunta qué hay de nuevo, cuáles son las novedades, qué obras nuevas tienen o qué se agregó recientemente al catálogo:
+   - En 'OBRAS DISPONIBLES COINCIDENTES PARA ESTA CONSULTA' se listan las incorporaciones más recientes del taller (The Beatles, Corvette C1, Combi Vintage, Mustang Fastback, Catfé, Vintage Coffee, etc.).
+   - Invoca 'explorar_catalogo' presentando con entusiasmo estas novedades recién salidas del taller.
+4. SI EL CLIENTE PIDE UNA TEMÁTICA O PERSONAJE ESPECÍFICO QUE NO ESTÁ DISPONIBLE EN EL CATÁLOGO:
+   - ESTRICTAMENTE PROHIBIDO inventar obras inexistentes o mostrar tarjetas no relacionadas (como mostrar superhéroes si pidió algo totalmente ausente). En estos casos, ESTRICTAMENTE PROHIBIDO invocar 'explorar_catalogo' con obras no relacionadas.
    - En su lugar, responde de forma súper amable, transparente y entusiasta diciendo que actualmente no cuentan con diseños de esa temática en el catálogo oficial listo para entrega, pero destaca con fuerza que contamos con el servicio de **CUADROS PERSONALIZADOS**.
    - Explícale que podemos fabricar cualquier cuadro con la foto de su propio vehículo, personaje, anime o imagen que el cliente desee en madera MDF 5.5mm rígida con impresión HP Látex y cinta industrial Tesa incluida en cualquier medida (desde Mini Q25 hasta Mediano Q65 o Gigante Q210), e invítalo a enviar su diseño o cotizarlo.
-4. SI EL CLIENTE PIDE VER O RECOMENDAR OBRAS QUE SÍ EXISTEN EN EL CATÁLOGO:
+5. SI EL CLIENTE PIDE VER O RECOMENDAR OBRAS QUE SÍ EXISTEN EN EL CATÁLOGO:
    - Invoca 'explorar_catalogo' pasando los IDs exactos de las obras disponibles en 'OBRAS DISPONIBLES COINCIDENTES' (o término de búsqueda), y llena el parámetro 'mensaje_conversacional' con una introducción conversacional fresca y adaptada a lo que pidió.
-   - Si el catálogo tiene varias opciones del mismo personaje o tema (por ejemplo, múltiples cuadros de Cristiano Ronaldo / El Bicho, Lionel Messi, Mario Bros, Dragon Ball, Ferrari, Red Bull, etc.), ¡preséntalas y muéstralas todas en las tarjetas!
-5. PREGUNTAS DE SEGUIMIENTO Y CONTINUIDAD ("¿y cuáles otros hay?", "¿tienes más?", "¿qué más hay de él?", "muéstrame otros"):
+   - Si el catálogo tiene varias opciones del mismo personaje o tema (por ejemplo, múltiples cuadros de Cristiano Ronaldo / El Bicho, Lionel Messi, The Beatles, Mustang, Ferrari, Red Bull, etc.), ¡preséntalas y muéstralas todas en las tarjetas!
+6. PREGUNTAS DE SEGUIMIENTO Y CONTINUIDAD ("¿y cuáles otros hay?", "¿tienes más?", "¿qué más hay de él?", "muéstrame otros"):
    - Si el cliente pregunta por otros diseños o más opciones del mismo personaje/tema sobre el que estaban hablando, NUNCA digas que solo hay uno si en las obras coincidentes o catálogo existen más diseños. Revisa las obras disponibles e invoca 'explorar_catalogo' mostrando los otros diseños.
-6. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración).
-7. COTIZACIONES Y MEDIDAS PERSONALIZADAS (FRICCIÓN CERO):
+7. RESPONDER EXCLUSIVAMENTE CON TEXTO FLUIDO Y AMIGABLE en conversaciones normales (saludos, preguntas sobre calidad, materiales MDF, cinta Tesa, envíos a departamentos, precios generales, asesoría de decoración).
+8. COTIZACIONES Y MEDIDAS PERSONALIZADAS (FRICCIÓN CERO):
    - Si el cliente menciona cualquier medida (ej: 50x70cm, 80x120cm, o dimensiones en cm) o pide cotizar un cuadro personalizado con su propia foto o diseño:
    - ASUME SIEMPRE por defecto material 'mdf' (Madera MDF rígida 5.5mm). NUNCA frenes la venta haciéndole preguntas previas sobre qué material prefiere antes de cotizar.
    - Dispara DE INMEDIATO la herramienta 'capturar_orden_personalizada' con anchoCm, altoCm y material='mdf'.
@@ -578,64 +587,96 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
 
         // 1. Filtrado por IDs directos (garantiza que solo se elijan obras que existen en la BD actual de PostgreSQL)
         if (ids.length > 0) {
-          matched = cleanPosters.filter(p => p && p.id && ids.includes(p.id));
+          const mapById = new Map(cleanPosters.map(p => [p.id, p]));
+          matched = ids.map(id => mapById.get(id)).filter(Boolean);
         }
 
         // 2. Filtrado por término o categoría si no hubo match por IDs
         if (matched.length === 0 && (args.termino || args.categoria)) {
           const rawTerm = (args.termino || '').trim();
           const normTerm = normalizeText(rawTerm);
-          let cat = (args.categoria || '').toUpperCase().trim();
+          let cat = (args.categoria || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
           if (cat === 'AUTOS' || cat === 'FORMULA_1' || cat === 'F1' || cat === 'CARRERAS' || cat === 'AUTOMOVILISMO') {
             cat = 'BASKETBALL_Y_FORMULA_1';
           }
 
-          // Buscar entidad canónica por si el término fue un alias (ej: "el bicho" -> Cristiano Ronaldo, "autos" -> F1)
-          const matchedEntity = ENTITY_ALIASES.find(ent =>
-            ent.keywords.some(kw => normTerm.includes(normalizeText(kw))) ||
-            normalizeText(ent.canonical).includes(normTerm)
-          );
-          const canonicalNorm = matchedEntity ? normalizeText(matchedEntity.canonical) : null;
-
-          const isF1OrAutoQuery = normTerm.includes('auto') || normTerm.includes('carro') || normTerm.includes('f1') ||
-            normTerm.includes('formula 1') || normTerm.includes('carrera') || normTerm.includes('ferrari') ||
-            normTerm.includes('red bull') || normTerm.includes('checo') || normTerm.includes('verstappen') ||
-            normTerm.includes('hamilton') || normTerm.includes('leclerc') || normTerm.includes('sainz') ||
-            normTerm.includes('senna') || normTerm.includes('racing') || canonicalNorm === 'formula 1' || canonicalNorm === 'autos';
-
-          matched = cleanPosters.filter(p => {
-            if (!p) return false;
-            const pCat = (p.category || p.categoria || '').toUpperCase();
-            const pTitle = normalizeText(p.title || p.titulo);
-            const pSub = normalizeText(p.subtitle || p.subtitulo);
-            const pDesc = normalizeText(p.description || p.descripcion);
-            const pTags = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
-
-            const isF1Poster = (pCat === 'BASKETBALL_Y_FORMULA_1' || pCat.includes('FORMULA')) &&
-              !pTitle.includes('jordan') && !pTitle.includes('michael');
-
-            // Si el usuario preguntó por autos/F1 y esta obra es Michael Jordan, excluir
-            if (isF1OrAutoQuery && (pTitle.includes('jordan') || pTitle.includes('michael'))) {
-              return false;
-            }
-
-            // Si es consulta de autos/F1 y es un póster de F1 o Mustang
-            if (isF1OrAutoQuery && (isF1Poster || pTitle.includes('mustang') || pTitle.includes('mcqueen'))) {
-              return true;
-            }
-
-            const matchCat = cat && pCat.includes(cat);
-            const matchEntity = canonicalNorm && (pTitle.includes(canonicalNorm) || pTags.includes(canonicalNorm));
-
-            const matchTerm = normTerm && (
-              pTitle.includes(normTerm) ||
-              pSub.includes(normTerm) ||
-              pDesc.includes(normTerm) ||
-              pTags.some(t => t.includes(normTerm))
+          // Detección de novedades
+          if (isNoveltyQuery(rawTerm) || normTerm.includes('nuevo') || normTerm.includes('nueva') || normTerm.includes('novedad')) {
+            matched = [...cleanPosters].sort((a, b) => {
+              const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+              const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+              return dateB - dateA;
+            }).slice(0, 8);
+          } else {
+            // Buscar entidad canónica por si el término fue un alias (ej: "el bicho" -> Cristiano Ronaldo, "autos" -> F1)
+            const matchedEntity = ENTITY_ALIASES.find(ent =>
+              ent.keywords.some(kw => normTerm.includes(normalizeText(kw))) ||
+              normalizeText(ent.canonical).includes(normTerm)
             );
+            const canonicalNorm = matchedEntity ? normalizeText(matchedEntity.canonical) : null;
 
-            return matchCat || matchEntity || matchTerm;
-          }).slice(0, 10);
+            const isF1OrAutoQuery = normTerm.includes('auto') || normTerm.includes('carro') || normTerm.includes('f1') ||
+              normTerm.includes('formula 1') || normTerm.includes('carrera') || normTerm.includes('ferrari') ||
+              normTerm.includes('red bull') || normTerm.includes('checo') || normTerm.includes('verstappen') ||
+              normTerm.includes('hamilton') || normTerm.includes('leclerc') || normTerm.includes('sainz') ||
+              normTerm.includes('senna') || normTerm.includes('racing') || canonicalNorm === 'formula 1' || canonicalNorm === 'autos';
+
+            matched = cleanPosters.filter(p => {
+              if (!p) return false;
+              const pCat = (p.category || p.categoria || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+              const pTitle = normalizeText(p.title || p.titulo);
+              const pSub = normalizeText(p.subtitle || p.subtitulo);
+              const pDesc = normalizeText(p.description || p.descripcion);
+              const pTags = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
+
+              const isF1Poster = (pCat === 'BASKETBALL_Y_FORMULA_1' || pCat.includes('FORMULA')) &&
+                !pTitle.includes('jordan') && !pTitle.includes('michael');
+
+              // Si el usuario preguntó por autos/F1 y esta obra es Michael Jordan, excluir
+              if (isF1OrAutoQuery && (pTitle.includes('jordan') || pTitle.includes('michael'))) {
+                return false;
+              }
+
+              // Si es consulta de autos/F1 y es un póster de F1 o Mustang o autos
+              if (isF1OrAutoQuery && (isF1Poster || pTitle.includes('mustang') || pTitle.includes('mcqueen') || pTags.includes('autos'))) {
+                return true;
+              }
+
+              const matchCat = cat && (pCat.includes(cat) || normalizeText(pCat).includes(normalizeText(cat)));
+              const matchEntity = canonicalNorm && (pTitle.includes(canonicalNorm) || pTags.includes(canonicalNorm));
+
+              const matchTerm = normTerm && (
+                pTitle.includes(normTerm) ||
+                pSub.includes(normTerm) ||
+                pDesc.includes(normTerm) ||
+                pTags.some(t => t.includes(normTerm))
+              );
+
+              return matchCat || matchEntity || matchTerm;
+            });
+
+            // Ordenar con inteligencia: coincidencia exacta de título/tags primero, y desempate por fecha más reciente
+            matched.sort((a, b) => {
+              const aTitle = normalizeText(a.title || a.titulo);
+              const bTitle = normalizeText(b.title || b.titulo);
+              const aTags = (Array.isArray(a.tags) ? a.tags : []).map(normalizeText);
+              const bTags = (Array.isArray(b.tags) ? b.tags : []).map(normalizeText);
+
+              const aExactTitle = normTerm && aTitle.includes(normTerm) ? 3 : 0;
+              const bExactTitle = normTerm && bTitle.includes(normTerm) ? 3 : 0;
+              const aExactTag = normTerm && aTags.includes(normTerm) ? 2 : 0;
+              const bExactTag = normTerm && bTags.includes(normTerm) ? 2 : 0;
+
+              const diff = (bExactTitle + bExactTag) - (aExactTitle + aExactTag);
+              if (diff !== 0) return diff;
+
+              const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+              const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+              return dateB - dateA;
+            });
+
+            matched = matched.slice(0, 10);
+          }
         }
 
         // 3. Si no hubo match por ID o término, usar los relevantes de RAG (solo si superaron el umbral de similitud)
@@ -757,6 +798,33 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
     };
   }
 
+  // 1.5 Check for novelty intent (novedades, obras nuevas, qué hay de nuevo, qué agregaron)
+  if (isNoveltyQuery(prompt)) {
+    const sortedRecent = [...cleanPosters].sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      return dateB - dateA;
+    }).slice(0, 6);
+
+    if (sortedRecent.length > 0) {
+      localActions.push({
+        type: 'catalog_matches',
+        posters: sortedRecent,
+        motivo: 'Últimas incorporaciones y novedades de nuestro catálogo'
+      });
+      localReply = `¡Qué gusto saludarte! En Deco Vintage Guate siempre estamos creando nuevos diseños y ampliando nuestro catálogo oficial. Aquí te presento nuestras adiciones más recientes recién salidas del taller:\n\n` +
+                   `* **Material:** Madera MDF rígida de 5.5mm con bordes pulidos e impresión ecológica HP Látex con protección UV.\n` +
+                   `* **Montaje:** Incluye cinta doble cara industrial Tesa en el reverso lista para colgar sin taladrar.\n` +
+                   `* **Medida más vendida:** Mediano (30x45cm) por **Q65.00** ⭐.\n\n` +
+                   `¿Cuál de estos nuevos diseños te gusta más o tienes alguna temática específica en mente?`;
+      return {
+        replyText: localReply,
+        actions: localActions,
+        poweredBy: 'Deco High-Availability Fallback Engine'
+      };
+    }
+  }
+
   // 2. Check entity aliases with strict word-boundary matching
   const normQ = normalizeText(prompt);
   const qWords = normQ.split(/[^a-z0-9]+/i).filter(Boolean);
@@ -809,7 +877,7 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
   if (matchedDoc) {
     localReply = `¡Claro que sí! Con respecto a **${matchedDoc.title}**:\n\n${matchedDoc.content}\n\n¿Te gustaría que te ayude a preparar o cotizar algún cuadro para esta ocasión?`;
 
-  } else if (qLower.includes('auto') || qLower.includes('carro') || qLower.includes('f1') || qLower.includes('formula') || qLower.includes('carrera') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('bmw') || qLower.includes('gtr') || qLower.includes('ferrari') || qLower.includes('senna') || qLower.includes('verstappen') || qLower.includes('racing') || qLower.includes('red bull') || qLower.includes('checo') || qLower.includes('leclerc') || qLower.includes('sainz') || qLower.includes('hamilton')) {
+  } else if (qLower.includes('auto') || qLower.includes('carro') || qLower.includes('coche') || qLower.includes('f1') || qLower.includes('formula') || qLower.includes('carrera') || qLower.includes('porsche') || qLower.includes('supra') || qLower.includes('bmw') || qLower.includes('gtr') || qLower.includes('ferrari') || qLower.includes('senna') || qLower.includes('verstappen') || qLower.includes('racing') || qLower.includes('red bull') || qLower.includes('checo') || qLower.includes('leclerc') || qLower.includes('sainz') || qLower.includes('hamilton') || qLower.includes('corvette') || qLower.includes('combi') || qLower.includes('mustang')) {
     const autoPosters = cleanPosters.filter(p => {
       const cat = (p.category || p.categoria || '').toUpperCase();
       const tags = (Array.isArray(p.tags) ? p.tags : []).map(t => String(t).toLowerCase());
@@ -825,16 +893,42 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
         title.includes('red bull') || title.includes('verstappen') || title.includes('checo') ||
         title.includes('hamilton') || title.includes('leclerc') || title.includes('sainz') ||
         title.includes('racing') || title.includes('mustang') || title.includes('porsche') ||
-        title.includes('mcqueen');
+        title.includes('mcqueen') || title.includes('corvette') || title.includes('combi');
 
-      const matchTag = tags.some(t => t.includes('auto') || t.includes('carro') || t.includes('f1') || t.includes('carrera') || t.includes('ferrari') || t.includes('senna') || t.includes('racing'));
+      const matchTag = tags.some(t => t.includes('auto') || t.includes('carro') || t.includes('f1') || t.includes('carrera') || t.includes('ferrari') || t.includes('senna') || t.includes('racing') || t.includes('mustang') || t.includes('combi'));
 
       return isF1Poster || matchTag;
-    }).slice(0, 6);
+    });
+
+    // Ordenar para dar prioridad a coincidencias específicas de consulta
+    autoPosters.sort((a, b) => {
+      const aTitle = (a.title || a.titulo || '').toLowerCase();
+      const bTitle = (b.title || b.titulo || '').toLowerCase();
+      const aTags = (Array.isArray(a.tags) ? a.tags : []).map(t => String(t).toLowerCase());
+      const bTags = (Array.isArray(b.tags) ? b.tags : []).map(t => String(t).toLowerCase());
+
+      const specificTerms = ['fastback', 'mustang', 'corvette', 'combi', 'ferrari', 'red bull', 'checo', 'senna'];
+      let aScore = 0;
+      let bScore = 0;
+      for (const term of specificTerms) {
+        if (qLower.includes(term)) {
+          if (aTitle.includes(term) || aTags.includes(term)) aScore += 5;
+          if (bTitle.includes(term) || bTags.includes(term)) bScore += 5;
+        }
+      }
+      if (bScore !== aScore) return bScore - aScore;
+
+      // Desempate: lo más nuevo primero
+      const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+    const topAuto = autoPosters.slice(0, 6);
     
-    if (autoPosters.length > 0) {
-      localActions.push({ type: 'catalog_matches', posters: autoPosters, motivo: 'Cuadros destacados de automovilismo y Fórmula 1' });
-      localReply = `¡Excelente elección! Nos apasiona el mundo motor. Aquí tienes estas increíbles opciones de automovilismo y Fórmula 1 de nuestro catálogo oficial:\n\n` +
+    if (topAuto.length > 0) {
+      localActions.push({ type: 'catalog_matches', posters: topAuto, motivo: 'Cuadros destacados de automovilismo, autos clásicos y Fórmula 1' });
+      localReply = `¡Excelente elección! Nos apasiona el mundo motor. Aquí tienes estas increíbles opciones de automovilismo, clásicos y Fórmula 1 de nuestro catálogo oficial:\n\n` +
                    `* **Impresión:** HP Látex de alta resolución ecológica y resistente al agua.\n` +
                    `* **Estructura:** Madera MDF rígida de 5.5mm con bordes pulidos y cinta doble cara Tesa incluida para colgar sin clavos.\n` +
                    `* **Medida más vendida:** Mediano (30x45cm) por solo **Q65.00** ⭐.\n\n` +
@@ -845,6 +939,38 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
                    `* **Montaje:** Incluye cinta doble cara industrial Tesa en el reverso lista para colgar sin taladrar.\n` +
                    `* **Medidas y Precios:** Mini (Q25), Pequeño (Q35), Portada Álbum (Q55), Mediano 30x45cm (**Q65** ⭐) o a cualquier medida a tu elección.\n\n` +
                    `¿Te gustaría cotizar una medida personalizada o enviarnos tu imagen para fabricarla?`;
+    }
+
+  } else if (qLower.includes('musica') || qLower.includes('rock') || qLower.includes('beatles') || qLower.includes('banda') || qLower.includes('lennon')) {
+    const musicPosters = cleanPosters.filter(p => {
+      const cat = (p.category || p.categoria || '').toUpperCase();
+      const tags = (Array.isArray(p.tags) ? p.tags : []).map(t => String(t).toLowerCase());
+      const title = (p.title || p.titulo || '').toLowerCase();
+      return cat === 'MUSICA' || title.includes('beatles') || tags.includes('rock') || tags.includes('musica');
+    }).slice(0, 6);
+
+    if (musicPosters.length > 0) {
+      localActions.push({ type: 'catalog_matches', posters: musicPosters, motivo: 'Obras de música y rock de The Beatles' });
+      localReply = `¡Qué gran gusto musical! La música es el alma de cualquier rincón. En nuestro catálogo oficial contamos con estas piezas espectaculares de **The Beatles**:\n\n` +
+                   `* **Material:** Madera MDF rígida de 5.5mm con tecnología HP Látex y cinta Tesa® incluida.\n` +
+                   `* **Medida recomendada:** Mediano (30x45cm) por **Q65.00** o Formato Portada de Álbum (30x30cm) por **Q55.00** 🎶.\n\n` +
+                   `¡También podemos fabricar cuadros personalizados de cualquier otra banda, artista o portada de álbum con tu imagen favorita!`;
+    }
+
+  } else if (qLower.includes('cafe') || qLower.includes('gato') || qLower.includes('michi') || qLower.includes('catfe') || qLower.includes('coffee')) {
+    const cafePosters = cleanPosters.filter(p => {
+      const cat = (p.category || p.categoria || '').toUpperCase();
+      const tags = (Array.isArray(p.tags) ? p.tags : []).map(t => String(t).toLowerCase());
+      const title = (p.title || p.titulo || '').toLowerCase();
+      return title.includes('cafe') || title.includes('catfe') || tags.includes('cafe') || tags.includes('gato') || cat === 'BEBIDAS_Y_BAR';
+    }).slice(0, 6);
+
+    if (cafePosters.length > 0) {
+      localActions.push({ type: 'catalog_matches', posters: cafePosters, motivo: 'Obras de café, bar y felinos con estilo' });
+      localReply = `¡Qué combinación tan acogedora y llena de estilo! Tenemos opciones perfectas para cafeterías, cocinas o amantes de los michis:\n\n` +
+                   `* **Material:** Madera MDF rígida de 5.5mm con impresión ecológica HP Látex.\n` +
+                   `* **Montaje:** Con cinta industrial Tesa incluida lista para colocar en 15 segundos sin taladro.\n\n` +
+                   `¿Cuál de estos diseños le daría el toque perfecto a tu espacio?`;
     }
 
   } else if (qLower.includes('material') || qLower.includes('calidad') || qLower.includes('tesa') || qLower.includes('colocar') || qLower.includes('pegar') || qLower.includes('instalar')) {

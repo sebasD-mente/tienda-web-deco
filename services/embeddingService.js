@@ -117,13 +117,33 @@ export const ENTITY_ALIASES = [
   },
   {
     canonical: 'Formula 1',
-    keywords: ['f1', 'formula 1', 'formula uno', 'senna', 'ayrton senna', 'hamilton', 'lewis hamilton', 'verstappen', 'max verstappen', 'checo', 'checo perez', 'sergio perez', 'perez', 'ferrari', 'red bull', 'red bull racing', 'bull racing', 'leclerc', 'charles leclerc', 'sainz', 'carlos sainz', 'mclaren', 'monaco', 'gran premio', 'carreras', 'bolidos', 'automovilismo', 'pista'],
-    synonyms: 'Formula 1 F1 Automovilismo Gran Premio Ayrton Senna Ferrari Red Bull Carreras Bólidos Max Verstappen Checo Perez Lewis Hamilton Charles Leclerc Carlos Sainz Velocidad Pista'
+    keywords: ['f1', 'formula 1', 'formula uno', 'senna', 'ayrton senna', 'hamilton', 'lewis hamilton', 'verstappen', 'max verstappen', 'checo', 'checo perez', 'sergio perez', 'perez', 'ferrari', 'red bull', 'red bull racing', 'bull racing', 'leclerc', 'charles leclerc', 'sainz', 'carlos sainz', 'mclaren', 'monaco', 'gran premio', 'carreras de f1', 'bolidos de f1', 'pista f1', 'scuderia ferrari'],
+    synonyms: 'Formula 1 F1 Gran Premio Ayrton Senna Ferrari Red Bull Carreras Bolidos Max Verstappen Checo Perez Lewis Hamilton Charles Leclerc Carlos Sainz Velocidad Pista Monoplaza Scuderia'
   },
   {
     canonical: 'Autos',
-    keywords: ['auto', 'autos', 'carro', 'carros', 'coche', 'coches', 'automovilismo', 'carreras', 'bolido', 'bolidos', 'motor', 'porsche', 'gtr', 'supra', 'nissan', 'bmw', 'mercedes', 'mustang', 'ford mustang', 'jdm', 'ferrari', 'red bull'],
-    synonyms: 'Autos Coches Vehiculos Deportivos Porsche 911 Nissan GTR Supra JDM Motor Automovilismo Formula 1 F1 Ferrari Red Bull Carreras Bólidos Velocidad'
+    keywords: ['auto', 'autos', 'carro', 'carros', 'coche', 'coches', 'automovil', 'automoviles', 'vehiculo', 'vehiculos', 'corvette', 'mustang', 'fastback', 'combi', 'volkswagen', 'vw', 'ruta 66', 'muscle car', 'camaro', 'dodge', 'porsche', 'gtr', 'supra', 'nissan', 'bmw', 'mercedes', 'jdm', 'clasico', 'vintage', 'motor', 'garaje'],
+    synonyms: 'Autos Coches Carros Vehiculos Clasicos Deportivos Muscle Car Ford Mustang Fastback Corvette C1 Combi Volkswagen Ruta 66 Vintage Garaje Motor Velocidad'
+  },
+  {
+    canonical: 'The Beatles',
+    keywords: ['the beatles', 'beatles', 'john lennon', 'lennon', 'paul mccartney', 'mccartney', 'george harrison', 'ringo starr', 'abbey road', 'beatlemania', 'cuarteto de liverpool'],
+    synonyms: 'The Beatles John Lennon Paul McCartney George Harrison Ringo Starr Abbey Road Rock Pop Melomano Musica Cuarteto de Liverpool Inglaterra'
+  },
+  {
+    canonical: 'Música',
+    keywords: ['musica', 'musical', 'cancion', 'canciones', 'rock', 'pop', 'banda', 'bandas', 'melomano', 'vinilo', 'vinilos', 'guitarra', 'concierto', 'album', 'portada de album', 'cuarteto de liverpool'],
+    synonyms: 'Musica Rock Pop The Beatles Bandas Concierto Melomano Album Vinilos Canciones Acustico'
+  },
+  {
+    canonical: 'Café',
+    keywords: ['cafe', 'cafeteria', 'coffee', 'espresso', 'capuchino', 'granos de cafe', 'barista', 'vintage coffee', 'coffee house'],
+    synonyms: 'Cafe Coffee Cafeteria Barista Espresso Capuchino Vintage Bebidas Desayuno Cocina'
+  },
+  {
+    canonical: 'Gatos',
+    keywords: ['gato', 'gatos', 'michi', 'michis', 'felino', 'felinos', 'cat', 'gatito', 'gatitos', 'catfe', 'vibras felinas'],
+    synonyms: 'Gatos Michis Felinos Gatitos Mascotas Animales Catfe Vibras Felinas'
   },
   {
     canonical: 'El Padrino',
@@ -190,6 +210,27 @@ export function normalizeText(str) {
 }
 
 /**
+ * Detecta si una consulta de usuario solicita novedades, obras recientes o últimos agregados.
+ * @param {string} query
+ * @returns {boolean}
+ */
+export function isNoveltyQuery(query) {
+  if (!query || typeof query !== 'string') return false;
+  const qClean = normalizeText(query);
+  const noveltyWords = [
+    'nueva', 'nuevas', 'nuevo', 'nuevos',
+    'novedad', 'novedades',
+    'reciente', 'recientes',
+    'ultimo', 'ultimos', 'ultima', 'ultimas',
+    'recien agregado', 'recien agregados',
+    'agregaron', 'agregaron hoy', 'incorporaciones', 'estrenos'
+  ];
+  return noveltyWords.some(w => {
+    return qClean === w || qClean.includes(` ${w} `) || qClean.startsWith(`${w} `) || qClean.endsWith(` ${w}`) || qClean.includes(w);
+  });
+}
+
+/**
  * Builds the enriched semantic text representation of a poster with entity aliases.
  * @param {object} p - Poster object
  * @returns {string} Rich semantic text string
@@ -202,21 +243,36 @@ export function buildSemanticPosterText(p) {
   const franchiseName = p.franchise?.name || (typeof p.franchise === 'string' ? p.franchise : '');
   const franchiseStr = franchiseName ? `Franquicia: ${franchiseName}.` : '';
   const tags = Array.isArray(p.tags) && p.tags.length > 0 ? `Etiquetas: ${p.tags.join(', ')}.` : '';
-  const desc = (p.descripcion || p.description) ? `Descripción: ${p.descripcion || p.description}.` : '';
+  
+  const rawDesc = (p.descripcion || p.description || '').trim();
+  const safeDesc = rawDesc || `Cuadro decorativo rígido de colección en madera MDF de 5.5mm con impresión ecológica HP Látex sobre ${title}. Calidad visual garantizada para decoración de espacios.`;
+  const desc = `Descripción: ${safeDesc}.`;
 
   const normTitle = normalizeText(title);
   const normSub = normalizeText(p.subtitulo || p.subtitle);
   const normCat = normalizeText(category);
 
-  // Detección virtual de F1 / Automovilismo para pósters de BASKETBALL_Y_FORMULA_1 sin tags en BD
-  const isF1Poster = (category === 'BASKETBALL_Y_FORMULA_1' || normCat.includes('formula')) &&
+  // Clasificación temática inteligente de contexto
+  const isMusicPoster = category === 'MUSICA' || normCat.includes('musica') || normCat.includes('music') || (Array.isArray(p.tags) && p.tags.some(t => normalizeText(t) === 'rock'));
+  const isBarPoster = category === 'BEBIDAS_Y_BAR' || normCat.includes('bebida') || normCat.includes('bar') || (Array.isArray(p.tags) && p.tags.some(t => ['cafe', 'gato'].includes(normalizeText(t))));
+  const isClassicCarPoster = (Array.isArray(p.tags) && p.tags.some(t => ['autos', 'combi', 'corvette', 'mustang'].includes(normalizeText(t)))) ||
+    normTitle.includes('corvette') || normTitle.includes('combi') || normTitle.includes('mustang') || normTitle.includes('fastback');
+
+  const isF1Poster = !isClassicCarPoster && (category === 'BASKETBALL_Y_FORMULA_1' || normCat.includes('formula')) &&
     !normTitle.includes('jordan') && !normTitle.includes('michael');
 
-  const virtualRacingTags = isF1Poster
-    ? 'Etiquetas: Formula 1, F1, Automovilismo, Autos, Carreras, Bólidos, Gran Premio, Motores, Velocidad, Pista.'
-    : '';
+  let virtualContextTags = '';
+  if (isMusicPoster) {
+    virtualContextTags = 'Música Melómano Rock Bandas Canciones Álbum Vinilo Portadas de Álbum The Beatles Cuarteto de Liverpool.';
+  } else if (isBarPoster) {
+    virtualContextTags = 'Bebidas Bar Café Cafetería Coctelería Cocina Restaurante Catfé Gatos.';
+  } else if (isClassicCarPoster) {
+    virtualContextTags = 'Autos Coches Clásicos Deportivos Muscle Cars Mustang Fastback Corvette Combi Volkswagen Ruta 66 Motor Garaje.';
+  } else if (isF1Poster) {
+    virtualContextTags = 'Formula 1 F1 Automovilismo Carreras Bólidos Gran Premio Motores Velocidad Pista Ferrari Red Bull.';
+  }
 
-  const effectiveTags = tags || virtualRacingTags;
+  const effectiveTags = [tags, virtualContextTags ? `Contexto Temático: ${virtualContextTags}` : ''].filter(Boolean).join(' ');
 
   // Buscar si el título o subtítulo coincide con alguna entidad para enriquecer su vector
   const matchedEntity = ENTITY_ALIASES.find(ent => 
@@ -394,35 +450,35 @@ export function computeLexicalSimilarity(query, p, matchedEntities = []) {
   const franchise = normalizeText(p.franchise?.name || p.franchise);
   const desc = normalizeText(p.descripcion || p.description);
 
-  // Virtual tags para F1 / Automovilismo en BASKETBALL_Y_FORMULA_1
-  const isF1Poster = (cat.includes('formula') || cat === 'basketball y formula 1') &&
+  const isClassicCarPoster = (Array.isArray(p.tags) && p.tags.some(t => ['autos', 'combi', 'corvette', 'mustang'].includes(normalizeText(t)))) ||
+    title.includes('corvette') || title.includes('combi') || title.includes('mustang') || title.includes('fastback');
+
+  const isF1Poster = !isClassicCarPoster && (cat.includes('formula') || cat === 'basketball y formula 1') &&
     !title.includes('jordan') && !title.includes('michael');
 
   const rawTags = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
   const virtualTags = isF1Poster
-    ? ['formula 1', 'f1', 'automovilismo', 'autos', 'auto', 'carro', 'carros', 'carreras', 'bolidos', 'coche', 'coches', 'gran premio', 'ferrari', 'red bull', 'motor', 'velocidad', 'racing']
+    ? ['formula 1', 'f1', 'automovilismo', 'carreras', 'bolidos', 'gran premio', 'ferrari', 'red bull', 'motor', 'velocidad', 'racing']
     : [];
   const tags = [...rawTags, ...virtualTags];
 
-  // 1. Verificación directa de entidades reconocidas (ej: "el bicho" -> Cristiano Ronaldo)
+  // 1. Verificación de entidades reconocidas (ej: "el bicho" -> Cristiano Ronaldo)
+  let entityBonus = 0;
   for (const ent of matchedEntities) {
     const canonicalNorm = normalizeText(ent.canonical);
     if (title.includes(canonicalNorm) || franchise.includes(canonicalNorm)) {
-      return 1.0; // Coincidencia perfecta de entidad
-    }
-    // Si la entidad es Fórmula 1 o Autos, y el póster es de F1, Mustang o McQueen
-    if ((canonicalNorm === 'formula 1' || canonicalNorm === 'autos') && (isF1Poster || title.includes('mustang') || title.includes('mcqueen'))) {
-      return 0.95; // Coincidencia semántica directa de temática motor/F1
+      entityBonus = Math.max(entityBonus, 0.85);
     }
   }
 
   // Si no quedaron tokens tras el filtrado de stopwords, verificar frase completa o fallback
   if (qTokens.length === 0) {
+    if (entityBonus > 0) return entityBonus;
     if (rawTokens.length > 0 && title.includes(rawTokens.join(' '))) return 0.50;
     return 0;
   }
 
-  let rawScore = 0;
+  let rawScore = entityBonus;
   let matchCount = 0;
 
   for (const token of qTokens) {
@@ -432,14 +488,17 @@ export function computeLexicalSimilarity(query, p, matchedEntities = []) {
     } else if (franchise.includes(token)) {
       rawScore += 0.50;
       matchCount++;
+    } else if (rawTags.some(t => t.includes(token))) {
+      rawScore += 0.50;
+      matchCount++;
     } else if (tags.some(t => t.includes(token))) {
-      rawScore += 0.45;
+      rawScore += 0.35;
       matchCount++;
     } else if (sub.includes(token)) {
       rawScore += 0.35;
       matchCount++;
     } else if (cat.includes(token)) {
-      rawScore += 0.25;
+      rawScore += (cat === token ? 0.65 : 0.45);
       matchCount++;
     } else if (desc.includes(token)) {
       rawScore += 0.15;
@@ -447,16 +506,16 @@ export function computeLexicalSimilarity(query, p, matchedEntities = []) {
     }
   }
 
-  if (matchCount === 0) return 0;
+  if (matchCount === 0 && entityBonus === 0) return 0;
 
-  // Exact whole keyword match boost in title or tags
+  // Exact whole keyword match boost in title or rawTags
   for (const token of qTokens) {
-    if (title === token || tags.includes(token)) {
-      rawScore += 0.40;
+    if (title === token || rawTags.includes(token)) {
+      rawScore += 0.35;
     }
   }
 
-  const coverage = matchCount / qTokens.length;
+  const coverage = matchCount > 0 ? (matchCount / qTokens.length) : 0.5;
   return Math.min(1.0, rawScore * coverage);
 }
 
@@ -476,13 +535,6 @@ export async function findSimilarPosters(userQuery, limit = 8, customApiKey, min
     // 1. Expansión inteligente de la consulta con entidades y contexto conversacional
     const { expandedQuery, matchedEntities } = expandQueryWithContext(userQuery, conversationHistory);
 
-    let queryVector = null;
-    try {
-      queryVector = await generateEmbedding(expandedQuery, customApiKey);
-    } catch (embErr) {
-      console.warn('[Embedding Search] Query embedding failed, falling back to lexical search:', embErr.message);
-    }
-
     // 2. Obtener obras publicadas con caché inteligente en RAM (5 min TTL)
     const rawPosters = await getCachedPublishedPosters();
 
@@ -496,6 +548,41 @@ export async function findSimilarPosters(userQuery, limit = 8, customApiKey, min
       syncPendingEmbeddings(customApiKey).catch(err => {
         console.warn('[Background Embedding Sync] Warning:', err.message);
       });
+    }
+
+    // 3. Detección instantánea de intención de NOVEDADES / OBRAS NUEVAS / RECIENTES
+    if (isNoveltyQuery(userQuery)) {
+      let candidatePosters = rawPosters;
+      if (matchedEntities.length > 0) {
+        const entityNorms = matchedEntities.map(e => normalizeText(e.canonical));
+        candidatePosters = rawPosters.filter(p => {
+          const t = normalizeText(p.titulo || p.title);
+          const c = normalizeText(p.categoria || p.category);
+          const tg = (Array.isArray(p.tags) ? p.tags : []).map(normalizeText);
+          return entityNorms.some(en => t.includes(en) || c.includes(en) || tg.includes(en));
+        });
+        if (candidatePosters.length === 0) candidatePosters = rawPosters;
+      }
+
+      const sortedByNewest = [...candidatePosters].sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+        const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+        return dateB - dateA;
+      });
+
+      return sortedByNewest.slice(0, limit).map((p, idx) => ({
+        poster: formatPosterForClient(p),
+        score: Math.max(0.70, 0.98 - (idx * 0.02)),
+        vectorScore: 0.95,
+        lexicalScore: 0.95
+      }));
+    }
+
+    let queryVector = null;
+    try {
+      queryVector = await generateEmbedding(expandedQuery, customApiKey);
+    } catch (embErr) {
+      console.warn('[Embedding Search] Query embedding failed, falling back to lexical search:', embErr.message);
     }
 
     // 3. Puntuar cada obra con la estrategia híbrida mejorada
