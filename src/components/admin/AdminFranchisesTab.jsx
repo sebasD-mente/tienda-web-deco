@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Shield, Plus, Upload, Trash2 } from 'lucide-react';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
 import { apiUploadPosterImage } from '../../utils/apiClient';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 export default function AdminFranchisesTab({
   franchises = [],
@@ -14,6 +15,8 @@ export default function AdminFranchisesTab({
   const [newFranchiseName, setNewFranchiseName] = useState('');
   const [newFranchiseImg, setNewFranchiseImg] = useState('');
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [franchiseToDelete, setFranchiseToDelete] = useState(null);
+  const [isDeletingFranchise, setIsDeletingFranchise] = useState(false);
   const franchiseIconRef = useRef(null);
 
   const handleIconChange = async (e) => {
@@ -82,15 +85,21 @@ export default function AdminFranchisesTab({
     }
   };
 
-  const handleDelete = async (franchiseId, franchiseName) => {
-    const confirm1 = window.confirm(`¿Estás seguro de eliminar la colección "${franchiseName}" del Inicio?`);
-    if (!confirm1) return;
+  const handleDelete = (franchiseId, franchiseName) => {
+    setFranchiseToDelete({ id: franchiseId, name: franchiseName });
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!franchiseToDelete) return;
+    setIsDeletingFranchise(true);
     try {
-      await onDeleteFranchise(franchiseId);
-      onShowToast(`Colección "${franchiseName}" eliminada.`, 'info');
+      await onDeleteFranchise(franchiseToDelete.id);
+      onShowToast(`Colección "${franchiseToDelete.name}" eliminada.`, 'info');
+      setFranchiseToDelete(null);
     } catch (err) {
       onShowToast('Error al eliminar colección: ' + err.message, 'error');
+    } finally {
+      setIsDeletingFranchise(false);
     }
   };
 
@@ -275,6 +284,19 @@ export default function AdminFranchisesTab({
           })}
         </div>
       </div>
+
+      {/* Accessible Franchise Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(franchiseToDelete)}
+        title="¿Eliminar colección del Inicio?"
+        message={`¿Estás seguro de eliminar la colección "${franchiseToDelete?.name}" del Inicio?\nEsta acción no se puede deshacer.`}
+        confirmText="Eliminar colección"
+        cancelText="Cancelar"
+        type="danger"
+        isLoading={isDeletingFranchise}
+        onConfirm={handleConfirmDelete}
+        onClose={() => !isDeletingFranchise && setFranchiseToDelete(null)}
+      />
 
     </div>
   );

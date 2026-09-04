@@ -14,6 +14,8 @@ import {
   updateCustomOrderStatus,
   deleteCustomOrder
 } from '../services/customOrderService.js';
+import { validate } from '../middleware/validate.js';
+import { orderStatusPatchSchema } from '../validators/adminSchemas.js';
 
 const router = Router();
 
@@ -181,13 +183,19 @@ router.post('/', uploadOrderImages, async (req, res) => {
 router.get('/', requireAuth, async (req, res) => {
   try {
     const orders = await getAllCustomOrders();
-    return res.status(200).json(orders);
+    return res.status(200).json({
+      success: true,
+      data: orders,
+      orders,
+      count: orders.length
+    });
   } catch (err) {
     console.error('[API Error] GET /api/custom-orders:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
     return res.status(500).json({
+      success: false,
       error: 'Error al obtener las cotizaciones.',
       details: err.message
     });
@@ -202,36 +210,41 @@ router.get('/:id', requireAuth, async (req, res) => {
   try {
     const order = await getCustomOrderById(req.params.id);
     if (!order) {
-      return res.status(404).json({ error: 'Pedido no encontrado.' });
+      return res.status(404).json({ success: false, error: 'Pedido no encontrado.' });
     }
-    return res.status(200).json(order);
+    return res.status(200).json({
+      success: true,
+      data: order,
+      order
+    });
   } catch (err) {
     console.error('[API Error] GET /api/custom-orders/:id:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al obtener el pedido.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al obtener el pedido.', details: err.message });
   }
 });
 
 /**
- * PATCH /api/custom-orders/:id/status
+ * PATCH /api/custom-orders/:id/status and /orders/:id/status
  * Endpoint protegido (Admin): Cambia el estado de una cotización.
  */
-router.patch('/:id/status', requireAuth, async (req, res) => {
+router.patch(['/:id/status', '/orders/:id/status'], requireAuth, validate(orderStatusPatchSchema), async (req, res) => {
   try {
     const { status } = req.body;
-    if (!status) {
-      return res.status(400).json({ error: 'El estado es requerido.' });
-    }
     const updated = await updateCustomOrderStatus(req.params.id, status);
-    return res.status(200).json({ success: true, order: updated });
+    return res.status(200).json({
+      success: true,
+      data: updated,
+      order: updated
+    });
   } catch (err) {
     console.error('[API Error] PATCH /api/custom-orders/:id/status:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al actualizar el estado.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al actualizar el estado.', details: err.message });
   }
 });
 
@@ -243,15 +256,15 @@ router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const deleted = await deleteCustomOrder(req.params.id);
     if (!deleted) {
-      return res.status(404).json({ error: 'Pedido no encontrado para eliminar.' });
+      return res.status(404).json({ success: false, error: 'Pedido no encontrado para eliminar.' });
     }
     return res.status(200).json({ success: true, message: 'Pedido eliminado correctamente.' });
   } catch (err) {
     console.error('[API Error] DELETE /api/custom-orders/:id:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al eliminar el pedido.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al eliminar el pedido.', details: err.message });
   }
 });
 

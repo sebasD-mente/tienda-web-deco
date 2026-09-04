@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, X, KeyRound, User, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { apiAdminLogin } from '../utils/apiClient';
 
@@ -7,6 +7,20 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -41,6 +55,11 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="glass-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-login-title"
+        aria-describedby="admin-login-desc"
+        tabIndex={-1}
         style={{
           width: '100%',
           maxWidth: '400px',
@@ -50,13 +69,15 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
           boxShadow: '0 25px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(0, 242, 254, 0.25)',
           borderRadius: '20px',
           position: 'relative',
-          animation: 'fadeIn 0.2s ease'
+          animation: 'fadeIn 0.2s ease',
+          outline: 'none'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
+          aria-label="Cerrar modal de acceso"
           style={{
             position: 'absolute',
             top: '16px',
@@ -65,7 +86,8 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
             border: 'none',
             color: 'var(--text-muted)',
             cursor: 'pointer',
-            padding: '4px'
+            padding: '4px',
+            borderRadius: '6px'
           }}
           title="Cerrar"
         >
@@ -86,33 +108,37 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
             margin: '0 auto 12px auto',
             boxShadow: '0 0 20px rgba(0, 242, 254, 0.2)'
           }}>
-            <Lock size={24} color="var(--accent-cyan)" />
+            <Lock size={24} color="var(--accent-cyan)" aria-hidden="true" />
           </div>
 
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', margin: '0 0 4px 0' }}>
+          <h2 id="admin-login-title" style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', margin: '0 0 4px 0' }}>
             Acceso Administrador
           </h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+          <p id="admin-login-desc" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
             Panel de Control Central Deco Vintage
           </p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 14px',
-            borderRadius: '8px',
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.35)',
-            color: '#ef4444',
-            fontSize: '0.82rem',
-            fontWeight: 700,
-            marginBottom: '18px'
-          }}>
-            <AlertCircle size={16} />
+          <div
+            role="alert"
+            aria-live="assertive"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              color: '#ef4444',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              marginBottom: '18px'
+            }}
+          >
+            <AlertCircle size={16} aria-hidden="true" />
             <span>{error}</span>
           </div>
         )}
@@ -122,7 +148,10 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
           
           {/* Username Field */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+            <label
+              htmlFor="admin-username"
+              style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}
+            >
               Usuario
             </label>
             <div style={{
@@ -134,9 +163,12 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
               borderRadius: '10px',
               padding: '10px 14px'
             }}>
-              <User size={18} color="var(--accent-cyan)" />
+              <User size={18} color="var(--accent-cyan)" aria-hidden="true" />
               <input
+                id="admin-username"
+                name="username"
                 type="text"
+                autoComplete="username"
                 autoFocus
                 placeholder="Nombre de usuario"
                 value={username}
@@ -156,7 +188,10 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
 
           {/* Password Field */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+            <label
+              htmlFor="admin-password"
+              style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}
+            >
               Clave
             </label>
             <div style={{
@@ -168,9 +203,12 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
               borderRadius: '10px',
               padding: '10px 14px'
             }}>
-              <KeyRound size={18} color="var(--accent-cyan)" />
+              <KeyRound size={18} color="var(--accent-cyan)" aria-hidden="true" />
               <input
+                id="admin-password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 placeholder="Clave de acceso"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

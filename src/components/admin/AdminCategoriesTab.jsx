@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Tag, Plus, Trash2 } from 'lucide-react';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 export default function AdminCategoriesTab({
   categories = [],
@@ -9,6 +10,8 @@ export default function AdminCategoriesTab({
   onShowToast
 }) {
   const [newCatName, setNewCatName] = useState('');
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [isDeletingCat, setIsDeletingCat] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +35,7 @@ export default function AdminCategoriesTab({
     }
   };
 
-  const handleDelete = async (catId, catName) => {
+  const handleDelete = (catId, catName) => {
     const targetCat = categories.find(c => c.id === catId);
     const count = typeof targetCat?.count === 'number'
       ? targetCat.count
@@ -43,13 +46,19 @@ export default function AdminCategoriesTab({
       return;
     }
 
-    const confirm1 = window.confirm(`¿Estás seguro de eliminar la categoría "${catName}"?`);
-    if (!confirm1) return;
+    setCategoryToDelete({ id: catId, name: catName });
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!categoryToDelete) return;
+    setIsDeletingCat(true);
     try {
-      await onDeleteCategory(catId);
+      await onDeleteCategory(categoryToDelete.id);
+      setCategoryToDelete(null);
     } catch (err) {
       // Error is handled by parent handler
+    } finally {
+      setIsDeletingCat(false);
     }
   };
 
@@ -149,6 +158,19 @@ export default function AdminCategoriesTab({
           })}
         </div>
       </div>
+
+      {/* Accessible Category Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(categoryToDelete)}
+        title="¿Eliminar categoría?"
+        message={`¿Estás seguro de eliminar la categoría "${categoryToDelete?.name}"?\nEsta acción no se puede deshacer.`}
+        confirmText="Eliminar categoría"
+        cancelText="Cancelar"
+        type="danger"
+        isLoading={isDeletingCat}
+        onConfirm={handleConfirmDelete}
+        onClose={() => !isDeletingCat && setCategoryToDelete(null)}
+      />
 
     </div>
   );

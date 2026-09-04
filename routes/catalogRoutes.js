@@ -27,6 +27,14 @@ import {
 import { processImageBuffer, dataUrlToBuffer } from '../services/imageService.js';
 import { deleteFromGCS } from '../services/gcsService.js';
 import { PROJECT_ROOT, UPLOADS_DIR } from '../config/paths.js';
+import { validate } from '../middleware/validate.js';
+import {
+  posterCreateSchema,
+  posterUpdateSchema,
+  posterPatchSchema,
+  categoryCreateSchema,
+  franchiseCreateSchema,
+} from '../validators/adminSchemas.js';
 
 const router = Router();
 
@@ -55,20 +63,39 @@ router.get('/catalog', async (req, res, next) => {
     const wantsUnpublished = req.query.includeUnpublished === 'true';
 
     if (wantsUnpublished && !isRequestAuthorizedAdmin(req)) {
+      if (typeof res.setHeader === 'function') res.setHeader('Cache-Control', 'no-store, private');
       return res.status(401).json({
         success: false,
         error: 'Acceso no autorizado. Se requiere sesión de administrador para consultar obras no publicadas.'
       });
     }
 
+    if (typeof res.setHeader === 'function') {
+      if (wantsUnpublished) {
+        res.setHeader('Cache-Control', 'no-store, private');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+      }
+    }
+
     const catalog = await getFullCatalog({ includeUnpublished: wantsUnpublished });
-    return res.status(200).json(catalog);
+    return res.status(200).json({
+      success: true,
+      data: catalog,
+      posters: catalog.posters,
+      categories: catalog.categories,
+      franchises: catalog.franchises,
+      settings: catalog.settings,
+      count: catalog.count,
+      updatedAt: catalog.updatedAt
+    });
   } catch (err) {
     console.error('[API Error] GET /api/catalog:', err);
+    if (typeof res.setHeader === 'function') res.setHeader('Cache-Control', 'no-store, private');
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al obtener el catálogo.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al obtener el catálogo.', details: err.message });
   }
 });
 
@@ -76,23 +103,25 @@ router.get('/catalog', async (req, res, next) => {
 router.get('/catalog/franchises', async (req, res, next) => {
   try {
     const franchises = await getAllFranchises();
-    return res.status(200).json({ success: true, count: franchises.length, franchises });
+    return res.status(200).json({
+      success: true,
+      data: franchises,
+      count: franchises.length,
+      franchises
+    });
   } catch (err) {
     console.error('[API Error] GET /api/catalog/franchises:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al obtener las franquicias.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al obtener las franquicias.', details: err.message });
   }
 });
 
 // ── POST /api/catalog/franchises (Admin — Upsert franchise) ──────────────────
-router.post('/catalog/franchises', requireAuth, async (req, res, next) => {
+router.post('/catalog/franchises', requireAuth, validate(franchiseCreateSchema), async (req, res, next) => {
   try {
     let { id, slug, name, img, imageUrl, category } = req.body;
-    if (!name) {
-      return res.status(400).json({ error: 'El nombre de la franquicia es obligatorio.' });
-    }
 
     let finalImage = imageUrl || img;
     if (finalImage && typeof finalImage === 'string' && finalImage.startsWith('data:image/')) {
@@ -103,13 +132,17 @@ router.post('/catalog/franchises', requireAuth, async (req, res, next) => {
     }
 
     const franchise = await upsertFranchise({ id, slug, name, imageUrl: finalImage, category });
-    return res.status(200).json({ success: true, franchise });
+    return res.status(200).json({
+      success: true,
+      data: franchise,
+      franchise
+    });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/franchises:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al guardar la franquicia.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al guardar la franquicia.', details: err.message });
   }
 });
 
@@ -122,9 +155,9 @@ router.delete('/catalog/franchises/:id', requireAuth, async (req, res, next) => 
   } catch (err) {
     console.error('[API Error] DELETE /api/catalog/franchises/:id:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al eliminar la franquicia.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al eliminar la franquicia.', details: err.message });
   }
 });
 
@@ -132,31 +165,37 @@ router.delete('/catalog/franchises/:id', requireAuth, async (req, res, next) => 
 router.get('/catalog/categories', async (req, res, next) => {
   try {
     const categories = await getAllCategories();
-    return res.status(200).json({ success: true, count: categories.length, categories });
+    return res.status(200).json({
+      success: true,
+      data: categories,
+      count: categories.length,
+      categories
+    });
   } catch (err) {
     console.error('[API Error] GET /api/catalog/categories:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al obtener las categorías.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al obtener las categorías.', details: err.message });
   }
 });
 
 // ── POST /api/catalog/categories (Admin — Upsert category) ────────────────────
-router.post('/catalog/categories', requireAuth, async (req, res, next) => {
+router.post('/catalog/categories', requireAuth, validate(categoryCreateSchema), async (req, res, next) => {
   try {
     const { id, name, icon } = req.body;
-    if (!name) {
-      return res.status(400).json({ error: 'El nombre de la categoría es obligatorio.' });
-    }
     const categories = await upsertCategory({ id: id || name, name, icon });
-    return res.status(200).json({ success: true, categories });
+    return res.status(200).json({
+      success: true,
+      data: categories,
+      categories
+    });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/categories:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al guardar la categoría.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al guardar la categoría.', details: err.message });
   }
 });
 
@@ -170,9 +209,9 @@ router.delete('/catalog/categories/:id', requireAuth, async (req, res, next) => 
     console.error('[API Error] DELETE /api/catalog/categories/:id:', err);
     const statusCode = err.statusCode || 400;
     if (statusCode >= 500 && process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(statusCode).json({ error: err.message });
+    return res.status(statusCode).json({ success: false, error: err.message });
   }
 });
 
@@ -212,27 +251,23 @@ router.get('/catalog/posters', async (req, res, next) => {
       take,
     });
 
-    if (result && !Array.isArray(result) && result.posters) {
-      return res.status(200).json({
-        success: true,
-        count: result.count,
-        nextCursor: result.nextCursor,
-        hasMore: result.hasMore,
-        posters: result.posters,
-      });
-    }
+    const postersList = (result && !Array.isArray(result) && result.posters) ? result.posters : (Array.isArray(result) ? result : []);
+    const totalCount = (result && typeof result.count === 'number') ? result.count : postersList.length;
 
     return res.status(200).json({
       success: true,
-      count: result.length,
-      posters: result,
+      data: postersList,
+      posters: postersList,
+      count: totalCount,
+      ...(result && result.nextCursor ? { nextCursor: result.nextCursor } : {}),
+      ...(result && result.hasMore !== undefined ? { hasMore: result.hasMore } : {})
     });
   } catch (err) {
     console.error('[API Error] GET /api/catalog/posters:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al consultar pósters en la base de datos.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al consultar pósters en la base de datos.', details: err.message });
   }
 });
 
@@ -241,21 +276,25 @@ router.get('/catalog/posters/:id', async (req, res, next) => {
   try {
     const poster = await getPosterById(req.params.id);
     if (!poster) {
-      return res.status(404).json({ error: 'Póster no encontrado' });
+      return res.status(404).json({ success: false, error: 'Póster no encontrado.' });
     }
 
     // Privacidad estricta: si la obra no está publicada, requerir credenciales de admin
     if (!poster.isPublished && !isRequestAuthorizedAdmin(req)) {
-      return res.status(404).json({ error: 'Póster no encontrado' });
+      return res.status(404).json({ success: false, error: 'Póster no encontrado.' });
     }
 
-    return res.status(200).json({ success: true, poster });
+    return res.status(200).json({
+      success: true,
+      data: poster,
+      poster
+    });
   } catch (err) {
     console.error('[API Error] GET /api/catalog/posters/:id:', err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al obtener el póster.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al obtener el póster.', details: err.message });
   }
 });
 
@@ -294,7 +333,7 @@ function validateAndSanitizePosterInput(data) {
 }
 
 // ── POST /api/catalog/posters (Protected Admin - Create Poster) ─────────────
-router.post('/catalog/posters', requireAuth, async (req, res) => {
+router.post('/catalog/posters', requireAuth, validate(posterCreateSchema), async (req, res) => {
   try {
     const posterData = validateAndSanitizePosterInput(req.body);
 
@@ -319,27 +358,28 @@ router.post('/catalog/posters', requireAuth, async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Póster creado exitosamente en PostgreSQL.',
+      data: savedPoster,
       poster: savedPoster
     });
   } catch (err) {
     console.error('[API Error] POST /api/catalog/posters:', err);
     const status = err.statusCode || 500;
     if (status >= 500 && process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(status).json({ error: err.message || 'Error al crear el póster en la base de datos.' });
+    return res.status(status).json({ success: false, error: err.message || 'Error al crear el póster en la base de datos.' });
   }
 });
 
 // ── PUT /api/catalog/posters/:id (Protected Admin - Update Poster) ────────────
-router.put('/catalog/posters/:id', requireAuth, async (req, res) => {
+router.put('/catalog/posters/:id', requireAuth, validate(posterUpdateSchema), async (req, res) => {
   try {
     const { id } = req.params;
     const posterData = validateAndSanitizePosterInput(req.body);
 
     const existing = await getPosterById(id);
     if (!existing) {
-      return res.status(404).json({ error: `Póster con ID "${id}" no encontrado.` });
+      return res.status(404).json({ success: false, error: `Póster con ID "${id}" no encontrado.` });
     }
 
     let image = posterData.image || posterData.imageUrl || existing.imageUrl;
@@ -372,31 +412,33 @@ router.put('/catalog/posters/:id', requireAuth, async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Póster actualizado exitosamente en PostgreSQL.',
+      data: updatedPoster,
       poster: updatedPoster
     });
   } catch (err) {
     console.error(`[API Error] PUT /api/catalog/posters/${req.params.id}:`, err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al actualizar el póster en la base de datos.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al actualizar el póster en la base de datos.', details: err.message });
   }
 });
 
 // ── PATCH /api/catalog/posters/:id (Protected Admin - Partial Update) ────────
-router.patch('/catalog/posters/:id', requireAuth, async (req, res) => {
+router.patch('/catalog/posters/:id', requireAuth, validate(posterPatchSchema), async (req, res) => {
   try {
     const { id } = req.params;
-    const { estado, isFeatured, isPublished } = req.body;
+    const { estado, status, isFeatured, isPublished } = req.body;
+    const finalEstado = estado || status;
 
     const existing = await getPosterById(id);
     if (!existing) {
-      return res.status(404).json({ error: `Póster con ID "${id}" no encontrado.` });
+      return res.status(404).json({ success: false, error: `Póster con ID "${id}" no encontrado.` });
     }
 
     let updatedPoster;
-    if (estado !== undefined) {
-      updatedPoster = await updatePosterStatus(existing.id, estado);
+    if (finalEstado !== undefined) {
+      updatedPoster = await updatePosterStatus(existing.id, finalEstado);
     } else {
       updatedPoster = await upsertPosterFromAdmin({
         ...existing,
@@ -409,15 +451,16 @@ router.patch('/catalog/posters/:id', requireAuth, async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Póster actualizado parcialmente en PostgreSQL.',
+      data: updatedPoster,
       poster: updatedPoster
     });
   } catch (err) {
     console.error(`[API Error] PATCH /api/catalog/posters/${req.params.id}:`, err);
     const status = err.statusCode || 500;
     if (status >= 500 && process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(status).json({ error: err.message || 'Error al actualizar el póster.' });
+    return res.status(status).json({ success: false, error: err.message || 'Error al actualizar el póster.' });
   }
 });
 
@@ -427,7 +470,7 @@ router.delete('/catalog/posters/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const existing = await getPosterById(id);
     if (!existing) {
-      return res.status(404).json({ error: `Póster con ID "${id}" no encontrado.` });
+      return res.status(404).json({ success: false, error: `Póster con ID "${id}" no encontrado.` });
     }
 
     // Limpieza de imágenes en GCS y local si aplica
@@ -443,9 +486,9 @@ router.delete('/catalog/posters/:id', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(`[API Error] DELETE /api/catalog/posters/${req.params.id}:`, err);
     if (process.env.NODE_ENV === 'production') {
-      return res.status(500).json({ error: 'Error interno del servidor.' });
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
     }
-    return res.status(500).json({ error: 'Error al eliminar el póster de la base de datos.', details: err.message });
+    return res.status(500).json({ success: false, error: 'Error al eliminar el póster de la base de datos.', details: err.message });
   }
 });
 

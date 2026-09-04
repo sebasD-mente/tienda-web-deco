@@ -431,10 +431,12 @@ export default function AdminCreatePosterTab({
           {/* 2. Title & Subtitle */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '18px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              <label htmlFor="poster-title" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                 2. Título de la Obra *
               </label>
               <input
+                id="poster-title"
+                name="title"
                 type="text"
                 required
                 placeholder="Ej. Porsche 911 GT3 RS Blueprint"
@@ -444,10 +446,12 @@ export default function AdminCreatePosterTab({
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              <label htmlFor="poster-subtitle" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                 3. Subtítulo / Descripción Corta
               </label>
               <input
+                id="poster-subtitle"
+                name="subtitle"
                 type="text"
                 placeholder="Ej. Edición Técnica de Colección MotorSport"
                 value={subtitle}
@@ -460,10 +464,12 @@ export default function AdminCreatePosterTab({
           {/* 4. Category & Franchise */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '18px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              <label htmlFor="poster-category" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                 4. Categoría Principal *
               </label>
               <select
+                id="poster-category"
+                name="category"
                 value={category}
                 onChange={e => setCategory(e.target.value)}
                 required
@@ -479,10 +485,12 @@ export default function AdminCreatePosterTab({
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              <label htmlFor="poster-franchise" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                 5. Colección o Franquicia (Opcional)
               </label>
               <select
+                id="poster-franchise"
+                name="franchise"
                 value={franchiseId}
                 onChange={e => setFranchiseId(e.target.value)}
                 style={{ width: '100%', padding: '10px 14px', background: '#0a0e18', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '0.92rem', outline: 'none' }}
@@ -497,10 +505,12 @@ export default function AdminCreatePosterTab({
 
           {/* 6. Description */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+            <label htmlFor="poster-description" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
               6. Descripción Detallada de la Obra (Opcional)
             </label>
             <textarea
+              id="poster-description"
+              name="description"
               rows={3}
               placeholder="Escribe la descripción de la obra, detalles artísticos, acabado en MDF 5.5mm, etc..."
               value={description}
@@ -540,7 +550,33 @@ export default function AdminCreatePosterTab({
               {OFFICIAL_SIZES.filter(s => s.id !== 'PORTADA_ALBUM').map(s => {
                 const isChecked = selectedSizeIds.includes(s.id);
                 return (
-                  <div key={s.id} onClick={() => toggleSizeId(s.id)} style={{ padding: '12px 14px', borderRadius: '10px', background: isChecked ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.02)', border: isChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.84rem', transition: 'all 0.15s ease' }}>
+                  <div
+                    key={s.id}
+                    role="checkbox"
+                    aria-checked={isChecked}
+                    tabIndex={0}
+                    aria-label={`Tamaño ${s.name} ${s.dimensions} - Precio Q${s.price.toFixed(0)}`}
+                    onClick={() => toggleSizeId(s.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        toggleSizeId(s.id);
+                      }
+                    }}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      background: isChecked ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: isChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '0.84rem',
+                      transition: 'all 0.15s ease',
+                      outline: 'none'
+                    }}
+                  >
                     <span style={{ color: isChecked ? '#fff' : 'var(--text-muted)', fontWeight: isChecked ? 700 : 400 }}>
                       {isChecked ? '☑ ' : '☐ '} {s.name} ({s.dimensions})
                     </span>
@@ -562,7 +598,33 @@ export default function AdminCreatePosterTab({
                 {OFFICIAL_SIZES.filter(s => s.id === 'PORTADA_ALBUM').map(s => {
                   const isChecked = selectedSizeIds.includes(s.id);
                   return (
-                    <div key={s.id} onClick={() => toggleSizeId(s.id)} style={{ padding: '12px 14px', borderRadius: '10px', background: isChecked ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.02)', border: isChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.84rem', transition: 'all 0.15s ease' }}>
+                    <div
+                      key={s.id}
+                      role="checkbox"
+                      aria-checked={isChecked}
+                      tabIndex={0}
+                      aria-label={`Tamaño ${s.name} ${s.dimensions} - Precio Q${s.price.toFixed(0)}`}
+                      onClick={() => toggleSizeId(s.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          toggleSizeId(s.id);
+                        }
+                      }}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: isChecked ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                        border: isChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.84rem',
+                        transition: 'all 0.15s ease',
+                        outline: 'none'
+                      }}
+                    >
                       <span style={{ color: isChecked ? '#fff' : 'var(--text-muted)', fontWeight: isChecked ? 700 : 400, whiteSpace: 'nowrap' }}>
                         {isChecked ? '☑ ' : '☐ '} {s.name} ({s.dimensions})
                       </span>
@@ -578,10 +640,12 @@ export default function AdminCreatePosterTab({
 
           {/* 8. Tags */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+            <label htmlFor="poster-tags" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
               8. Etiquetas / Tags de Búsqueda (separadas por coma)
             </label>
             <input
+              id="poster-tags"
+              name="tags"
               type="text"
               placeholder="Ej. Porsche, GT3, Motorsport, Blueprint, Alemania"
               value={tagsInput}

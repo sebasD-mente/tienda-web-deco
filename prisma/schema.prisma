@@ -8,16 +8,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Category {
-  AUTOS
-  SUPERHEROES
-  ANIME
-  MUSICA
-  SERIESYPELICULAS
-  OBRASDEARTE
-  INFANTILYDIBUJOSANIMADOS
-  CINE
+model Category {
+  id        String   @id
+  name      String   @unique
+  icon      String?  @default("🏷️")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  posters   Poster[]
+
+  @@map("categories")
 }
+
 
 enum PosterStatus {
   DISPONIBLE
@@ -57,6 +58,7 @@ model Poster {
   subtitulo     String?
   descripcion   String?      @db.Text
   categoria     String
+  category      Category     @relation(fields: [categoria], references: [id], onUpdate: Cascade, onDelete: Restrict)
   franchise     Franchise?   @relation(fields: [franchiseId], references: [id])
   franchiseId   String?
   tags          String[]     @default([])

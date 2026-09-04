@@ -8,18 +8,29 @@ import {
   apiUpdateCustomOrderStatus,
   apiDeleteCustomOrder
 } from '../../utils/apiClient';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 export default function AdminCustomOrdersTab({ showToast }) {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [deletingId, setDeletingId] = useState(null);
+  const [orderToDelete, setOrderToDelete] = useState(null);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
-      const data = await apiGetCustomOrders();
-      setOrders(Array.isArray(data) ? data : []);
+      const response = await apiGetCustomOrders();
+      let orderList = [];
+      if (Array.isArray(response)) {
+        orderList = response;
+      } else if (response && Array.isArray(response.data)) {
+        orderList = response.data;
+      } else if (response && Array.isArray(response.orders)) {
+        orderList = response.orders;
+      }
+      setOrders(orderList);
     } catch (err) {
       console.error('Error fetching custom orders:', err);
       if (showToast) showToast('No se pudieron cargar las cotizaciones', 'error');
@@ -43,20 +54,25 @@ export default function AdminCustomOrdersTab({ showToast }) {
     }
   };
 
-  const handleDeleteOrder = async (id, orderNumber) => {
-    if (!window.confirm(`¿Seguro que deseas eliminar la cotización #${orderNumber}? Esta acción liberará el espacio en la nube.`)) {
-      return;
-    }
+  const handleDeleteOrder = (id, orderNumber) => {
+    setOrderToDelete({ id, orderNumber });
+  };
 
+  const handleConfirmDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    const { id, orderNumber } = orderToDelete;
+    setIsDeletingOrder(true);
     setDeletingId(id);
     try {
       await apiDeleteCustomOrder(id);
       setOrders(prev => prev.filter(o => o.id !== id));
       if (showToast) showToast(`Cotización #${orderNumber} eliminada correctamente`, 'success');
+      setOrderToDelete(null);
     } catch (err) {
       console.error('Error deleting order:', err);
       if (showToast) showToast('Error al eliminar la cotización', 'error');
     } finally {
+      setIsDeletingOrder(false);
       setDeletingId(null);
     }
   };
@@ -456,6 +472,19 @@ export default function AdminCustomOrdersTab({ showToast }) {
           })}
         </div>
       )}
+
+      {/* Accessible Order Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(orderToDelete)}
+        title="¿Eliminar cotización?"
+        message={`¿Seguro que deseas eliminar la cotización #${orderToDelete?.orderNumber}?\nEsta acción liberará el espacio en la nube y no se puede deshacer.`}
+        confirmText="Eliminar cotización"
+        cancelText="Cancelar"
+        type="danger"
+        isLoading={isDeletingOrder}
+        onConfirm={handleConfirmDeleteOrder}
+        onClose={() => !isDeletingOrder && setOrderToDelete(null)}
+      />
 
     </div>
   );

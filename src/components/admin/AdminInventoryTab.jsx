@@ -23,14 +23,29 @@ export default function AdminInventoryTab({
   }, []);
 
   const [searchFilter, setSearchFilter] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
-  // Filtered posters calculation
+  // Debounce search filter input by 300ms to avoid expensive filtering on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchFilter);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchFilter]);
+
+  const handleClearSearch = () => {
+    setSearchFilter('');
+    setDebouncedSearch('');
+  };
+
+  // Filtered posters calculation using debouncedSearch
   const filteredPosters = posters.filter(poster => {
-    const matchesSearch = searchFilter.trim() === '' || 
-      (poster.title || '').toLowerCase().includes(searchFilter.toLowerCase()) ||
-      (poster.subtitle || '').toLowerCase().includes(searchFilter.toLowerCase()) ||
-      (poster.tags || []).some(t => (t || '').toLowerCase().includes(searchFilter.toLowerCase()));
+    const query = debouncedSearch.trim().toLowerCase();
+    const matchesSearch = query === '' || 
+      (poster.title || '').toLowerCase().includes(query) ||
+      (poster.subtitle || '').toLowerCase().includes(query) ||
+      (poster.tags || []).some(t => (t || '').toLowerCase().includes(query));
 
     const matchesCategory = categoryFilter === 'ALL' || poster.category === categoryFilter;
 
@@ -80,7 +95,7 @@ export default function AdminInventoryTab({
             {searchFilter && (
               <button
                 type="button"
-                onClick={() => setSearchFilter('')}
+                onClick={handleClearSearch}
                 style={{
                   background: 'rgba(255, 255, 255, 0.1)',
                   border: 'none',

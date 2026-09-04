@@ -6,6 +6,7 @@ import {
   Database, RefreshCw
 } from 'lucide-react';
 import ArcReactor from '../ArcReactor';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../utils/jarvisBrain';
 import { getAuthToken, apiUploadPosterImage } from '../../utils/apiClient';
@@ -48,6 +49,8 @@ export default function AdminJarvisTab({ onShowToast }) {
   const [docTitleInput, setDocTitleInput] = useState('');
   const [docCategoryInput, setDocCategoryInput] = useState('Políticas');
   const [docContentInput, setDocContentInput] = useState('');
+  const [docToDelete, setDocToDelete] = useState(null);
+  const [isDeletingDoc, setIsDeletingDoc] = useState(false);
 
   // Reference Images State
   const [refImageTitle, setRefImageTitle] = useState('');
@@ -182,12 +185,23 @@ export default function AdminJarvisTab({ onShowToast }) {
     reloadKnowledge();
   };
 
-  const handleDeleteDoc = async (id) => {
-    const confirm1 = window.confirm('¿Estás seguro de eliminar este documento de la base de J.A.R.V.I.S.?');
-    if (!confirm1) return;
-    await removeCustomDocument(id);
-    reloadKnowledge();
-    onShowToast('Documento eliminado.', 'info');
+  const handleDeleteDoc = (id) => {
+    setDocToDelete(id);
+  };
+
+  const handleConfirmDeleteDoc = async () => {
+    if (!docToDelete) return;
+    setIsDeletingDoc(true);
+    try {
+      await removeCustomDocument(docToDelete);
+      reloadKnowledge();
+      onShowToast('Documento eliminado de J.A.R.V.I.S.', 'info');
+      setDocToDelete(null);
+    } catch (err) {
+      onShowToast('Error al eliminar documento: ' + err.message, 'error');
+    } finally {
+      setIsDeletingDoc(false);
+    }
   };
 
   // 4. Reference Images Handlers
@@ -955,6 +969,19 @@ export default function AdminJarvisTab({ onShowToast }) {
           </div>
         </div>
       )}
+
+      {/* Accessible Document Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(docToDelete)}
+        title="¿Eliminar documento de conocimiento?"
+        message="¿Estás seguro de eliminar este documento de la base de conocimiento de J.A.R.V.I.S.?\nEsta acción modificará la memoria del asistente y no se puede deshacer."
+        confirmText="Eliminar documento"
+        cancelText="Cancelar"
+        type="danger"
+        isLoading={isDeletingDoc}
+        onConfirm={handleConfirmDeleteDoc}
+        onClose={() => !isDeletingDoc && setDocToDelete(null)}
+      />
 
     </div>
   );

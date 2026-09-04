@@ -465,6 +465,9 @@ export async function upsertPosterFromAdmin(data) {
         },
         select: POSTER_SELECT_CLIENT,
       });
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
     });
     await safeInvalidateEmbeddingsCache();
     return formatPosterForClient(updated);
@@ -584,6 +587,15 @@ export async function getAllCategories() {
   const countMap = {};
   counts.forEach(c => { countMap[c.categoria] = c._count.id; });
 
+  let dbCategories = [];
+  try {
+    dbCategories = await prisma.category.findMany({
+      orderBy: { name: 'asc' }
+    });
+  } catch (err) {
+    console.warn('[Categories] Could not load custom categories from prisma.category:', err.message);
+  }
+
   let savedCategories = null;
   try {
     const settings = await prisma.storeSettings.findUnique({ where: { id: 'default' } });
@@ -594,7 +606,7 @@ export async function getAllCategories() {
     console.warn('[Categories] Could not load custom categories from storeSettings:', err.message);
   }
 
-  const baseList = savedCategories || DEFAULT_CATEGORIES;
+  const baseList = dbCategories.length > 0 ? dbCategories : (savedCategories || DEFAULT_CATEGORIES);
 
   const categoryMap = new Map();
   baseList.forEach(cat => {
@@ -634,19 +646,32 @@ export async function getAllCategories() {
 }
 
 /**
- * Crea o actualiza una categoría en PostgreSQL (store_settings.categories).
+ * Crea o actualiza una categoría en PostgreSQL (prisma.category y store_settings.categories).
  */
 export async function upsertCategory({ id, name, icon }) {
   const cleanId = (id || name).toUpperCase().replace(/\s+/g, '_');
   const cleanName = (name || id).trim().toUpperCase();
+  const cleanIcon = icon || CATEGORY_ICONS[cleanId] || '🏷️';
 
+  // 1. Mutar en tabla relacional categories
+  try {
+    await prisma.category.upsert({
+      where: { id: cleanId },
+      update: { name: cleanName, icon: cleanIcon },
+      create: { id: cleanId, name: cleanName, icon: cleanIcon }
+    });
+  } catch (err) {
+    console.warn('[Categories] Could not persist in prisma.category:', err.message);
+  }
+
+  // 2. Sincronizar store_settings.categories
   const current = await getAllCategories();
   const currentFiltered = current
     .filter(c => c.id !== 'TODOS')
     .map(c => ({ id: c.id, name: c.name, icon: c.icon || '🏷️' }));
 
   const existingIdx = currentFiltered.findIndex(c => c.id === cleanId);
-  const newEntry = { id: cleanId, name: cleanName, icon: icon || '🏷️' };
+  const newEntry = { id: cleanId, name: cleanName, icon: cleanIcon };
 
   if (existingIdx > -1) {
     currentFiltered[existingIdx] = newEntry;
@@ -681,6 +706,16 @@ export async function deleteCategory(categoryId) {
     throw new Error(`No se puede eliminar la categoría "${cleanId}" porque contiene ${activeCount} obra(s).`);
   }
 
+  // 1. Eliminar de tabla relacional categories
+  try {
+    await prisma.category.delete({
+      where: { id: cleanId }
+    });
+  } catch (err) {
+    console.warn('[Categories] Could not delete from prisma.category:', err.message);
+  }
+
+  // 2. Sincronizar store_settings.categories
   const current = await getAllCategories();
   const updatedCategories = current
     .filter(c => c.id !== 'TODOS' && c.id !== cleanId)

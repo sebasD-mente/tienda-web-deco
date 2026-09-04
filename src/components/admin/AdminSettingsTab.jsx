@@ -16,11 +16,14 @@ import {
   syncCatalogFromServer
 } from '../../utils/catalogStorage';
 import { apiSaveSettings } from '../../utils/apiClient';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 export default function AdminSettingsTab({ onShowToast, onReloadCatalog }) {
-  const [phoneInput,      setPhoneInput]      = useState(() => getStoreWhatsAppPhone());
-  const [isSavingPhone,   setIsSavingPhone]   = useState(false);
-  const [isSyncingServer, setIsSyncingServer] = useState(false);
+  const [phoneInput,        setPhoneInput]        = useState(() => getStoreWhatsAppPhone());
+  const [isSavingPhone,     setIsSavingPhone]     = useState(false);
+  const [isSyncingServer,   setIsSyncingServer]   = useState(false);
+  const [showResetConfirm,  setShowResetConfirm]  = useState(false);
+  const [isResetting,       setIsResetting]       = useState(false);
 
   const handleSavePhone = async (e) => {
     e?.preventDefault();
@@ -90,17 +93,22 @@ export default function AdminSettingsTab({ onShowToast, onReloadCatalog }) {
     }
   };
 
-  const handleFactoryReset = async () => {
-    const confirm1 = window.confirm('⚠️ ¿Estás seguro de que deseas restablecer el catálogo a los valores de fábrica?\nSe restaurarán las obras oficiales y configuraciones originales.');
-    if (!confirm1) return;
+  const handleFactoryReset = () => {
+    setShowResetConfirm(true);
+  };
 
+  const handleConfirmReset = async () => {
+    setIsResetting(true);
     try {
       await resetCatalogToDefault();
       if (onReloadCatalog) onReloadCatalog();
       setPhoneInput(getStoreWhatsAppPhone());
       onShowToast('¡Catálogo restablecido a valores predeterminados!', 'success');
+      setShowResetConfirm(false);
     } catch (err) {
       onShowToast('Error al restablecer catálogo: ' + err.message, 'error');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -278,6 +286,19 @@ export default function AdminSettingsTab({ onShowToast, onReloadCatalog }) {
           </div>
         </div>
       </div>
+
+      {/* Accessible Reset Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showResetConfirm}
+        title="¿Restablecer catálogo a fábrica?"
+        message={'⚠️ ¿Estás seguro de que deseas restablecer el catálogo a los valores de fábrica?\nSe restaurarán las obras oficiales y configuraciones originales en el servidor.'}
+        confirmText="Restablecer a fábrica"
+        cancelText="Cancelar"
+        type="danger"
+        isLoading={isResetting}
+        onConfirm={handleConfirmReset}
+        onClose={() => !isResetting && setShowResetConfirm(false)}
+      />
 
     </div>
   );

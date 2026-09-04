@@ -28,6 +28,7 @@ import AdminCategoriesTab   from '../components/admin/AdminCategoriesTab';
 import AdminCustomOrdersTab from '../components/admin/AdminCustomOrdersTab';
 import AdminJarvisTab       from '../components/admin/AdminJarvisTab';
 import AdminSettingsTab     from '../components/admin/AdminSettingsTab';
+import ConfirmDialog        from '../components/common/ConfirmDialog';
 
 export default function AdminDashboard({ onNavigate, onLogout }) {
   const [isVerifyingAuth, setIsVerifyingAuth] = useState(true);
@@ -37,6 +38,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
   const [franchises,    setFranchises]    = useState(() => getStoredFranchises());
   const [editingPoster, setEditingPoster] = useState(null);
   const [toast,         setToast]         = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, posterId: null, posterTitle: '', isLoading: false });
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -122,14 +124,26 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
     }
   };
 
-  const handleDeletePoster = async (posterId, posterTitle) => {
-    const confirm1 = window.confirm(`¿Estás seguro de que deseas eliminar la obra "${posterTitle}"?`);
-    if (!confirm1) return;
+  const handleDeletePoster = (posterId, posterTitle) => {
+    setDeleteConfirm({
+      isOpen: true,
+      posterId,
+      posterTitle,
+      isLoading: false
+    });
+  };
+
+  const handleConfirmDeletePoster = async () => {
+    const { posterId, posterTitle } = deleteConfirm;
+    if (!posterId) return;
+    setDeleteConfirm(prev => ({ ...prev, isLoading: true }));
     try {
       await deletePosterById(posterId);
       showToast(`Obra "${posterTitle}" eliminada del servidor.`, 'info');
+      setDeleteConfirm({ isOpen: false, posterId: null, posterTitle: '', isLoading: false });
     } catch (err) {
       showToast(`Error al eliminar de servidor: ${err.message}`, 'error');
+      setDeleteConfirm(prev => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -584,6 +598,19 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
 
         </div>
       </section>
+
+      {/* Accessible Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="¿Eliminar obra del catálogo?"
+        message={`¿Estás seguro de que deseas eliminar la obra "${deleteConfirm.posterTitle}"?\nEsta acción eliminará el registro del servidor y no se puede deshacer.`}
+        confirmText="Eliminar obra"
+        cancelText="Cancelar"
+        type="danger"
+        isLoading={deleteConfirm.isLoading}
+        onConfirm={handleConfirmDeletePoster}
+        onClose={() => setDeleteConfirm({ isOpen: false, posterId: null, posterTitle: '', isLoading: false })}
+      />
 
     </div>
   );
