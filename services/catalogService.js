@@ -421,6 +421,23 @@ export async function upsertPosterFromAdmin(data) {
     console.warn('[Deco Catalog] No se pudo generar embedding en tiempo real para la obra:', embErr.message);
   }
 
+  // Asegurar que la categoría exista en PostgreSQL para satisfacer la clave foránea
+  if (finalCategory) {
+    try {
+      await prisma.category.upsert({
+        where: { id: finalCategory },
+        update: {},
+        create: {
+          id: finalCategory,
+          name: CATEGORY_DISPLAY_NAMES[finalCategory] || finalCategory.replace(/_/g, ' '),
+          icon: CATEGORY_ICONS[finalCategory] || '🏷️'
+        }
+      });
+    } catch (catErr) {
+      console.warn(`[Deco Catalog] No se pudo auto-registrar la categoría "${finalCategory}":`, catErr.message);
+    }
+  }
+
   // Determina si existe por id (UUID) o por legacyId
   let existingPoster = null;
   if (inputId && isUUID(inputId)) {
