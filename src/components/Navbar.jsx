@@ -161,9 +161,9 @@ export default function Navbar({
             <nav className="desktop-nav" style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 'clamp(14px, 2.2vw, 30px)',
+              gap: 'clamp(12px, 1.8vw, 26px)',
               marginLeft: 'auto',
-              marginRight: '30px'
+              marginRight: '24px'
             }}>
               <a
                 href="/"
@@ -1015,18 +1015,18 @@ export default function Navbar({
           width: 115px;
           height: 115px;
         }
-        @media (min-width: 900px) {
+        @media (min-width: 1150px) {
           .desktop-nav { display: flex !important; }
           .mobile-menu-btn { display: none !important; }
           .jarvis-nav-pill { display: flex !important; }
         }
-        @media (max-width: 899px) {
+        @media (max-width: 1149px) {
           .desktop-nav { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .jarvis-nav-pill { display: none !important; }
           .navbar-logo-img {
-            width: 74px;
-            height: 74px;
+            width: 78px;
+            height: 78px;
           }
         }
         @media (max-width: 480px) {
