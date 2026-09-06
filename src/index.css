@@ -338,9 +338,14 @@ body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
 }
 
 /* ── Árbol DOM Unificado y Responsivo para Inventario Admin (Cero Duplicación) ── */
+.admin-inventory-list {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .admin-inv-header {
   display: grid;
-  grid-template-columns: 60px minmax(180px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr) 120px 140px;
+  grid-template-columns: 52px minmax(170px, 1.4fr) minmax(150px, 1.1fr) minmax(130px, 1fr) 46px 105px;
   align-items: center;
   gap: 16px;
   padding: 14px 18px;
@@ -350,25 +355,36 @@ body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
   font-weight: 800;
   color: var(--text-muted);
   text-transform: uppercase;
+  min-width: 720px;
 }
 
 .admin-inv-row {
   display: grid;
-  grid-template-columns: 60px minmax(180px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr) 120px 140px;
+  grid-template-columns: 52px minmax(170px, 1.4fr) minmax(150px, 1.1fr) minmax(130px, 1fr) 46px 105px;
   align-items: center;
   gap: 16px;
   padding: 12px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   transition: background 0.2s ease;
+  min-width: 720px;
 }
 
 .admin-inv-row:hover {
   background: rgba(255, 255, 255, 0.02);
 }
 
+.admin-inv-col-thumb,
+.admin-inv-col-info,
+.admin-inv-col-category,
+.admin-inv-col-franchise,
+.admin-inv-col-featured,
+.admin-inv-col-actions {
+  min-width: 0;
+}
+
 .admin-inv-thumb-box {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid rgba(0, 242, 254, 0.25);
@@ -378,7 +394,7 @@ body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
 .admin-inv-title {
   font-weight: 800;
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -390,6 +406,85 @@ body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.admin-inv-col-category {
+  display: flex;
+  align-items: center;
+}
+
+.admin-category-pill {
+  font-size: 0.72rem !important;
+  padding: 3px 10px !important;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: inline-block !important;
+  line-height: 1.4 !important;
+  vertical-align: middle;
+}
+
+.admin-inv-col-franchise {
+  display: flex;
+  align-items: center;
+}
+
+.admin-franchise-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.admin-franchise-name {
+  font-size: 0.82rem;
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-inv-col-featured {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-star-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+
+.admin-star-btn:hover {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.5);
+  color: #eab308;
+  transform: scale(1.08);
+}
+
+.admin-star-btn.is-featured {
+  background: rgba(234, 179, 8, 0.18);
+  border-color: #eab308;
+  color: #eab308;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.25);
+}
+
+.admin-star-btn-text {
+  display: none;
 }
 
 .admin-inv-mobile-meta {
@@ -410,6 +505,7 @@ body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
+    overflow-x: visible !important;
   }
 
   .admin-inv-header {
@@ -423,6 +519,7 @@ body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
   }
 
   .admin-inv-row {
+    min-width: 100% !important;
     display: grid;
     grid-template-columns: 68px 1fr;
     grid-template-areas:
@@ -473,6 +570,19 @@ body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     padding-top: 8px;
     margin-top: 2px;
+  }
+
+  .admin-star-btn {
+    width: auto;
+    height: auto;
+    padding: 6px 12px;
+    gap: 6px;
+  }
+
+  .admin-star-btn-text {
+    display: inline;
+    font-size: 0.75rem;
+    font-weight: 800;
   }
 
   .admin-inv-col-actions {

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, ShoppingBag, X, Menu, ArrowRight, Sparkles, Tag, Layers, ExternalLink, Home, LayoutGrid, Sliders, ChevronRight, MessageSquare } from 'lucide-react';
 import { searchPosters } from '../utils/searchEngine';
-import { getPosterSizeBadge, getPosterPriceDisplay } from '../utils/posterHelpers';
+import { getPosterSizeBadge, getPosterPriceDisplay, getPosterCategoryName } from '../utils/posterHelpers';
 import ArcReactor from './ArcReactor';
 
 const POPULAR_SEARCHES = [
@@ -937,9 +937,10 @@ export default function Navbar({
                               borderRadius: '4px',
                               background: 'rgba(0, 242, 254, 0.12)',
                               color: 'var(--accent-cyan)',
-                              border: '1px solid rgba(0, 242, 254, 0.25)'
+                              border: '1px solid rgba(0, 242, 254, 0.25)',
+                              textTransform: 'uppercase'
                             }}>
-                              {poster.category}
+                              {getPosterCategoryName(poster, categories)}
                             </span>
                             {poster.franchise && (
                               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>

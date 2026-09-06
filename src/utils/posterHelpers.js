@@ -102,3 +102,71 @@ export function getPosterPriceDisplay(poster) {
 
   return 'Desde Q 25.00';
 }
+
+/**
+ * Diccionario canónico de categorías con nombres estéticos limpios,
+ * respetando acentos, espacios y sin guiones bajos ni palabras pegadas.
+ */
+export const KNOWN_CATEGORY_NAMES = {
+  SUPERHEROES: 'SUPERHÉROES',
+  ANIME: 'ANIME & MANGA',
+  AUTOS: 'AUTOS & VELOCIDAD',
+  MUSICA: 'MÚSICA & BANDAS',
+  SERIESYPELICULAS: 'SERIES Y PELÍCULAS',
+  BASKETBALL_Y_FORMULA_1: 'BASKETBALL & FÓRMULA 1',
+  FUTBOL: 'FÚTBOL',
+  INFANTILYDIBUJOSANIMADOS: 'INFANTIL & DIBUJOS ANIMADOS',
+  BEBIDAS_Y_BAR: 'BEBIDAS & BAR',
+  OBRASDEARTE: 'OBRAS DE ARTE',
+  VIDEO_JUEGOS: 'VIDEO JUEGOS',
+  VINTAGE: 'VINTAGE & RETRO',
+  CINE: 'CINE',
+  GENERAL: 'GENERAL'
+};
+
+/**
+ * Normaliza y formatea el nombre visible de una categoría.
+ * Resuelve contra la lista dinámica de categorías de la tienda si está disponible,
+ * luego contra el diccionario canónico y finalmente limpia guiones bajos por espacios.
+ *
+ * @param {string} rawId - Identificador o slug de la categoría
+ * @param {Array<object>} [categories] - Lista de categorías de la BD o configuración
+ * @returns {string}
+ */
+export function formatCategoryDisplayName(rawId, categories = []) {
+  if (!rawId) return '';
+  const cleanId = String(rawId).trim();
+  if (!cleanId) return '';
+
+  // 1. Buscar en la lista dinámica de categorías
+  if (Array.isArray(categories) && categories.length > 0) {
+    const found = categories.find(c => c && (c.id === cleanId || c.name === cleanId));
+    if (found && found.name) return found.name;
+  }
+
+  // 2. Buscar en diccionario canónico
+  const upper = cleanId.toUpperCase();
+  if (KNOWN_CATEGORY_NAMES[upper]) {
+    return KNOWN_CATEGORY_NAMES[upper];
+  }
+
+  // 3. Fallback: Reemplazar guiones bajos y formatear espacios limpios
+  return cleanId.replace(/_/g, ' ').replace(/\s+/g, ' ');
+}
+
+/**
+ * Retorna el nombre estético oficial de la categoría de un póster.
+ *
+ * @param {object} poster
+ * @param {Array<object>} [categories]
+ * @returns {string}
+ */
+export function getPosterCategoryName(poster, categories = []) {
+  if (!poster) return '';
+  const rawId = poster.category || poster.categoria || '';
+  if (poster.categoryName && typeof poster.categoryName === 'string' && poster.categoryName.trim()) {
+    return poster.categoryName;
+  }
+  return formatCategoryDisplayName(rawId, categories);
+}
+

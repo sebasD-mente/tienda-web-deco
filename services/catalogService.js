@@ -150,6 +150,7 @@ export function formatPosterForClient(poster) {
   const franchiseSlug = poster.franchise?.slug || (typeof poster.franchise === 'string' ? poster.franchise : null) || poster.franchiseId || null;
   const { embedding: _rawEmbedding, ...cleanPoster } = poster;
   const rawCat = poster.categoria || poster.category || 'GENERAL';
+  const categoryDisplayName = CATEGORY_DISPLAY_NAMES[rawCat] || rawCat.replace(/_/g, ' ');
 
   return {
     ...cleanPoster,
@@ -158,6 +159,7 @@ export function formatPosterForClient(poster) {
     subtitle:       poster.subtitulo ?? poster.subtitle ?? null,
     description:    poster.descripcion ?? poster.description ?? '',
     category:       rawCat,
+    categoryName:   categoryDisplayName,
     franchise:      franchiseSlug,
     image:          poster.imageUrl || poster.image || null,
     thumb:          poster.thumbUrl || poster.thumb || null,
@@ -172,6 +174,7 @@ export function formatPosterForClient(poster) {
     subtitulo:      poster.subtitulo ?? poster.subtitle ?? null,
     descripcion:    poster.descripcion ?? poster.description ?? '',
     categoria:      rawCat,
+    categoriaNombre:categoryDisplayName,
     imageUrl:       poster.imageUrl || poster.image || null,
     thumbUrl:       poster.thumbUrl || poster.thumb || null,
     precioMinimo:   finalMinPrice,
@@ -542,33 +545,33 @@ export async function deletePoster(id) {
 }
 
 export const DEFAULT_CATEGORIES = [
-  { id: 'SUPERHEROES', name: 'SUPER HÉROES', icon: '⚡' },
-  { id: 'ANIME', name: 'ANIME', icon: '⛩️' },
-  { id: 'AUTOS', name: 'AUTOS', icon: '🚗' },
-  { id: 'MUSICA', name: 'MÚSICA', icon: '🎵' },
+  { id: 'SUPERHEROES', name: 'SUPERHÉROES', icon: '⚡' },
+  { id: 'ANIME', name: 'ANIME & MANGA', icon: '⛩️' },
+  { id: 'AUTOS', name: 'AUTOS & VELOCIDAD', icon: '🚗' },
+  { id: 'MUSICA', name: 'MÚSICA & BANDAS', icon: '🎵' },
   { id: 'SERIESYPELICULAS', name: 'SERIES Y PELÍCULAS', icon: '🎬' },
-  { id: 'BASKETBALL_Y_FORMULA_1', name: 'FÓRMULA 1 Y BASKETBALL', icon: '🏎️' },
+  { id: 'BASKETBALL_Y_FORMULA_1', name: 'BASKETBALL & FÓRMULA 1', icon: '🏎️' },
   { id: 'FUTBOL', name: 'FÚTBOL', icon: '⚽' },
-  { id: 'INFANTILYDIBUJOSANIMADOS', name: 'INFANTIL Y DIBUJOS ANIMADOS', icon: '🧸' },
-  { id: 'BEBIDAS_Y_BAR', name: 'BEBIDAS Y BAR', icon: '🍸' },
+  { id: 'INFANTILYDIBUJOSANIMADOS', name: 'INFANTIL & DIBUJOS ANIMADOS', icon: '🧸' },
+  { id: 'BEBIDAS_Y_BAR', name: 'BEBIDAS & BAR', icon: '🍸' },
   { id: 'OBRASDEARTE', name: 'OBRAS DE ARTE', icon: '🖼️' },
-  { id: 'VIDEO_JUEGOS', name: 'VIDEOJUEGOS', icon: '🎮' },
+  { id: 'VIDEO_JUEGOS', name: 'VIDEO JUEGOS', icon: '🎮' },
   { id: 'VINTAGE', name: 'VINTAGE & RETRO', icon: '🕰️' }
 ];
 
 const CATEGORY_DISPLAY_NAMES = {
-  SUPERHEROES: 'SUPER HÉROES',
-  ANIME: 'ANIME',
-  AUTOS: 'AUTOS',
-  MUSICA: 'MÚSICA',
+  SUPERHEROES: 'SUPERHÉROES',
+  ANIME: 'ANIME & MANGA',
+  AUTOS: 'AUTOS & VELOCIDAD',
+  MUSICA: 'MÚSICA & BANDAS',
   SERIESYPELICULAS: 'SERIES Y PELÍCULAS',
   OBRASDEARTE: 'OBRAS DE ARTE',
-  INFANTILYDIBUJOSANIMADOS: 'INFANTIL Y DIBUJOS ANIMADOS',
+  INFANTILYDIBUJOSANIMADOS: 'INFANTIL & DIBUJOS ANIMADOS',
   CINE: 'CINE',
-  BEBIDAS_Y_BAR: 'BEBIDAS Y BAR',
-  BASKETBALL_Y_FORMULA_1: 'FÓRMULA 1 Y BASKETBALL',
+  BEBIDAS_Y_BAR: 'BEBIDAS & BAR',
+  BASKETBALL_Y_FORMULA_1: 'BASKETBALL & FÓRMULA 1',
   FUTBOL: 'FÚTBOL',
-  VIDEO_JUEGOS: 'VIDEOJUEGOS',
+  VIDEO_JUEGOS: 'VIDEO JUEGOS',
   VINTAGE: 'VINTAGE & RETRO'
 };
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Search, Plus, X, Package, Star, Edit3, Trash2, Eye 
+  Search, Plus, X, Package, Star, Edit3, Trash2, Eye, Image 
 } from 'lucide-react';
 import OptimizedImage from '../OptimizedImage';
+import { getPosterCategoryName } from '../../utils/posterHelpers';
 
 export default function AdminInventoryTab({
   posters = [],
@@ -204,14 +205,18 @@ export default function AdminInventoryTab({
           </button>
         </div>
       ) : (
-        <div className="admin-inventory-list glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="admin-inventory-list glass-card" style={{ padding: 0 }}>
           {/* Cabecera para pantallas grandes (oculta automáticamente en móviles vía CSS) */}
           <div className="admin-inv-header">
-            <div className="admin-inv-col-thumb">Miniatura</div>
+            <div className="admin-inv-col-thumb" title="Miniatura de la obra" style={{ display: 'flex', justifyContent: 'center' }}>
+              <Image size={15} style={{ opacity: 0.75 }} />
+            </div>
             <div className="admin-inv-col-info">Título y Detalles</div>
             <div className="admin-inv-col-category">Categoría</div>
             <div className="admin-inv-col-franchise">Colección</div>
-            <div className="admin-inv-col-featured">Destacado</div>
+            <div className="admin-inv-col-featured" title="Destacado en vitrinas de inicio">
+              <Star size={14} fill="#eab308" color="#eab308" style={{ margin: '0 auto' }} />
+            </div>
             <div className="admin-inv-col-actions">Acciones</div>
           </div>
 
@@ -219,6 +224,8 @@ export default function AdminInventoryTab({
           <div className="admin-inv-body">
             {filteredPosters.map((poster) => {
               const franchiseObj = franchises.find(f => f.id === poster.franchise);
+              const categoryLabel = getPosterCategoryName(poster, categories);
+
               return (
                 <div key={poster.id} className="admin-inv-row">
                   
@@ -237,8 +244,8 @@ export default function AdminInventoryTab({
                   {/* 2. Título, Subtítulo y Metadatos */}
                   <div className="admin-inv-col-info">
                     <div className="admin-inv-mobile-meta">
-                      <span className="badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 8px', textTransform: 'uppercase' }}>
-                        {poster.category}
+                      <span className="badge-cyan admin-category-pill" title={categoryLabel}>
+                        {categoryLabel}
                       </span>
                       {franchiseObj && (
                         <span style={{
@@ -262,22 +269,22 @@ export default function AdminInventoryTab({
                   </div>
 
                   {/* 3. Columna Categoría (Desktop) */}
-                  <div className="admin-inv-col-category">
-                    <span className="badge-cyan" style={{ fontSize: '0.72rem', padding: '3px 10px', textTransform: 'uppercase' }}>
-                      {poster.category}
+                  <div className="admin-inv-col-category" title={categoryLabel}>
+                    <span className="badge-cyan admin-category-pill">
+                      {categoryLabel}
                     </span>
                   </div>
 
                   {/* 4. Columna Colección (Desktop) */}
-                  <div className="admin-inv-col-franchise">
+                  <div className="admin-inv-col-franchise" title={franchiseObj?.name || 'Sin franquicia'}>
                     {franchiseObj ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div className="admin-franchise-item">
                         <img
                           src={franchiseObj.img}
                           alt={franchiseObj.name}
-                          style={{ width: '18px', height: '18px', objectFit: 'contain' }}
+                          style={{ width: '18px', height: '18px', objectFit: 'contain', flexShrink: 0 }}
                         />
-                        <span style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 700 }}>
+                        <span className="admin-franchise-name">
                           {franchiseObj.name}
                         </span>
                       </div>
@@ -290,34 +297,24 @@ export default function AdminInventoryTab({
                   <div className="admin-inv-actions-wrapper">
                     <div className="admin-inv-col-featured">
                       <button
+                        type="button"
                         onClick={() => onToggleFeatured(poster.id, poster.title)}
-                        style={{
-                          background: poster.isFeatured ? 'rgba(234, 179, 8, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                          border: poster.isFeatured ? '1px solid #eab308' : '1px solid rgba(255, 255, 255, 0.1)',
-                          color: poster.isFeatured ? '#eab308' : 'var(--text-muted)',
-                          borderRadius: '6px',
-                          padding: '5px 8px',
-                          fontSize: '0.74rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                        title="Alternar Destacado"
+                        className={`admin-star-btn ${poster.isFeatured ? 'is-featured' : ''}`}
+                        title={poster.isFeatured ? 'Destacado en inicio (Clic para quitar)' : 'Marcar como destacado en inicio'}
+                        aria-label={poster.isFeatured ? 'Quitar de destacados' : 'Marcar como destacado'}
                       >
-                        <Star size={13} fill={poster.isFeatured ? '#eab308' : 'none'} />
-                        <span>{poster.isFeatured ? 'Destacado' : 'Normal'}</span>
+                        <Star size={15} fill={poster.isFeatured ? '#eab308' : 'none'} />
+                        <span className="admin-star-btn-text">{poster.isFeatured ? 'Destacado' : 'Normal'}</span>
                       </button>
                     </div>
 
                     <div className="admin-inv-col-actions">
-                      <div style={{ display: 'inline-flex', gap: '8px' }}>
+                      <div style={{ display: 'inline-flex', gap: '6px' }}>
                         <button
                           onClick={() => onEditPoster(poster)}
                           className="btn-cyan"
-                          style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                          title="Editar"
+                          style={{ padding: '6px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          title="Editar obra"
                         >
                           <Edit3 size={13} />
                           <span>Editar</span>
@@ -330,9 +327,13 @@ export default function AdminInventoryTab({
                             color: '#ef4444',
                             borderRadius: '6px',
                             padding: '6px 8px',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}
-                          title="Eliminar"
+                          title="Eliminar obra"
+                          aria-label={`Eliminar obra ${poster.title}`}
                         >
                           <Trash2 size={13} />
                         </button>

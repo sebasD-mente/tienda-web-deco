@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ShoppingBag, MessageSquare, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OFFICIAL_SIZES } from '../data/catalogData';
-import { getPosterAvailableSizes } from '../utils/posterHelpers';
+import { getPosterAvailableSizes, getPosterCategoryName } from '../utils/posterHelpers';
 
 export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhatsApp, onOpenCart }) {
   const [quantity, setQuantity] = useState(1);
@@ -188,8 +188,8 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
             
             {/* Category Badge */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge-cyan" style={{ fontSize: '0.72rem', padding: '2px 10px' }}>
-                {poster.category}
+              <span className="badge-cyan" style={{ fontSize: '0.72rem', padding: '2px 10px', textTransform: 'uppercase' }}>
+                {getPosterCategoryName(poster)}
               </span>
             </div>
 
