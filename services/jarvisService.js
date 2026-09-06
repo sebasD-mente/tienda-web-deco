@@ -645,7 +645,15 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
               }
 
               const matchCat = cat && (pCat.includes(cat) || normalizeText(pCat).includes(normalizeText(cat)));
-              const matchEntity = canonicalNorm && (pTitle.includes(canonicalNorm) || pTags.includes(canonicalNorm));
+              const matchEntity = matchedEntity && (
+                pTitle.includes(canonicalNorm) ||
+                pSub.includes(canonicalNorm) ||
+                pTags.some(t => t.includes(canonicalNorm)) ||
+                matchedEntity.keywords.some(kw => {
+                  const kwNorm = normalizeText(kw);
+                  return pTitle.includes(kwNorm) || pSub.includes(kwNorm) || pTags.some(t => t.includes(kwNorm));
+                })
+              );
 
               const matchTerm = normTerm && (
                 pTitle.includes(normTerm) ||
@@ -654,7 +662,15 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
                 pTags.some(t => t.includes(normTerm))
               );
 
-              return matchCat || matchEntity || matchTerm;
+              const hasSpecificTerm = Boolean(normTerm || canonicalNorm);
+              if (hasSpecificTerm) {
+                // Si el usuario especificó un término o personaje, la obra DEBE coincidir con el término o entidad.
+                // Prohibido retornar obras ajenas simplemente por pertenecer a la misma categoría.
+                return Boolean(matchEntity || matchTerm);
+              }
+
+              // Si NO especificó término específico (ej: "muéstrame anime", "ver categoría cine"):
+              return Boolean(matchCat);
             });
 
             // Ordenar con inteligencia: coincidencia exacta de título/tags primero, y desempate por fecha más reciente

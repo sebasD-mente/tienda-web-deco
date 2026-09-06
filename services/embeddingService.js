@@ -179,6 +179,11 @@ export const ENTITY_ALIASES = [
     canonical: 'Pulp Fiction',
     keywords: ['pulp fiction', 'tiempos violentos', 'tarantino', 'vincent vega', 'jules winnfield', 'mia wallace'],
     synonyms: 'Pulp Fiction Tiempos Violentos Quentin Tarantino Mia Wallace Cine Clasico Peliculas'
+  },
+  {
+    canonical: 'Volver al Futuro',
+    keywords: ['volver al futuro', 'back to the future', 'delorean', 'marty mcfly', 'doc brown', 'mcfly', 'dr emmett brown', 'viajes en el tiempo', 'drew struzan bttf'],
+    synonyms: 'Volver al Futuro Back to the Future DeLorean Marty McFly Doc Brown Viajes en el Tiempo Robert Zemeckis Drew Struzan Cine Peliculas Trilogia'
   }
 ];
 
@@ -385,27 +390,49 @@ export function expandQueryWithContext(userQuery, conversationHistory = []) {
   const qNorm = normalizeText(userQuery);
   const matchedEntities = [];
 
-  // 1. Detección directa en la consulta actual
+  // 1. Detección directa en la consulta actual con coincidencia de palabra completa (evita falsos positivos como "cat" en "catalogo")
+  const paddedQ = ' ' + qNorm + ' ';
   for (const entity of ENTITY_ALIASES) {
     const found = entity.keywords.some(kw => {
       const kwNorm = normalizeText(kw);
-      return qNorm === kwNorm || qNorm.includes(` ${kwNorm} `) || qNorm.startsWith(`${kwNorm} `) || qNorm.endsWith(` ${kwNorm}`) || qNorm.includes(kwNorm);
+      return paddedQ.includes(' ' + kwNorm + ' ');
     });
     if (found) {
       matchedEntities.push(entity);
     }
   }
 
-  // 2. Detección en el historial reciente si la consulta es de seguimiento (ej: "y cuales otros hay?", "tienes mas?", "y de el?")
+  // 2. Detección en el historial reciente si la consulta es de seguimiento (ej: "y cuales otros hay?", "tienes mas?", "si claro quiero verlas")
   let activeSubject = null;
-  const isFollowUp = qNorm.includes('otro') || qNorm.includes('mas') || qNorm.includes('tambien') || qNorm.includes('ademas') || qNorm.length < 15;
+  const followUpKeywords = [
+    'otro', 'otros', 'otra', 'otras', 'mas', 'tambien', 'ademas', 'si', 'claro',
+    'muestrame', 'muestramelas', 'muestralas', 'muestralos', 'ensename', 'ensenamelas',
+    'ver', 'verlas', 'verlos', 'dale', 'cuales', 'porfa', 'favor', 'va', 'simon',
+    'bueno', 'ok', 'ensena', 'muestra'
+  ];
+  const qWords = qNorm.split(' ').filter(Boolean);
+  const isFollowUp = (
+    qWords.some(w => followUpKeywords.includes(w)) ||
+    qNorm.includes('quiero ver') ||
+    qNorm.includes('puedes mostrar') ||
+    qNorm.includes('me gustaria ver') ||
+    qNorm.length < 25
+  );
 
   if (matchedEntities.length === 0 && isFollowUp && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-    const recentMessages = conversationHistory.slice(-4);
-    for (const msg of recentMessages.reverse()) {
+    // Priorizar los mensajes del cliente/usuario para evitar falsos positivos con saludos o catálogos del asistente
+    const userMessages = conversationHistory.filter(m => m && (m.sender === 'user' || m.sender === 'client' || m.role === 'user'));
+    const candidates = userMessages.length > 0 ? userMessages.slice(-3) : conversationHistory.slice(-4);
+
+    for (const msg of candidates.reverse()) {
       const msgText = normalizeText(msg.text || msg.content || '');
+      const paddedMsg = ' ' + msgText + ' ';
       for (const entity of ENTITY_ALIASES) {
-        if (entity.keywords.some(kw => msgText.includes(normalizeText(kw)))) {
+        const found = entity.keywords.some(kw => {
+          const kwNorm = normalizeText(kw);
+          return paddedMsg.includes(' ' + kwNorm + ' ');
+        });
+        if (found) {
           matchedEntities.push(entity);
           activeSubject = entity.canonical;
           break;
@@ -464,11 +491,20 @@ export function computeLexicalSimilarity(query, p, matchedEntities = []) {
     : [];
   const tags = [...rawTags, ...virtualTags];
 
-  // 1. Verificación de entidades reconocidas (ej: "el bicho" -> Cristiano Ronaldo)
+  // 1. Verificación de entidades reconocidas (ej: "el bicho" -> Cristiano Ronaldo, "volver al futuro" -> Back to the Future)
   let entityBonus = 0;
   for (const ent of matchedEntities) {
     const canonicalNorm = normalizeText(ent.canonical);
-    if (title.includes(canonicalNorm) || franchise.includes(canonicalNorm)) {
+    const matchesEntity = (
+      title.includes(canonicalNorm) ||
+      sub.includes(canonicalNorm) ||
+      franchise.includes(canonicalNorm) ||
+      (Array.isArray(ent.keywords) && ent.keywords.some(kw => {
+        const kwNorm = normalizeText(kw);
+        return title.includes(kwNorm) || sub.includes(kwNorm) || tags.some(t => t.includes(kwNorm));
+      }))
+    );
+    if (matchesEntity) {
       entityBonus = Math.max(entityBonus, 0.85);
     }
   }
@@ -518,7 +554,8 @@ export function computeLexicalSimilarity(query, p, matchedEntities = []) {
   }
 
   const coverage = matchCount > 0 ? (matchCount / qTokens.length) : 0.5;
-  return Math.min(1.0, rawScore * coverage);
+  const computed = rawScore * coverage;
+  return Math.min(1.0, entityBonus > 0 ? Math.max(entityBonus, computed) : computed);
 }
 
 /**
@@ -633,6 +670,22 @@ export async function findSimilarPosters(userQuery, limit = 8, customApiKey, min
       const dateB = new Date(b.poster?.createdAt || 0).getTime();
       return dateB - dateA;
     });
+
+    // 6. Si existen coincidencias fuertes (score >= 0.75 o match de entidad),
+    // descartar obras de relleno con caída abrupta de relevancia
+    if (relevantPosters.length > 0) {
+      const topScore = relevantPosters[0].score;
+      if (topScore >= 0.75) {
+        const strictMatches = relevantPosters.filter(p => {
+          if (matchedEntities.length > 0) {
+            return p.lexicalScore >= 0.70 || (topScore - p.score) <= 0.08;
+          }
+          if (p.lexicalScore >= 0.50) return true;
+          return (topScore - p.score) <= 0.12;
+        });
+        return strictMatches.slice(0, limit);
+      }
+    }
 
     return relevantPosters.slice(0, limit);
   } catch (err) {
