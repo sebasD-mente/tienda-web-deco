@@ -306,9 +306,9 @@ export default function CustomPostersPage({ onNavigate, settings }) {
   return (
     <div style={{ paddingTop: '110px', background: '#060910', minHeight: '100vh', color: 'var(--text-primary)' }}>
       
-      {/* 1. Hero Header */}
+      {/* 1. Hero Header & Introduction */}
       <section style={{
-        padding: '60px 0 40px 0',
+        padding: '50px 0 32px 0',
         textAlign: 'center',
         position: 'relative',
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
@@ -328,250 +328,19 @@ export default function CustomPostersPage({ onNavigate, settings }) {
           <p style={{
             color: 'var(--text-secondary)',
             maxWidth: '780px',
-            margin: '0 auto 26px auto',
+            margin: '0 auto',
             fontSize: '1.05rem',
             lineHeight: '1.6'
           }}>
             Transforma tus imágenes en cuadros sobre <strong>Madera MDF de 5.5 mm</strong>, <strong>PVC impermeable de 5 mm</strong> o solicita <strong>solo la impresión en vinil adhesivo</strong>. Usa nuestro <strong>cotizador de medida especial</strong> para fabricar cualquier tamaño que necesites.
           </p>
-
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => {
-                const el = document.getElementById('cotizador');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="btn-cyan"
-              style={{ padding: '12px 26px', fontSize: '0.92rem', cursor: 'pointer' }}
-            >
-              <span>Configurar & Cotizar</span>
-              <ArrowRight size={16} />
-            </button>
-
-            <button
-              onClick={() => onNavigate && onNavigate('catalog')}
-              className="btn-secondary"
-              style={{ padding: '12px 22px', fontSize: '0.92rem' }}
-            >
-              <span>Ver Diseños del Catálogo</span>
-            </button>
-          </div>
         </div>
       </section>
 
-      {/* 2. Process Highlights */}
-      <section style={{ padding: '45px 0 30px 0', position: 'relative' }}>
-        <div className="container">
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '20px',
-            marginBottom: '20px'
-          }}>
-            
-            {/* Step 1: Carga tu Imagen */}
-            <div
-              onClick={() => {
-                const el = document.getElementById('cotizador');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-                const firstId = postersList[0]?.id;
-                if (firstId && fileInputRefs.current[firstId]) {
-                  setTimeout(() => fileInputRefs.current[firstId].click(), 350);
-                }
-              }}
-              className="glass-card"
-              style={{
-                padding: '22px',
-                position: 'relative',
-                cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                border: '1px solid rgba(0, 242, 254, 0.2)'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#00f2fe';
-                e.currentTarget.style.transform = 'translateY(-3px)';
-                e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 242, 254, 0.15)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.2)';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-              title="Haz clic para cargar tu foto"
-            >
-              <div style={{
-                position: 'absolute',
-                top: '16px',
-                right: '18px',
-                fontSize: '2.2rem',
-                fontWeight: 900,
-                fontFamily: 'var(--font-bebas)',
-                color: 'rgba(0, 242, 254, 0.15)',
-                lineHeight: 1
-              }}>
-                01
-              </div>
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                background: 'rgba(0, 242, 254, 0.12)',
-                color: 'var(--accent-cyan)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '14px'
-              }}>
-                <Upload size={22} />
-              </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>
-                1. Carga tu Imagen o Idea
-              </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: '1.5', margin: '0 0 10px 0' }}>
-                Selecciona tu foto o diseño aquí o envíala a nuestro WhatsApp en JPG, PNG, PDF o TIFF.
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-cyan)', fontSize: '0.78rem', fontWeight: 700 }}>
-                <span>Subir imagen ahora</span>
-                <ArrowRight size={13} />
-              </div>
-            </div>
-
-            {/* Step 2: Elige Base & Medidas */}
-            <div
-              onClick={() => {
-                const el = document.getElementById('cotizador');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="glass-card"
-              style={{
-                padding: '22px',
-                position: 'relative',
-                cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                border: '1px solid rgba(56, 189, 248, 0.2)'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#38bdf8';
-                e.currentTarget.style.transform = 'translateY(-3px)';
-                e.currentTarget.style.boxShadow = '0 10px 25px rgba(56, 189, 248, 0.15)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.2)';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-              title="Haz clic para configurar medidas y material"
-            >
-              <div style={{
-                position: 'absolute',
-                top: '16px',
-                right: '18px',
-                fontSize: '2.2rem',
-                fontWeight: 900,
-                fontFamily: 'var(--font-bebas)',
-                color: 'rgba(0, 242, 254, 0.15)',
-                lineHeight: 1
-              }}>
-                02
-              </div>
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                background: 'rgba(56, 189, 248, 0.12)',
-                color: 'var(--accent-blue)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '14px'
-              }}>
-                <Layers size={22} />
-              </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>
-                2. Elige Base & Medidas
-              </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: '1.5', margin: '0 0 10px 0' }}>
-                Escoge entre <strong>MDF 5.5mm</strong>, <strong>PVC 5mm</strong> o <strong>Solo Vinil (50%)</strong> con tamaños estándar o cotizador especial.
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-blue)', fontSize: '0.78rem', fontWeight: 700 }}>
-                <span>Cotizar medidas</span>
-                <ArrowRight size={13} />
-              </div>
-            </div>
-
-            {/* Step 3: Entrega en 3 Días */}
-            <div
-              onClick={() => {
-                const el = document.getElementById('cotizador');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="glass-card"
-              style={{
-                padding: '22px',
-                position: 'relative',
-                cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                border: '1px solid rgba(0, 245, 160, 0.2)'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#00f5a0';
-                e.currentTarget.style.transform = 'translateY(-3px)';
-                e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 245, 160, 0.15)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(0, 245, 160, 0.2)';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-              title="Haz clic para ordenar tu cuadro personalizado"
-            >
-              <div style={{
-                position: 'absolute',
-                top: '16px',
-                right: '18px',
-                fontSize: '2.2rem',
-                fontWeight: 900,
-                fontFamily: 'var(--font-bebas)',
-                color: 'rgba(0, 242, 254, 0.15)',
-                lineHeight: 1
-              }}>
-                03
-              </div>
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                background: 'rgba(0, 245, 160, 0.12)',
-                color: '#00f5a0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '14px'
-              }}>
-                <Truck size={22} />
-              </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>
-                3. Entrega en 3 Días
-              </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: '1.5', margin: '0 0 10px 0' }}>
-                Fabricación garantizada y lista para colgar con cinta de montaje incluida. Envíos seguros a toda Guatemala.
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#00f5a0', fontSize: '0.78rem', fontWeight: 700 }}>
-                <span>Ver opciones de envío</span>
-                <ArrowRight size={13} />
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Interactive Customizer & Formula Calculator */}
+      {/* 2. Interactive Customizer & Formula Calculator */}
       <section id="cotizador" style={{
-        padding: '50px 0 70px 0',
+        padding: '45px 0 70px 0',
         background: '#040609',
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
       }}>
         <div className="container">

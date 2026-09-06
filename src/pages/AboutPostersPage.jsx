@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Cpu, Layers, Hammer, CheckCircle2, ArrowRight, Ruler, Award, ExternalLink } from 'lucide-react';
+import { Cpu, Layers, Hammer, CheckCircle2, ArrowRight, Ruler, Award, ExternalLink } from 'lucide-react';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 
 export default function AboutPostersPage({ onNavigate }) {
@@ -15,19 +15,14 @@ export default function AboutPostersPage({ onNavigate }) {
         background: 'radial-gradient(ellipse at top center, rgba(0, 242, 254, 0.08) 0%, transparent 70%)'
       }}>
         <div className="container">
-          <div className="badge-cyan" style={{ marginBottom: '16px' }}>
-            <ShieldCheck size={14} />
-            <span>ESTÁNDARES DE FABRICACIÓN & CALIDAD</span>
-          </div>
-
           <h1 style={{
             fontSize: 'clamp(2.4rem, 5vw, 4rem)',
             fontWeight: 900,
             lineHeight: 1.1,
             marginBottom: '18px',
-            color: '#fff'
+            color: '#ffffff'
           }}>
-            Más Sobre <span className="text-gradient-cyan">Nuestros Pósters</span>
+            Más Sobre Nuestros Pósters
           </h1>
 
           <p style={{

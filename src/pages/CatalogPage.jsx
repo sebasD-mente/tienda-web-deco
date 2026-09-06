@@ -1,5 +1,5 @@
 import React, { useRef, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, Layers, ArrowRight, Grid } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Layers, ArrowRight, Grid } from 'lucide-react';
 import { getPosterSizeBadge, getPosterPriceDisplay } from '../utils/posterHelpers';
 import OptimizedImage from '../components/OptimizedImage';
 
@@ -60,7 +60,7 @@ export default function CatalogPage({
           background: 'linear-gradient(135deg, rgba(6, 18, 30, 0.9) 0%, rgba(9, 13, 22, 0.95) 100%)',
           border: '1px solid rgba(0, 242, 254, 0.25)',
           borderRadius: '20px',
-          padding: 'clamp(24px, 5vw, 40px)',
+          padding: 'clamp(24px, 4vw, 36px)',
           marginBottom: '36px',
           position: 'relative',
           overflow: 'hidden',
@@ -78,31 +78,12 @@ export default function CatalogPage({
           }} />
 
           <div style={{ position: 'relative', zIndex: 2, maxWidth: '850px' }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(0, 242, 254, 0.1)',
-              border: '1px solid rgba(0, 242, 254, 0.3)',
-              color: 'var(--accent-cyan)',
-              padding: '4px 12px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.75rem',
-              fontWeight: 800,
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase',
-              marginBottom: '12px'
-            }}>
-              <Sparkles size={13} />
-              <span>Catálogo Maestro Oficial • {activeCategories.filter(c => posters.some(p => p.category === c.id)).length} Colecciones • {posters.length} Obras</span>
-            </div>
-
             <h1 style={{
               fontFamily: 'var(--font-bebas)',
               fontSize: 'clamp(2.5rem, 6vw, 4rem)',
               letterSpacing: '0.04em',
               lineHeight: 1.05,
-              margin: '0 0 14px 0',
+              margin: '0 0 12px 0',
               color: '#ffffff',
               textTransform: 'uppercase'
             }}>

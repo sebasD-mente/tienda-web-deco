@@ -413,36 +413,24 @@ export default function CategoryShelf({
             );
           })}
 
-        {/* High-Impact Bottom Call to Action: Go to Full Catalog */}
+        {/* Streamlined Call to Action: Go to Full Catalog */}
         <div style={{
-          marginTop: '20px',
-          background: 'linear-gradient(135deg, rgba(9, 21, 38, 0.8) 0%, rgba(6, 12, 22, 0.95) 100%)',
-          border: '1px solid rgba(0, 242, 254, 0.3)',
-          borderRadius: '20px',
-          padding: 'clamp(28px, 6vw, 45px)',
+          marginTop: '35px',
+          marginBottom: '20px',
           textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.6)'
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '14px'
         }}>
-          <h3 style={{
-            fontFamily: 'var(--font-bebas)',
-            fontSize: 'clamp(2rem, 5vw, 3.2rem)',
-            letterSpacing: '0.04em',
-            margin: '0 0 10px 0',
-            color: '#ffffff',
-            textTransform: 'uppercase'
-          }}>
-            ¿BUSCAS MÁS COLECCIONES Y DISEÑOS?
-          </h3>
           <p style={{
             color: 'var(--text-secondary)',
-            fontSize: '0.95rem',
-            maxWidth: '650px',
-            margin: '0 auto 22px auto',
-            lineHeight: 1.6
+            fontSize: '1rem',
+            maxWidth: '620px',
+            margin: 0,
+            lineHeight: 1.5
           }}>
-            Descubre nuestro catálogo maestro con más de 32 obras exclusivas divididas en todas las categorías: Anime, Super Héroes, Autos Clásicos, Cine, Series y Música.
+            Explora más de {posters?.length || 200} obras exclusivas disponibles en todas nuestras colecciones.
           </p>
           <button
             onClick={() => {
