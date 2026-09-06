@@ -332,28 +332,18 @@ export default function CustomPostersPage({ onNavigate, settings }) {
             fontSize: '1.05rem',
             lineHeight: '1.6'
           }}>
-            Transforma tus imágenes en cuadros sobre <strong>Madera MDF de 5.5 mm</strong>, <strong>PVC impermeable de 5 mm</strong> o solicita <strong>solo la impresión en vinil adhesivo</strong>. Usa nuestro <strong>cotizador de medida especial</strong> para fabricar cualquier tamaño que necesites.
+            Transforma tus imágenes en cuadros sobre <strong>Madera MDF de 5.5 mm</strong>, <strong>PVC impermeable de 5 mm</strong> o solicita <strong>solo la impresión en vinil adhesivo</strong>. A continuación, personaliza tu póster eligiendo el material, dimensiones y cargando tu diseño para cotizar en tiempo real.
           </p>
         </div>
       </section>
 
       {/* 2. Interactive Customizer & Formula Calculator */}
       <section id="cotizador" style={{
-        padding: '45px 0 70px 0',
+        padding: '36px 0 70px 0',
         background: '#040609',
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
       }}>
         <div className="container">
-          
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '2.1rem', fontWeight: 900, color: '#ffffff', marginBottom: '6px' }}>
-              Configura tus Pósters Personalizados
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', maxWidth: '650px', margin: '0 auto', fontSize: '0.94rem' }}>
-              Carga tus imágenes, selecciona la base y dimensiones deseadas para calcular tu cotización en tiempo real.
-            </p>
-          </div>
-
           <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
 
             {/* LIST OF CUSTOM POSTER BLOCKS */}

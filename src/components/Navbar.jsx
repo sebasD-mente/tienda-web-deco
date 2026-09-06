@@ -253,7 +253,7 @@ export default function Navbar({
             {/* 5. Right Items: Jarvis Pill (desktop only) + Search + Cart + Mobile Hamburger */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginLeft: 'auto' }}>
               
-              {/* Asistente de IA Pill (Desktop Only) */}
+              {/* Pedidos Online Pill (Desktop Only) */}
               <button
                 onClick={onOpenJarvis}
                 className="jarvis-nav-pill"
@@ -261,23 +261,24 @@ export default function Navbar({
                   background: 'rgba(0, 32, 44, 0.95)',
                   border: '1px solid rgba(0, 242, 254, 0.35)',
                   color: '#5eead4',
-                  padding: '8px 18px',
+                  padding: '6px 14px',
                   borderRadius: 'var(--radius-full)',
                   cursor: 'pointer',
-                  fontSize: '0.78rem',
+                  fontSize: '0.74rem',
                   fontWeight: 800,
                   fontFamily: 'var(--font-display)',
                   letterSpacing: '0.04em',
                   textTransform: 'uppercase',
                   display: 'flex',
                   alignItems: 'center',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap'
                 }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#00f2fe'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.35)'}
-                title="Asistente de IA"
+                title="Pedidos Online"
               >
-                <span>ASISTENTE DE IA</span>
+                <span>PEDIDOS ONLINE</span>
               </button>
 
               {/* Search Icon */}
@@ -612,7 +613,7 @@ export default function Navbar({
                     </div>
                     <div>
                       <div style={{ fontWeight: 900, fontSize: '0.92rem', color: '#00f2fe', letterSpacing: '0.04em' }}>
-                        ASISTENTE DE IA (J.A.R.V.I.S.)
+                        PEDIDOS ONLINE
                       </div>
                       <div style={{ fontSize: '0.74rem', color: '#99f6e4' }}>
                         Asesoría instantánea y cotizaciones 24/7
