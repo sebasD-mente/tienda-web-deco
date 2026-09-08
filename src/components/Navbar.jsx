@@ -131,31 +131,38 @@ export default function Navbar({
           }}>
             
             {/* 3. Vertically Centered Overlapping Circular Logo */}
-            <a
-              href="/"
-              onClick={(e) => handleNavClick(e, 'home')}
-              style={{
-                position: 'absolute',
-                left: '0px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                zIndex: 20,
-                textDecoration: 'none',
-                display: 'block'
-              }}
-            >
-              <img
-                src="/assets/logo-navbar.png"
-                alt="Deco Vintage Guate"
-                className="navbar-logo-img"
+            <div className="navbar-logo-slot" style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              flexShrink: 0
+            }}>
+              <a
+                href="/"
+                onClick={(e) => handleNavClick(e, 'home')}
                 style={{
-                  objectFit: 'contain',
-                  display: 'block',
-                  filter: 'drop-shadow(0 6px 16px rgba(0, 0, 0, 0.95))',
-                  transition: 'transform 0.2s ease'
+                  position: 'absolute',
+                  left: '0px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 20,
+                  textDecoration: 'none',
+                  display: 'block'
                 }}
-              />
-            </a>
+              >
+                <img
+                  src="/assets/logo-navbar.png"
+                  alt="Deco Vintage Guate"
+                  className="navbar-logo-img"
+                  style={{
+                    objectFit: 'contain',
+                    display: 'block',
+                    filter: 'drop-shadow(0 6px 16px rgba(0, 0, 0, 0.95))',
+                    transition: 'transform 0.2s ease'
+                  }}
+                />
+              </a>
+            </div>
 
             {/* 4. Desktop Navigation Links */}
             <nav className="desktop-nav" style={{
@@ -1011,28 +1018,38 @@ export default function Navbar({
 
       {/* Responsive Inline CSS */}
       <style>{`
+        .navbar-logo-slot {
+          width: 125px;
+          height: 68px;
+        }
         .navbar-logo-img {
           width: 115px;
           height: 115px;
         }
-        @media (min-width: 1150px) {
+        @media (min-width: 1280px) {
           .desktop-nav { display: flex !important; }
           .mobile-menu-btn { display: none !important; }
           .jarvis-nav-pill { display: flex !important; }
         }
-        @media (max-width: 1149px) {
+        @media (max-width: 1279px) {
           .desktop-nav { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .jarvis-nav-pill { display: none !important; }
+          .navbar-logo-slot {
+            width: 85px;
+          }
           .navbar-logo-img {
-            width: 78px;
-            height: 78px;
+            width: 80px;
+            height: 80px;
           }
         }
         @media (max-width: 480px) {
+          .navbar-logo-slot {
+            width: 68px;
+          }
           .navbar-logo-img {
-            width: 62px;
-            height: 62px;
+            width: 64px;
+            height: 64px;
           }
         }
       `}</style>

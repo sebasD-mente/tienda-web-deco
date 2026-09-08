@@ -301,11 +301,9 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
           <div style={{
             marginTop: '20px',
             display: 'flex',
+            flexWrap: 'wrap',
             gap: '8px',
-            overflowX: 'auto',
-            paddingBottom: '4px',
-            scrollbarWidth: 'none',
-            WebkitOverflowScrolling: 'touch'
+            paddingBottom: '4px'
           }}>
             {/* 1. Inventario */}
             <button
