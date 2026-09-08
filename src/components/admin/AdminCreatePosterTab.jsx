@@ -129,7 +129,14 @@ export default function AdminCreatePosterTab({
         onShowToast('Debes seleccionar al menos un tamaño.', 'error');
       }
     } else {
-      setSelectedSizeIds([...selectedSizeIds, id]);
+      if (id === 'PORTADA_ALBUM') {
+        // Al seleccionar 30 x 30 (Portada de Álbum), deseleccionar automáticamente el resto de tamaños
+        setSelectedSizeIds(['PORTADA_ALBUM']);
+      } else {
+        // Si se selecciona un tamaño estándar, deseleccionar automáticamente PORTADA_ALBUM si estaba activo
+        const withoutAlbum = selectedSizeIds.filter(sId => sId !== 'PORTADA_ALBUM');
+        setSelectedSizeIds([...withoutAlbum, id]);
+      }
     }
   };
 
@@ -541,6 +548,10 @@ export default function AdminCreatePosterTab({
                 <button type="button" onClick={() => setSelectedSizeIds(['MINI', 'PEQUENO', 'MEDIANO', 'GRANDE', 'GIGANTE'])}
                   style={{ padding: '6px 14px', borderRadius: '8px', background: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.05)', border: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', color: selectedSizeIds.length === 5 && !selectedSizeIds.includes('PORTADA_ALBUM') ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: '0.76rem', fontWeight: 800, cursor: 'pointer' }}>
                   ✓ Marcar los 5 Tamaños Estándar
+                </button>
+                <button type="button" onClick={() => setSelectedSizeIds(['PORTADA_ALBUM'])}
+                  style={{ padding: '6px 14px', borderRadius: '8px', background: selectedSizeIds.length === 1 && selectedSizeIds.includes('PORTADA_ALBUM') ? 'rgba(0, 242, 254, 0.2)' : 'rgba(255, 255, 255, 0.05)', border: selectedSizeIds.length === 1 && selectedSizeIds.includes('PORTADA_ALBUM') ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', color: selectedSizeIds.length === 1 && selectedSizeIds.includes('PORTADA_ALBUM') ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: '0.76rem', fontWeight: 800, cursor: 'pointer' }}>
+                  🎵 Solo Portada (30 x 30 cm)
                 </button>
               </div>
             </div>
