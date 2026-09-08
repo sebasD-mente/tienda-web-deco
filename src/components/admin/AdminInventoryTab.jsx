@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Search, Plus, X, Package, Star, Edit3, Trash2, Eye, Image 
+  Search, Plus, X, Package, Star, Edit3, Trash2, Eye, Image, ArrowUpDown 
 } from 'lucide-react';
 import OptimizedImage from '../OptimizedImage';
 import { getPosterCategoryName } from '../../utils/posterHelpers';
@@ -26,6 +26,7 @@ export default function AdminInventoryTab({
   const [searchFilter, setSearchFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [sortBy, setSortBy] = useState('date-desc');
 
   // Debounce search filter input by 300ms to avoid expensive filtering on every keystroke
   useEffect(() => {
@@ -40,22 +41,62 @@ export default function AdminInventoryTab({
     setDebouncedSearch('');
   };
 
-  // Filtered posters calculation using debouncedSearch
-  const filteredPosters = posters.filter(poster => {
+  // Helper para parsear fecha de creación a timestamp de forma segura
+  const parseDate = (d) => {
+    if (!d) return 0;
+    const t = new Date(d).getTime();
+    return Number.isNaN(t) ? 0 : t;
+  };
+
+  // Filtered and sorted posters calculation using debouncedSearch and sortBy
+  const filteredPosters = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
-    const matchesSearch = query === '' || 
-      (poster.title || '').toLowerCase().includes(query) ||
-      (poster.subtitle || '').toLowerCase().includes(query) ||
-      (poster.tags || []).some(t => (t || '').toLowerCase().includes(query));
+    const result = posters.filter(poster => {
+      const matchesSearch = query === '' || 
+        (poster.title || '').toLowerCase().includes(query) ||
+        (poster.subtitle || '').toLowerCase().includes(query) ||
+        (poster.tags || []).some(t => (t || '').toLowerCase().includes(query));
 
-    const matchesCategory = categoryFilter === 'ALL' || poster.category === categoryFilter;
+      const matchesCategory = categoryFilter === 'ALL' || poster.category === categoryFilter;
 
-    return matchesSearch && matchesCategory;
-  });
+      return matchesSearch && matchesCategory;
+    });
+
+    return result.sort((a, b) => {
+      if (sortBy === 'alpha-asc') {
+        const titleA = (a.title || a.titulo || '').trim();
+        const titleB = (b.title || b.titulo || '').trim();
+        const cmp = titleA.localeCompare(titleB, 'es', { numeric: true, sensitivity: 'base' });
+        return cmp !== 0 ? cmp : (a.id || '').localeCompare(b.id || '');
+      }
+      if (sortBy === 'alpha-desc') {
+        const titleA = (a.title || a.titulo || '').trim();
+        const titleB = (b.title || b.titulo || '').trim();
+        const cmp = titleB.localeCompare(titleA, 'es', { numeric: true, sensitivity: 'base' });
+        return cmp !== 0 ? cmp : (b.id || '').localeCompare(a.id || '');
+      }
+      if (sortBy === 'date-asc') {
+        const dateA = parseDate(posterDate(a));
+        const dateB = parseDate(posterDate(b));
+        if (dateA !== dateB) return dateA - dateB;
+        return (a.id || '').localeCompare(b.id || '');
+      }
+      // date-desc (Más recientes primero - por defecto)
+      const dateA = parseDate(posterDate(a));
+      const dateB = parseDate(posterDate(b));
+      if (dateA !== dateB) return dateB - dateA;
+      return (b.id || '').localeCompare(a.id || '');
+    });
+  }, [posters, debouncedSearch, categoryFilter, sortBy]);
+
+  // Extraer fecha disponible de la obra
+  function posterDate(p) {
+    return p.createdAt || p.created_at || p.updatedAt || p.updated_at || null;
+  }
 
   return (
     <div>
-      {/* Search & Category Filter Toolbar */}
+      {/* Search, Category & Sorting Toolbar */}
       <div className="glass-card" style={{ padding: '16px 20px', marginBottom: '20px' }}>
         <div style={{
           display: 'flex',
@@ -124,11 +165,12 @@ export default function AdminInventoryTab({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            flex: '1 1 200px'
+            flex: '1 1 190px'
           }}>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
+              aria-label="Filtrar por categoría"
               style={{
                 width: '100%',
                 background: '#090e18',
@@ -148,6 +190,37 @@ export default function AdminInventoryTab({
                   {c.name} ({posters.filter(p => p.category === c.id).length})
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Sort Order Dropdown */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flex: '1 1 190px'
+          }}>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              aria-label="Ordenar obras por fecha o alfabéticamente"
+              style={{
+                width: '100%',
+                background: '#090e18',
+                color: '#fff',
+                border: '1px solid rgba(0, 242, 254, 0.3)',
+                padding: '9px 14px',
+                borderRadius: '10px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="date-desc">Fecha: Más recientes</option>
+              <option value="date-asc">Fecha: Más antiguas</option>
+              <option value="alpha-asc">Orden Alfabético (A - Z)</option>
+              <option value="alpha-desc">Orden Alfabético (Z - A)</option>
             </select>
           </div>
 

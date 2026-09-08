@@ -247,25 +247,6 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
             gap: '14px'
           }}>
             <div>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'rgba(0, 242, 254, 0.1)',
-                border: '1px solid rgba(0, 242, 254, 0.3)',
-                color: 'var(--accent-cyan)',
-                padding: '3px 10px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.7rem',
-                fontWeight: 800,
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase',
-                marginBottom: '6px'
-              }}>
-                <Shield size={12} />
-                <span>Panel de Control Seguro • VPS SSD</span>
-              </div>
-
               <h1 style={{ fontSize: 'clamp(1.3rem, 3.5vw, 1.85rem)', fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1.15 }}>
                 Administración <span className="text-gradient-cyan">Deco Vintage</span>
               </h1>
@@ -485,7 +466,7 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
               }}
             >
               <ArcReactor size={18} />
-              <span>IA J.A.R.V.I.S.</span>
+              <span>JARVIS</span>
             </button>
 
             {/* 6. Ajustes & WhatsApp */}
