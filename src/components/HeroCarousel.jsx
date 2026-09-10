@@ -28,6 +28,13 @@ export default function HeroCarousel({
   const [internalFranchises, setInternalFranchises] = useState(() => getStoredFranchises());
   const franchises = (propFranchises && propFranchises.length > 0) ? propFranchises : internalFranchises;
 
+  // Scroll state & controls for franchises
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragInfoRef = useRef({ isDown: false, startX: 0, scrollLeft: 0, hasMoved: false });
+
   useEffect(() => {
     const handleUpdate = () => {
       setInternalFranchises(getStoredFranchises());
@@ -35,6 +42,84 @@ export default function HeroCarousel({
     window.addEventListener('deco-catalog-updated', handleUpdate);
     return () => window.removeEventListener('deco-catalog-updated', handleUpdate);
   }, []);
+
+  // Check scroll state and overflow for franchise carousel
+  const checkFranchiseScroll = () => {
+    const el = franchiseScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const overflowing = scrollWidth > clientWidth + 4;
+    setIsOverflowing(overflowing);
+    setCanScrollLeft(overflowing && scrollLeft > 4);
+    setCanScrollRight(overflowing && scrollLeft < scrollWidth - clientWidth - 4);
+  };
+
+  useEffect(() => {
+    const el = franchiseScrollRef.current;
+    if (!el) return;
+
+    checkFranchiseScroll();
+
+    const handleScroll = () => {
+      checkFranchiseScroll();
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        checkFranchiseScroll();
+      });
+      resizeObserver.observe(el);
+      if (el.parentElement) {
+        resizeObserver.observe(el.parentElement);
+      }
+    }
+
+    const handleWindowResize = () => {
+      checkFranchiseScroll();
+    };
+    window.addEventListener('resize', handleWindowResize);
+
+    const timer = setTimeout(checkFranchiseScroll, 200);
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleWindowResize);
+      clearTimeout(timer);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, [franchises]);
+
+  // Mouse drag-to-scroll for desktop users
+  const handleFranchiseMouseDown = (e) => {
+    if (e.button !== 0 || !franchiseScrollRef.current) return;
+    dragInfoRef.current = {
+      isDown: true,
+      startX: e.pageX - franchiseScrollRef.current.offsetLeft,
+      scrollLeft: franchiseScrollRef.current.scrollLeft,
+      hasMoved: false
+    };
+    setIsDragging(true);
+  };
+
+  const handleFranchiseMouseMove = (e) => {
+    if (!dragInfoRef.current.isDown || !franchiseScrollRef.current) return;
+    const x = e.pageX - franchiseScrollRef.current.offsetLeft;
+    const walk = x - dragInfoRef.current.startX;
+    if (Math.abs(walk) > 4) {
+      dragInfoRef.current.hasMoved = true;
+    }
+    franchiseScrollRef.current.scrollLeft = dragInfoRef.current.scrollLeft - walk;
+  };
+
+  const handleFranchiseMouseUpOrLeave = () => {
+    if (dragInfoRef.current.isDown) {
+      dragInfoRef.current.isDown = false;
+      setIsDragging(false);
+    }
+  };
 
   // Only display posters explicitly marked as isFeatured (Best Sellers) - max 8
   const featuredPosters = useMemo(() => {
@@ -44,7 +129,9 @@ export default function HeroCarousel({
 
   const handleScrollFranchises = (direction) => {
     if (franchiseScrollRef.current) {
-      const amount = direction === 'left' ? -220 : 220;
+      const containerWidth = franchiseScrollRef.current.clientWidth || 320;
+      const scrollStep = Math.max(260, Math.floor(containerWidth * 0.75));
+      const amount = direction === 'left' ? -scrollStep : scrollStep;
       franchiseScrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
     }
   };
@@ -144,67 +231,114 @@ export default function HeroCarousel({
       <div style={{ padding: '36px 0 25px 0', background: '#060910' }}>
         <div className="container">
           
-          {/* Franchise Buttons Row (Pure Original Style: Borderless, Floating Logos with Glow Effect) */}
-          <div
-            ref={franchiseScrollRef}
-            className="franchise-track hide-scrollbar"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'clamp(14px, 2.5vw, 24px)',
-              scrollbarWidth: 'none',
-              WebkitOverflowScrolling: 'touch'
-            }}
-          >
-            {franchises.map((franchise) => (
-              <button
-                key={franchise.id}
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (onSelectFranchise) {
-                    onSelectFranchise(franchise);
-                  } else if (onSelectCategory) {
-                    onSelectCategory(franchise.category);
-                  }
-                }}
-                style={{
-                  width: 'clamp(72px, 8.5vw, 92px)',
-                  height: 'clamp(72px, 8.5vw, 92px)',
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  textDecoration: 'none',
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-6px) scale(1.08)';
-                  e.currentTarget.style.filter = 'drop-shadow(0 10px 20px rgba(0, 242, 254, 0.45))';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                  e.currentTarget.style.filter = 'none';
-                }}
-                title={`Colección ${franchise.name}`}
-              >
-                <img
-                  src={franchise.img}
-                  alt={`Colección ${franchise.name}`}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    display: 'block'
+          {/* Franchise Buttons Carousel with Navigation Controls & Responsive Overflow */}
+          <div className="franchise-carousel-wrapper">
+            
+            {/* Left Nav Button */}
+            <button
+              type="button"
+              onClick={() => handleScrollFranchises('left')}
+              className={`franchise-nav-btn franchise-nav-prev ${canScrollLeft ? 'is-visible' : ''}`}
+              aria-label="Colecciones anteriores"
+              title="Colecciones anteriores"
+            >
+              <ChevronLeft size={24} />
+            </button>
+
+            {/* Left Edge Gradient Fade */}
+            <div className={`franchise-fade-mask franchise-fade-left ${canScrollLeft ? 'is-visible' : ''}`} />
+
+            {/* Franchise Buttons Track */}
+            <div
+              ref={franchiseScrollRef}
+              onMouseDown={handleFranchiseMouseDown}
+              onMouseMove={handleFranchiseMouseMove}
+              onMouseUp={handleFranchiseMouseUpOrLeave}
+              onMouseLeave={handleFranchiseMouseUpOrLeave}
+              className={`franchise-track hide-scrollbar ${isOverflowing ? 'is-scrollable' : 'is-centered'} ${isDragging ? 'is-dragging' : ''}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'clamp(14px, 2.5vw, 24px)',
+                scrollbarWidth: 'none',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
+              {franchises.map((franchise) => (
+                <button
+                  key={franchise.id}
+                  type="button"
+                  onClick={(e) => {
+                    if (dragInfoRef.current.hasMoved) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onSelectFranchise) {
+                      onSelectFranchise(franchise);
+                    } else if (onSelectCategory) {
+                      onSelectCategory(franchise.category);
+                    }
                   }}
-                />
-              </button>
-            ))}
+                  style={{
+                    width: 'clamp(72px, 8.5vw, 92px)',
+                    height: 'clamp(72px, 8.5vw, 92px)',
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    textDecoration: 'none',
+                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => {
+                    if (!isDragging) {
+                      e.currentTarget.style.transform = 'translateY(-6px) scale(1.08)';
+                      e.currentTarget.style.filter = 'drop-shadow(0 10px 20px rgba(0, 242, 254, 0.45))';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                    e.currentTarget.style.filter = 'none';
+                  }}
+                  title={`Colección ${franchise.name}`}
+                >
+                  <img
+                    src={franchise.img}
+                    alt={`Colección ${franchise.name}`}
+                    draggable={false}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      display: 'block',
+                      pointerEvents: 'none',
+                      userSelect: 'none'
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Right Edge Gradient Fade */}
+            <div className={`franchise-fade-mask franchise-fade-right ${canScrollRight ? 'is-visible' : ''}`} />
+
+            {/* Right Nav Button */}
+            <button
+              type="button"
+              onClick={() => handleScrollFranchises('right')}
+              className={`franchise-nav-btn franchise-nav-next ${canScrollRight ? 'is-visible' : ''}`}
+              aria-label="Siguientes colecciones"
+              title="Siguientes colecciones"
+            >
+              <ChevronRight size={24} />
+            </button>
+
           </div>
 
           {/* BEST SELLERS Horizontal Carousel (Only rendered if there are featured posters) */}
@@ -419,21 +553,128 @@ export default function HeroCarousel({
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }
-        .franchise-track {
-          justify-content: center;
-          flex-wrap: nowrap;
-          overflow: visible !important;
-          padding: 24px 10px 40px 10px;
-          margin-bottom: 20px;
+
+        .franchise-carousel-wrapper {
+          position: relative;
+          width: 100%;
+          margin-bottom: 24px;
         }
+
+        .franchise-track {
+          display: flex;
+          align-items: center;
+          gap: clamp(14px, 2.5vw, 24px);
+          overflow-x: auto !important;
+          overflow-y: hidden;
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding: 16px 12px 24px 12px;
+          margin: 0;
+          cursor: grab;
+          user-select: none;
+        }
+
+        .franchise-track::-webkit-scrollbar {
+          display: none;
+        }
+
+        .franchise-track.is-dragging {
+          cursor: grabbing;
+          scroll-behavior: auto;
+        }
+
+        .franchise-track.is-centered {
+          justify-content: center;
+        }
+
+        .franchise-track.is-scrollable {
+          justify-content: flex-start;
+        }
+
+        /* Floating Nav Buttons ("Manejadores") */
+        .franchise-nav-btn {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%) scale(0.9);
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: rgba(6, 9, 16, 0.9);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(0, 242, 254, 0.35);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          z-index: 15;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.75), 0 0 16px rgba(0, 242, 254, 0.25);
+          opacity: 0;
+          pointer-events: none;
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .franchise-nav-btn.is-visible {
+          opacity: 1;
+          pointer-events: auto;
+          transform: translateY(-50%) scale(1);
+        }
+
+        .franchise-nav-btn:hover {
+          background: rgba(0, 242, 254, 0.22);
+          border-color: #00f2fe;
+          color: #00f2fe;
+          box-shadow: 0 4px 25px rgba(0, 242, 254, 0.5);
+          transform: translateY(-50%) scale(1.12);
+        }
+
+        .franchise-nav-prev {
+          left: -12px;
+        }
+
+        .franchise-nav-next {
+          right: -12px;
+        }
+
         @media (max-width: 768px) {
-          .franchise-track {
-            justify-content: flex-start;
-            overflow-x: auto !important;
-            overflow-y: visible !important;
-            padding: 24px 16px 40px 16px;
-            margin-bottom: 20px;
+          .franchise-nav-prev {
+            left: 2px;
           }
+          .franchise-nav-next {
+            right: 2px;
+          }
+          .franchise-nav-btn {
+            width: 38px;
+            height: 38px;
+          }
+        }
+
+        /* Subtle edge gradient fade masks */
+        .franchise-fade-mask {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 48px;
+          pointer-events: none;
+          z-index: 10;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .franchise-fade-mask.is-visible {
+          opacity: 1;
+        }
+
+        .franchise-fade-left {
+          left: 0;
+          background: linear-gradient(to right, #060910 0%, rgba(6, 9, 16, 0.8) 45%, transparent 100%);
+        }
+
+        .franchise-fade-right {
+          right: 0;
+          background: linear-gradient(to left, #060910 0%, rgba(6, 9, 16, 0.8) 45%, transparent 100%);
         }
       `}</style>
     </section>
