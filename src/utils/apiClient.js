@@ -87,7 +87,12 @@ async function handleResponse(res) {
     throw new Error('Tu sesión de administrador ha expirado. Por favor vuelve a iniciar sesión.');
   }
   if (!res.ok) {
-    throw new Error(data.error || data.details || `HTTP Error ${res.status}`);
+    let errorMsg = data.error || data.message || `HTTP Error ${res.status}`;
+    if (Array.isArray(data.details) && data.details.length > 0) {
+      const detailsStr = data.details.map(d => d.message || `${d.field}: ${d.code}`).join(', ');
+      errorMsg = `${errorMsg} (${detailsStr})`;
+    }
+    throw new Error(errorMsg);
   }
   return data;
 }

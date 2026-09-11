@@ -42,10 +42,53 @@ export const CUSTOM_ORDER_STATUSES = [
   'CANCELADO'
 ];
 
-function isValidCategory(val) {
+export async function isValidCategory(val) {
   if (!val || typeof val !== 'string') return false;
   const upper = val.toUpperCase().trim();
-  return CANONICAL_CATEGORIES.includes(upper);
+  if (CANONICAL_CATEGORIES.includes(upper)) return true;
+
+  try {
+    const { prisma } = await import('../config/prisma.js');
+    if (!prisma) return false;
+
+    // 1. Coincidencia exacta por ID en tabla categories
+    const byId = await prisma.category.findUnique({
+      where: { id: upper }
+    });
+    if (byId) return true;
+
+    // 2. Coincidencia con espacios convertidos a guión bajo (formato generado por upsertCategory)
+    const cleanId = upper.replace(/\s+/g, '_');
+    if (cleanId !== upper) {
+      const byCleanId = await prisma.category.findUnique({
+        where: { id: cleanId }
+      });
+      if (byCleanId) return true;
+    }
+
+    // 3. Coincidencia por nombre (case-insensitive)
+    const byName = await prisma.category.findFirst({
+      where: { name: { equals: upper, mode: 'insensitive' } }
+    });
+    if (byName) return true;
+
+    // 4. Verificación en store_settings.categories
+    const settings = await prisma.storeSettings.findUnique({
+      where: { id: 'default' }
+    });
+    if (Array.isArray(settings?.categories)) {
+      const exists = settings.categories.some(c => {
+        const cId = (typeof c === 'string' ? c : c.id || '').toUpperCase().trim();
+        const cName = (typeof c === 'object' && c.name ? c.name : '').toUpperCase().trim();
+        return cId === upper || cId === cleanId || (cName && cName === upper);
+      });
+      if (exists) return true;
+    }
+  } catch (err) {
+    console.warn('[AdminSchemas] Error verificando categoría dinámica en PostgreSQL:', err.message);
+  }
+
+  return false;
 }
 
 /**
@@ -86,7 +129,7 @@ export const posterCreateSchema = z.object({
   rating: z.number().optional(),
   reviewsCount: z.number().int().optional()
 }).passthrough()
-.superRefine((data, ctx) => {
+.superRefine(async (data, ctx) => {
   const hasTitle = (data.titulo && data.titulo.trim().length > 0) || (data.title && data.title.trim().length > 0);
   if (!hasTitle) {
     ctx.addIssue({
@@ -97,7 +140,7 @@ export const posterCreateSchema = z.object({
   }
 
   const cat = data.categoria || data.category;
-  if (!cat || !isValidCategory(cat)) {
+  if (!cat || !(await isValidCategory(cat))) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Categoría no válida.',
@@ -144,7 +187,7 @@ export const posterUpdateSchema = z.object({
   rating: z.number().optional(),
   reviewsCount: z.number().int().optional()
 }).passthrough()
-.superRefine((data, ctx) => {
+.superRefine(async (data, ctx) => {
   if (data.titulo !== undefined && data.titulo.trim().length === 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -161,7 +204,7 @@ export const posterUpdateSchema = z.object({
   }
 
   const cat = data.categoria || data.category;
-  if (cat !== undefined && !isValidCategory(cat)) {
+  if (cat !== undefined && !(await isValidCategory(cat))) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Categoría no válida.',

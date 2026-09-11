@@ -275,7 +275,8 @@ export default function AdminCreatePosterTab({
       await onSavePoster(posterData);
       resetForm();
     } catch (err) {
-      onShowToast('Error al guardar obra: ' + err.message, 'error');
+      // Preservar la imagen y los datos ingresados ante cualquier error del servidor/validación
+      console.warn('[AdminCreatePosterTab] Guardado no completado:', err.message);
     } finally {
       setIsSaving(false);
     }

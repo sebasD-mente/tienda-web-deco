@@ -76,10 +76,28 @@ async function safeInvalidateEmbeddingsCache() {
   }
 }
 
+const CANONICAL_CATEGORY_KEYS = [
+  'SUPERHEROES',
+  'INFANTILYDIBUJOSANIMADOS',
+  'BASKETBALL_Y_FORMULA_1',
+  'ANIME',
+  'SERIESYPELICULAS',
+  'MUSICA',
+  'FUTBOL',
+  'BEBIDAS_Y_BAR',
+  'OBRASDEARTE',
+  'VIDEO_JUEGOS',
+  'AUTOS',
+  'VINTAGE'
+];
+
 export function normalizeCategory(catStr) {
   if (!catStr) return 'GENERAL';
   const raw = String(catStr).trim();
   if (!raw) return 'GENERAL';
+
+  const rawUpper = raw.toUpperCase();
+  if (CANONICAL_CATEGORY_KEYS.includes(rawUpper)) return rawUpper;
 
   // Desaccentuar mediante Unicode NFD y normalizar a minúsculas
   const clean = raw
@@ -102,8 +120,8 @@ export function normalizeCategory(catStr) {
   if (clean === 'cine' || clean.includes('cinema')) return 'CINE';
   if (clean.includes('bebida') || clean.includes('bar') || clean.includes('licor') || clean.includes('trago')) return 'BEBIDAS_Y_BAR';
 
-  // Para cualquier categoría personalizada nueva
-  return clean.toUpperCase().replace(/[\s-]+/g, '_').replace(/[^A-Z0-9_]/g, '') || 'GENERAL';
+  // Para categorías personalizadas dinámicas: mantener formato exacto consistente con cleanId de upsertCategory
+  return rawUpper.replace(/\s+/g, '_') || 'GENERAL';
 }
 
 /**

@@ -119,8 +119,10 @@ export default function AdminDashboard({ onNavigate, onLogout }) {
       window.scrollTo(0, 0);
       const displayTitle = savedPoster?.titulo || savedPoster?.title || posterData.title;
       showToast(`¡Obra "${displayTitle}" guardada en PostgreSQL!`, 'success');
+      return savedPoster;
     } catch (err) {
       showToast(`Error al guardar en el servidor: ${err.message}`, 'error');
+      throw err;
     }
   };
 
