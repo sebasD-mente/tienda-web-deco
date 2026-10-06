@@ -631,6 +631,160 @@ export default function Navbar({
                 </button>
               </div>
 
+              {/* 6. Accesos Rápidos de Comunidad y Redes */}
+              <div style={{
+                marginTop: '10px',
+                paddingTop: '12px',
+                borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  color: 'var(--text-muted)',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  paddingLeft: '4px'
+                }}>
+                  Comunidad & Contacto Oficial
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '8px'
+                }}>
+                  {/* Instagram */}
+                  <a
+                    href="https://www.instagram.com/decovintage.guate/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      padding: '10px 4px',
+                      minHeight: '48px',
+                      borderRadius: '10px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      color: '#ffffff',
+                      textDecoration: 'none',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'rgba(214, 36, 159, 0.6)';
+                      e.currentTarget.style.background = 'rgba(214, 36, 159, 0.12)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                    }}
+                    title="Instagram @decovintage.guate"
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <defs>
+                        <radialGradient id="ig-drawer-grad" cx="20%" cy="110%" r="140%">
+                          <stop offset="0%" stopColor="#fdf497" />
+                          <stop offset="10%" stopColor="#fdf497" />
+                          <stop offset="50%" stopColor="#fd5949" />
+                          <stop offset="70%" stopColor="#d6249f" />
+                          <stop offset="100%" stopColor="#285AEB" />
+                        </radialGradient>
+                      </defs>
+                      <rect x="2" y="2" width="20" height="20" rx="5.5" fill="url(#ig-drawer-grad)" />
+                      <rect x="6" y="6" width="12" height="12" rx="3.5" stroke="#ffffff" strokeWidth="1.8" fill="none" />
+                      <circle cx="12" cy="12" r="3" stroke="#ffffff" strokeWidth="1.8" fill="none" />
+                      <circle cx="15.3" cy="8.7" r="0.9" fill="#ffffff" />
+                    </svg>
+                    <span>Instagram</span>
+                  </a>
+
+                  {/* Facebook */}
+                  <a
+                    href="https://www.facebook.com/decovintage.guate.oficial/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      padding: '10px 4px',
+                      minHeight: '48px',
+                      borderRadius: '10px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      color: '#ffffff',
+                      textDecoration: 'none',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'rgba(24, 119, 242, 0.6)';
+                      e.currentTarget.style.background = 'rgba(24, 119, 242, 0.12)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                    }}
+                    title="Facebook @decovintage.guate.oficial"
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <rect x="2" y="2" width="20" height="20" rx="5.5" fill="#1877F2" />
+                      <path d="M15 12.5h-2.2v7.5h-3.1v-7.5H8v-2.7h1.7V8.1c0-2.4 1.4-3.6 3.6-3.6 1 0 1.9.1 2.2.1v2.5h-1.3c-1.1 0-1.4.5-1.4 1.3v1.4H15l-.4 2.7z" fill="#ffffff" />
+                    </svg>
+                    <span>Facebook</span>
+                  </a>
+
+                  {/* WhatsApp */}
+                  <a
+                    href="https://wa.me/50238375078"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      padding: '10px 4px',
+                      minHeight: '48px',
+                      borderRadius: '10px',
+                      background: 'rgba(37, 211, 102, 0.08)',
+                      border: '1px solid rgba(37, 211, 102, 0.3)',
+                      color: '#ffffff',
+                      textDecoration: 'none',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'rgba(37, 211, 102, 0.8)';
+                      e.currentTarget.style.background = 'rgba(37, 211, 102, 0.2)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'rgba(37, 211, 102, 0.3)';
+                      e.currentTarget.style.background = 'rgba(37, 211, 102, 0.08)';
+                    }}
+                    title="WhatsApp Oficial +502 3837 5078"
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <path fill="#25D366" d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2z"/>
+                      <path fill="#ffffff" d="M17.47 14.38c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.21 5.09 4.5.71.31 1.27.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35z"/>
+                    </svg>
+                    <span>WhatsApp</span>
+                  </a>
+                </div>
+              </div>
+
             </div>
           </div>
         )}
