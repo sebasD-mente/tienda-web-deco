@@ -50,6 +50,9 @@ export default function AdminJarvisTab({ onShowToast }) {
   const [docCategoryInput, setDocCategoryInput] = useState('Políticas');
   const [docContentInput, setDocContentInput] = useState('');
   const [docEventDateInput, setDocEventDateInput] = useState('');
+  const [docStandInput, setDocStandInput] = useState('');
+  const [docFlyerUrlInput, setDocFlyerUrlInput] = useState('');
+  const [isUploadingFlyer, setIsUploadingFlyer] = useState(false);
   const [docToDelete, setDocToDelete] = useState(null);
   const [isDeletingDoc, setIsDeletingDoc] = useState(false);
 
@@ -58,6 +61,7 @@ export default function AdminJarvisTab({ onShowToast }) {
   const [refImageDesc, setRefImageDesc] = useState('');
   const [isUploadingRefImage, setIsUploadingRefImage] = useState(false);
   const refImageInputRef = useRef(null);
+  const flyerInputRef = useRef(null);
   const jarvisMemoryInputRef = useRef(null);
 
   // Directives State
@@ -150,6 +154,8 @@ export default function AdminJarvisTab({ onShowToast }) {
     setDocCategoryInput('Políticas');
     setDocContentInput('');
     setDocEventDateInput('');
+    setDocStandInput('');
+    setDocFlyerUrlInput('');
     setShowDocModal(true);
   };
 
@@ -159,7 +165,33 @@ export default function AdminJarvisTab({ onShowToast }) {
     setDocCategoryInput(doc.category || 'General');
     setDocContentInput(doc.content);
     setDocEventDateInput(doc.eventDate || '');
+    setDocStandInput(doc.standLocation || '');
+    setDocFlyerUrlInput(doc.flyerUrl || '');
     setShowDocModal(true);
+  };
+
+  const handleUploadFlyer = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingFlyer(true);
+      const res = await optimizeImageFile(file);
+      const uploadId = 'flyer-' + Date.now().toString(36);
+      const uploadRes = await apiUploadPosterImage(res.fullDataUrl, uploadId);
+
+      if (!uploadRes?.success || !uploadRes?.image) {
+        throw new Error(uploadRes?.error || 'No se pudo subir el flyer oficial.');
+      }
+
+      setDocFlyerUrlInput(uploadRes.image);
+      onShowToast('¡Flyer oficial subido con éxito!', 'success');
+    } catch (err) {
+      onShowToast('Error al subir flyer: ' + err.message, 'error');
+    } finally {
+      setIsUploadingFlyer(false);
+      if (flyerInputRef.current) flyerInputRef.current.value = '';
+    }
   };
 
   const handleSaveDoc = async () => {
@@ -172,7 +204,9 @@ export default function AdminJarvisTab({ onShowToast }) {
       title: docTitleInput.trim(),
       category: docCategoryInput,
       content: docContentInput.trim(),
-      eventDate: docEventDateInput || null
+      eventDate: docCategoryInput === 'Eventos' ? (docEventDateInput || null) : null,
+      flyerUrl: docCategoryInput === 'Eventos' ? (docFlyerUrlInput || null) : null,
+      standLocation: docCategoryInput === 'Eventos' ? (docStandInput?.trim() || null) : null
     };
 
     if (docModalId) {
@@ -622,7 +656,24 @@ export default function AdminJarvisTab({ onShowToast }) {
                 justifyContent: 'space-between'
               }}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  {doc.flyerUrl && (
+                    <div style={{
+                      width: '100%',
+                      height: '130px',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      marginBottom: '10px',
+                      border: '1px solid rgba(0, 242, 254, 0.3)',
+                      background: '#040711'
+                    }}>
+                      <img
+                        src={doc.flyerUrl}
+                        alt={doc.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
                     <span className="badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{doc.category || 'General'}</span>
                     {doc.eventDate && (
                       <span style={{
@@ -638,6 +689,22 @@ export default function AdminJarvisTab({ onShowToast }) {
                       </span>
                     )}
                   </div>
+                  {doc.standLocation && (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '0.72rem',
+                      color: 'var(--accent-cyan)',
+                      background: 'rgba(0, 242, 254, 0.08)',
+                      border: '1px solid rgba(0, 242, 254, 0.25)',
+                      borderRadius: '4px',
+                      padding: '2px 6px',
+                      marginBottom: '8px'
+                    }}>
+                      📍 {doc.standLocation}
+                    </div>
+                  )}
                   <h4 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff', margin: '0 0 6px 0' }}>{doc.title}</h4>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.4', margin: '0 0 12px 0', maxHeight: '80px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {doc.content}
@@ -959,30 +1026,131 @@ export default function AdminJarvisTab({ onShowToast }) {
               </div>
 
               {docCategoryInput === 'Eventos' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', marginBottom: '6px', textTransform: 'uppercase' }}>
-                    Fecha del Evento (Día de finalización):
-                  </label>
-                  <input
-                    type="date"
-                    value={docEventDateInput}
-                    onChange={(e) => setDocEventDateInput(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(245, 158, 11, 0.4)',
-                      color: '#fff',
-                      fontSize: '0.88rem',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-                    * Al llegar esta fecha en hora de Guatemala, J.A.R.V.I.S. purgará automáticamente el evento de la memoria y base de datos.
-                  </span>
-                </div>
+                <>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', marginBottom: '6px', textTransform: 'uppercase' }}>
+                      Fecha en que finaliza el evento (Auto-purga al día siguiente):
+                    </label>
+                    <input
+                      type="date"
+                      value={docEventDateInput}
+                      onChange={(e) => setDocEventDateInput(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(245, 158, 11, 0.4)',
+                        color: '#fff',
+                        fontSize: '0.88rem',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                      * Al llegar esta fecha en hora de Guatemala, J.A.R.V.I.S. purgará automáticamente el evento de la memoria y base de datos.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                      Ubicación o Stand Oficial:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ej: Stand VP21, Parque de la Industria"
+                      value={docStandInput}
+                      onChange={(e) => setDocStandInput(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(0, 242, 254, 0.3)',
+                        color: '#fff',
+                        fontSize: '0.88rem',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                      Flyer Oficial del Evento:
+                    </label>
+                    <input
+                      type="file"
+                      ref={flyerInputRef}
+                      accept="image/*"
+                      onChange={handleUploadFlyer}
+                      style={{ display: 'none' }}
+                    />
+
+                    {docFlyerUrlInput ? (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(0, 242, 254, 0.06)',
+                        border: '1px solid rgba(0, 242, 254, 0.3)'
+                      }}>
+                        <img
+                          src={docFlyerUrlInput}
+                          alt="Flyer Preview"
+                          style={{ width: '48px', height: '64px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)' }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            Flyer Cargado
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {docFlyerUrlInput}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDocFlyerUrlInput('')}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            color: '#ef4444',
+                            borderRadius: '6px',
+                            padding: '6px 10px',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isUploadingFlyer}
+                        onClick={() => flyerInputRef.current?.click()}
+                        className="btn-secondary"
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          fontSize: '0.85rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          border: '1px dashed rgba(0, 242, 254, 0.4)',
+                          background: 'rgba(0, 242, 254, 0.03)',
+                          cursor: isUploadingFlyer ? 'wait' : 'pointer'
+                        }}
+                      >
+                        <Upload size={16} color="var(--accent-cyan)" />
+                        <span>{isUploadingFlyer ? 'Subiendo y optimizando flyer...' : 'Seleccionar Flyer de Evento (Imagen)'}</span>
+                      </button>
+                    )}
+                  </div>
+                </>
               )}
 
               <div>

@@ -14,7 +14,9 @@ import {
   ExternalLink,
   Eye,
   Check,
-  CheckCheck
+  CheckCheck,
+  Calendar,
+  ZoomIn
 } from 'lucide-react';
 import { generateWhatsAppLink } from '../config/constants';
 import { OFFICIAL_SIZES } from '../data/catalogData';
@@ -133,6 +135,7 @@ export default function JarvisAgent({
   const [poweredModel, setPoweredModel] = useState('');
   const [addedPosterId, setAddedPosterId] = useState(null);
   const [lastUserPrompt, setLastUserPrompt] = useState('');
+  const [lightboxFlyerUrl, setLightboxFlyerUrl] = useState(null);
 
   const messagesEndRef = useRef(null);
   const chatScrollRef = useRef(null);
@@ -1106,6 +1109,211 @@ export default function JarvisAgent({
                         );
                       }
 
+                      if (act.type === 'event_flyers' && Array.isArray(act.events) && act.events.length > 0) {
+                        return (
+                          <div key={actIdx} style={{
+                            marginTop: '14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '14px',
+                            width: '100%'
+                          }}>
+                            {/* Horizontal Carousel / Responsive Cards Grid */}
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: act.events.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+                              gap: '16px',
+                              width: '100%'
+                            }}>
+                              {act.events.map((ev, evIdx) => {
+                                const evTitle = ev.title || 'Evento Oficial Deco Vintage';
+                                const evDate = ev.eventDate || null;
+                                const evStand = ev.standLocation || null;
+                                const evFlyer = ev.flyerUrl || null;
+                                const evContent = ev.content || '';
+
+                                const waBookingText = `Hola Deco Vintage Guate 👋, deseo apartar un cuadro para recoger en su stand de ${evTitle}${evStand ? ` (${evStand})` : ''}. ¿Me pueden asesorar con la disponibilidad y catálogo?`;
+
+                                return (
+                                  <div
+                                    key={ev.id || evIdx}
+                                    style={{
+                                      background: 'linear-gradient(180deg, rgba(8, 16, 32, 0.96) 0%, rgba(4, 8, 18, 0.98) 100%)',
+                                      border: '1px solid rgba(0, 242, 254, 0.45)',
+                                      borderRadius: '14px',
+                                      overflow: 'hidden',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      boxShadow: '0 8px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 242, 254, 0.15)',
+                                      transition: 'transform 0.25s ease, border-color 0.25s ease'
+                                    }}
+                                  >
+                                    {/* Flyer Image Container */}
+                                    {evFlyer ? (
+                                      <div
+                                        onClick={() => setLightboxFlyerUrl(evFlyer)}
+                                        style={{
+                                          position: 'relative',
+                                          width: '100%',
+                                          height: '240px',
+                                          background: 'radial-gradient(circle at center, #101c36 0%, #050a17 100%)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          padding: '8px',
+                                          cursor: 'pointer',
+                                          overflow: 'hidden'
+                                        }}
+                                        title="Haz clic para ver el flyer oficial en pantalla completa"
+                                      >
+                                        <img
+                                          src={evFlyer}
+                                          alt={`Flyer de ${evTitle}`}
+                                          style={{
+                                            maxWidth: '100%',
+                                            maxHeight: '100%',
+                                            objectFit: 'contain',
+                                            borderRadius: '8px',
+                                            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.8)',
+                                            transition: 'transform 0.3s ease'
+                                          }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                                        />
+                                        {/* Zoom Hint Badge */}
+                                        <div style={{
+                                          position: 'absolute',
+                                          bottom: '10px',
+                                          right: '10px',
+                                          background: 'rgba(4, 10, 22, 0.88)',
+                                          backdropFilter: 'blur(6px)',
+                                          border: '1px solid rgba(0, 242, 254, 0.4)',
+                                          color: '#00f2fe',
+                                          padding: '4px 8px',
+                                          borderRadius: '6px',
+                                          fontSize: '0.68rem',
+                                          fontWeight: 800,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
+                                        }}>
+                                          <ZoomIn size={12} />
+                                          <span>Ampliar Flyer</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div style={{
+                                        width: '100%',
+                                        height: '90px',
+                                        background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.1) 0%, rgba(0, 245, 160, 0.08) 100%)',
+                                        borderBottom: '1px solid rgba(0, 242, 254, 0.25)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '10px',
+                                        color: '#00f2fe'
+                                      }}>
+                                        <Calendar size={28} />
+                                        <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.04em' }}>
+                                          EVENTO ESPECIAL DECO VINTAGE
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {/* Event Details */}
+                                    <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#ffffff', lineHeight: 1.25 }}>
+                                        {evTitle}
+                                      </div>
+
+                                      {/* Event Badges (Date & Stand) */}
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {evDate && (
+                                          <span style={{
+                                            fontSize: '0.72rem',
+                                            background: 'rgba(0, 242, 254, 0.12)',
+                                            color: '#00f2fe',
+                                            border: '1px solid rgba(0, 242, 254, 0.35)',
+                                            padding: '3px 8px',
+                                            borderRadius: '6px',
+                                            fontWeight: 700,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}>
+                                            <Calendar size={11} />
+                                            <span>Hasta: {evDate}</span>
+                                          </span>
+                                        )}
+                                        {evStand && (
+                                          <span style={{
+                                            fontSize: '0.72rem',
+                                            background: 'rgba(0, 245, 160, 0.12)',
+                                            color: '#00f5a0',
+                                            border: '1px solid rgba(0, 245, 160, 0.35)',
+                                            padding: '3px 8px',
+                                            borderRadius: '6px',
+                                            fontWeight: 700,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}>
+                                            <MapPin size={11} />
+                                            <span>{evStand}</span>
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Content / Description */}
+                                      {evContent && (
+                                        <div style={{
+                                          fontSize: '0.78rem',
+                                          color: '#cbd5e1',
+                                          lineHeight: '1.4',
+                                          whiteSpace: 'pre-wrap',
+                                          marginTop: '2px'
+                                        }}>
+                                          {evContent}
+                                        </div>
+                                      )}
+
+                                      {/* WhatsApp Booth Reservation Button */}
+                                      <div style={{ marginTop: 'auto', paddingTop: '10px' }}>
+                                        <a
+                                          href={generateWhatsAppLink(waBookingText)}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            background: 'linear-gradient(135deg, #00f5a0 0%, #00d2ff 100%)',
+                                            color: '#040812',
+                                            padding: '10px 14px',
+                                            borderRadius: '8px',
+                                            fontWeight: 800,
+                                            fontSize: '0.8rem',
+                                            textDecoration: 'none',
+                                            boxShadow: '0 4px 14px rgba(0, 245, 160, 0.35)',
+                                            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                                          }}
+                                        >
+                                          <MessageSquare size={15} />
+                                          <span>Apartar para entrega en Stand</span>
+                                          <ExternalLink size={13} />
+                                        </a>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return null;
                     })}
 
@@ -1416,6 +1624,79 @@ export default function JarvisAgent({
           }
         }
       `}</style>
+
+      {/* Lightbox Modal for Official Event Flyers */}
+      {lightboxFlyerUrl && (
+        <div
+          onClick={() => setLightboxFlyerUrl(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 999999,
+            background: 'rgba(2, 6, 14, 0.92)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              background: 'rgba(10, 18, 36, 0.96)',
+              border: '1px solid rgba(0, 242, 254, 0.6)',
+              borderRadius: '16px',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 242, 254, 0.3)'
+            }}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setLightboxFlyerUrl(null)}
+              style={{
+                position: 'absolute',
+                top: '-14px',
+                right: '-14px',
+                background: '#040812',
+                border: '2px solid #00f2fe',
+                color: '#00f2fe',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 0 15px rgba(0, 242, 254, 0.6)',
+                zIndex: 10
+              }}
+              title="Cerrar vista de flyer"
+            >
+              <X size={20} />
+            </button>
+
+            {/* High-Resolution Flyer */}
+            <img
+              src={lightboxFlyerUrl}
+              alt="Flyer Oficial de Evento"
+              style={{
+                maxWidth: '85vw',
+                maxHeight: '82vh',
+                objectFit: 'contain',
+                borderRadius: '10px'
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

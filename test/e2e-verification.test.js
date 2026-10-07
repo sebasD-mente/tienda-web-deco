@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { getRouteFromPath, getPathFromRoute } from '../src/utils/routes.js';
 import { OFFICIAL_SIZES, STORE_SETTINGS } from '../src/data/catalogData.js';
 import { generateWhatsAppLink, DEFAULT_WHATSAPP_PHONE } from '../src/config/constants.js';
-import { calculateCustomPrice, buildSystemInstruction, purgeExpiredEventsFromMemory } from '../services/jarvisService.js';
+import { calculateCustomPrice, buildSystemInstruction, purgeExpiredEventsFromMemory, JARVIS_TOOL_DECLARATIONS, executeFunctionCall } from '../services/jarvisService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -211,6 +211,8 @@ describe('Tier 1: Feature Coverage', () => {
     // 3. Test purgeExpiredEventsFromMemory utility
     const testMemory = {
       customDocuments: [
+        { id: 'doc-1788571609262', title: 'Comicon Guatemala 2026', category: 'Eventos' },
+        { id: 'doc-1788579952808', title: 'Feria Cayalá', category: 'Eventos' },
         { id: 'ev-expired', title: 'Feria Pasada', category: 'Eventos', eventDate: '2020-01-01' },
         { id: 'ev-legacy-fanfest', title: 'Fan Fest Antiguo', content: 'Stand el 6 de septiembre' },
         { id: 'ev-future', title: 'Feria Futura 2030', category: 'Eventos', eventDate: '2030-12-31' },
@@ -218,7 +220,8 @@ describe('Tier 1: Feature Coverage', () => {
       ],
       ownerDirectives: [
         'Hablar de forma amigable',
-        'Recordar el stand de Fan Fest del 6 de septiembre'
+        'Recordar el stand de Fan Fest del 6 de septiembre',
+        'Mencionar Comicon el 3 y 4 de octubre'
       ]
     };
 
@@ -226,8 +229,58 @@ describe('Tier 1: Feature Coverage', () => {
     assert.strictEqual(purged.customDocuments.length, 2, 'Only future event and regular doc should survive purge');
     assert.strictEqual(purged.customDocuments[0].id, 'ev-future');
     assert.strictEqual(purged.customDocuments[1].id, 'doc-policy');
-    assert.strictEqual(purged.ownerDirectives.length, 1, 'Expired directive should be removed');
+    assert.strictEqual(purged.ownerDirectives.length, 1, 'Expired directives should be removed');
     assert.strictEqual(purged.ownerDirectives[0], 'Hablar de forma amigable');
+
+    // 4. Test tool declaration and execution of mostrar_eventos_y_flyers
+    const eventTool = JARVIS_TOOL_DECLARATIONS.find(t => t.name === 'mostrar_eventos_y_flyers');
+    assert.ok(eventTool, 'JARVIS_TOOL_DECLARATIONS must define mostrar_eventos_y_flyers');
+
+    const memoryWithEvents = {
+      customDocuments: [
+        {
+          id: 'ev-comicon-2030',
+          title: 'Comicon Guatemala 2030',
+          category: 'Eventos',
+          eventDate: '2030-10-04',
+          standLocation: 'Stand VP21, Parque de la Industria',
+          flyerUrl: 'https://storage.googleapis.com/test-flyer.webp',
+          content: 'Gran convención de cultura pop'
+        },
+        {
+          id: 'ev-past',
+          title: 'Evento Pasado',
+          category: 'Eventos',
+          eventDate: '2020-01-01'
+        }
+      ]
+    };
+
+    const action = executeFunctionCall(
+      { name: 'mostrar_eventos_y_flyers', args: { mensaje_conversacional: '¡Acompáñanos en nuestros stands!' } },
+      [],
+      [],
+      null,
+      memoryWithEvents
+    );
+
+    assert.ok(action, 'executeFunctionCall should return action for active events');
+    assert.strictEqual(action.type, 'event_flyers');
+    assert.strictEqual(action.message, '¡Acompáñanos en nuestros stands!');
+    assert.strictEqual(action.events.length, 1, 'Should only return the future non-expired event');
+    assert.strictEqual(action.events[0].id, 'ev-comicon-2030');
+    assert.strictEqual(action.events[0].standLocation, 'Stand VP21, Parque de la Industria');
+    assert.strictEqual(action.events[0].flyerUrl, 'https://storage.googleapis.com/test-flyer.webp');
+
+    // When no active events exist, executeFunctionCall should return null
+    const emptyAction = executeFunctionCall(
+      { name: 'mostrar_eventos_y_flyers', args: {} },
+      [],
+      [],
+      null,
+      { customDocuments: [] }
+    );
+    assert.strictEqual(emptyAction, null, 'executeFunctionCall should return null if no active events exist');
   });
 
   // Feature 10: Cart math across all 6 official poster sizes

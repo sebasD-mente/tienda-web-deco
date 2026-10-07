@@ -91,6 +91,19 @@ export const JARVIS_TOOL_DECLARATIONS = [
       },
       required: ['ordenId']
     }
+  },
+  {
+    name: 'mostrar_eventos_y_flyers',
+    description: 'Invocar OBLIGATORIAMENTE siempre que el usuario pregunte por eventos, ferias, convenciones, fechas donde estará Deco Vintage, stands o pida ver los flyers oficiales.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        mensaje_conversacional: {
+          type: 'STRING',
+          description: 'Introducción muy breve, cálida y entusiasta (máximo 2 líneas) invitando a ver los eventos o flyers.'
+        }
+      }
+    }
   }
 ];
 
@@ -204,42 +217,75 @@ function getSeedJarvisMemory() {
 export async function purgeExpiredEventsFromMemory(jarvisMemory) {
   if (!jarvisMemory) return jarvisMemory;
   const now = new Date();
-  // Obtener fecha actual en zona horaria de Guatemala (YYYY-MM-DD)
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(now);
   const rawDocs = Array.isArray(jarvisMemory.customDocuments) ? jarvisMemory.customDocuments : [];
   let wasModified = false;
+  // IDs exactos de eventos vencidos que viven en la base de datos de producción
+  const EXPIRED_DOC_IDS = new Set([
+    'doc-1788571609262', // Comicon Guatemala (3-4 Octubre)
+    'doc-1788579952808', // Feria Cayala (4-20 Septiembre)
+    'doc-1787976138406', // Fan Fest (6 Septiembre)
+    'doc-autos-escala-2026', // Autos a Escala (27 Septiembre)
+    'doc-1788571142293'  // Comic-Con Octubre
+  ]);
   const validDocs = rawDocs.filter(doc => {
-    // Si tiene fecha explícita de evento
+    // 1. Purga por ID directo conocido
+    if (doc.id && EXPIRED_DOC_IDS.has(doc.id)) {
+      wasModified = true;
+      return false;
+    }
+    // 2. Si tiene fecha explícita de evento y ya pasó
     if (doc.eventDate) {
       if (doc.eventDate < todayStr) {
         wasModified = true;
-        return false; // Vencido: se elimina
+        return false;
       }
       return true;
     }
-    // Limpieza de eventos viejos conocidos por título o fecha en texto (Fan Fest 6 sep, Autos Escala 27 sep, Comic-Con 3-4 oct)
+    // 3. Purga inteligente por términos de eventos pasados conocidos
     const titleLower = (doc.title || '').toLowerCase();
     const contentLower = (doc.content || '').toLowerCase();
+    const isEventCategory = doc.category === 'Eventos';
     if (
-      titleLower.includes('fan fest') ||
-      titleLower.includes('autos a escala') ||
-      titleLower.includes('comic-con guatemala 2026') ||
-      contentLower.includes('6 de septiembre') ||
-      contentLower.includes('27 de septiembre') ||
-      contentLower.includes('4 de octubre de 2026')
+      isEventCategory ||
+      titleLower.includes('comicon') ||
+      titleLower.includes('comic-con') ||
+      titleLower.includes('comic con') ||
+      titleLower.includes('cayala') ||
+      titleLower.includes('fan fest')
     ) {
-      wasModified = true;
-      return false; // Vencido: se elimina
+      if (
+        titleLower.includes('comicon') ||
+        titleLower.includes('comic-con') ||
+        titleLower.includes('comic con') ||
+        titleLower.includes('cayala') ||
+        titleLower.includes('fan fest') ||
+        titleLower.includes('autos a escala') ||
+        contentLower.includes('mario castañeda') ||
+        contentLower.includes('septiembre') ||
+        contentLower.includes('3 y 4 de octubre') ||
+        contentLower.includes('4 de octubre')
+      ) {
+        wasModified = true;
+        return false;
+      }
     }
     return true;
   });
   // Limpiar directivas que mencionen eventos viejos
   const rawDirectives = Array.isArray(jarvisMemory.ownerDirectives) ? jarvisMemory.ownerDirectives : [];
-  const validDirectives = rawDirectives.filter(d => !d.toLowerCase().includes('fan fest') && !d.toLowerCase().includes('6 de septiembre'));
+  const validDirectives = rawDirectives.filter(d => {
+    const dLower = d.toLowerCase();
+    return !dLower.includes('fan fest') && 
+           !dLower.includes('comicon') && 
+           !dLower.includes('comic-con') && 
+           !dLower.includes('6 de septiembre') &&
+           !dLower.includes('3 y 4 de octubre');
+  });
   if (validDirectives.length !== rawDirectives.length) {
     wasModified = true;
   }
-  // Si se detectaron eventos vencidos, actualizar PostgreSQL de inmediato
+  // Sincronizar de inmediato con PostgreSQL
   if (wasModified) {
     try {
       await prisma.jarvisMemory.update({
@@ -249,7 +295,7 @@ export async function purgeExpiredEventsFromMemory(jarvisMemory) {
           ownerDirectives: validDirectives
         }
       });
-      console.log(`[Deco J.A.R.V.I.S.] Auto-purgados eventos vencidos de PostgreSQL exitosamente.`);
+      console.log(`[Deco J.A.R.V.I.S.] Auto-purgados eventos vencidos (Comicon, Cayalá, Fan Fest) de PostgreSQL exitosamente.`);
     } catch (err) {
       console.error('[Deco J.A.R.V.I.S.] Error persistiendo purga de eventos en PostgreSQL:', err.message);
     }
@@ -474,7 +520,13 @@ export function buildSystemInstruction(catalog, jarvisMemory = {}, relevantPoste
       title: "Tecnología de Impresión HP Látex",
       content: "Impresión de gran formato con tecnología HP Látex. Tintas ecológicas a base de agua con protección UV y garantía superior a 10 años en interiores sin pérdida de color."
     }
-  ]).map(doc => `[DOCUMENTO / EVENTO: ${doc.title}]\nCategoría: ${doc.category || 'General'}\nContenido: ${doc.content}`).join('\n\n');
+  ]).map(doc => {
+    let extra = '';
+    if (doc.eventDate) extra += ` | Fecha límite: ${doc.eventDate}`;
+    if (doc.standLocation) extra += ` | Stand: ${doc.standLocation}`;
+    if (doc.flyerUrl) extra += ` | Flyer oficial disponible: Sí`;
+    return `[DOCUMENTO / EVENTO: ${doc.title}]\nCategoría: ${doc.category || 'General'}${extra}\nContenido: ${doc.content}`;
+  }).join('\n\n');
 
   // Inyección Semántica RAG: Únicamente incluir si realmente hay obras que superaron el umbral de similitud
   let catalogSummary = '';
@@ -498,7 +550,10 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
 
 === FECHA ACTUAL DEL SISTEMA ===
 Hoy es ${todayFormatted}.
-REGLA DE EVENTOS: Solo existen y están activos los eventos listados en DOCUMENTOS Y EVENTOS VIGENTES. Si no hay ninguno listado o el cliente pregunta por eventos futuros, aclara amablemente que por ahora no hay ferias o stands programados para estos días, e invítalo a comprar en línea o pedir por WhatsApp con envío a domicilio.
+REGLA DE EVENTOS: Solo existen y están activos los eventos listados en DOCUMENTOS Y EVENTOS VIGENTES.
+- Si el usuario pregunta por eventos, ferias, convenciones, fechas donde estará Deco Vintage, stands o pide ver flyers oficiales:
+  1. Si HAY eventos de categoría 'Eventos' vigentes en DOCUMENTOS Y EVENTOS VIGENTES: Responde con un saludo breve y entusiasta de MÁXIMO 2 LÍNEAS y llama OBLIGATORIAMENTE de inmediato a la herramienta 'mostrar_eventos_y_flyers'.
+  2. Si NO HAY eventos vigentes listados o no hay ninguno activo: Aclara amablemente en máximo 2 líneas que por ahora no hay ferias o stands programados para estos días, e invítalo a comprar en línea o pedir por WhatsApp con envío a domicilio.
 
 === ESTILO Y PERSONALIDAD DE J.A.R.V.I.S. ===
 - Eres súper amable, cálido, conversacional, servicial, ameno y educado. Hablas con emoción y cultura sobre cine, Marvel, DC, autos, anime, videojuegos, arte y música.
@@ -644,7 +699,7 @@ export function formatChatHistory(rawHistory, maxTurns = 8) {
  * @param {any[]}                          posters - Full poster list for filtering.
  * @returns {object|null} Action object, or null if the call name is unknown.
  */
-export function executeFunctionCall(call, posters = [], relevantPosters = [], catalog = null) {
+export function executeFunctionCall(call, posters = [], relevantPosters = [], catalog = null, jarvisMemory = null) {
   if (!call || !call.name) return null;
   const args = call.args || {};
   const cleanPosters = Array.isArray(posters) ? posters.filter(Boolean) : [];
@@ -836,6 +891,28 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
         };
       }
 
+      case 'mostrar_eventos_y_flyers': {
+        const rawDocs = Array.isArray(jarvisMemory?.customDocuments) ? jarvisMemory.customDocuments : [];
+        const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+        const activeEvents = rawDocs.filter(doc => {
+          if (doc.category !== 'Eventos') return false;
+          if (doc.eventDate && doc.eventDate < todayStr) return false;
+          return true;
+        });
+
+        if (activeEvents.length === 0) {
+          return null;
+        }
+
+        const msgIntro = args.mensaje_conversacional || args.mensaje || '¡Aquí tienes nuestros próximos eventos y stands oficiales donde podrás visitarnos!';
+
+        return {
+          type: 'event_flyers',
+          message: msgIntro,
+          events: activeEvents
+        };
+      }
+
       default:
         console.warn(`[executeFunctionCall] Herramienta desconocida recibida: ${call.name}`);
         return null;
@@ -953,14 +1030,43 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
   }
 
   // 3. Check custom documents and events
-  const rawDocs    = jarvisMemory.customDocuments || [];
+  const rawDocs    = jarvisMemory?.customDocuments || [];
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  const activeEvents = rawDocs.filter(d => d.category === 'Eventos' && (!d.eventDate || d.eventDate >= todayStr));
+
+  const isEventQuery = qLower.includes('evento') || qLower.includes('feria') || qLower.includes('stand') ||
+                       qLower.includes('flyer') || qLower.includes('convencion') || qLower.includes('conve');
+
+  if (isEventQuery) {
+    if (activeEvents.length > 0) {
+      localActions.push({
+        type: 'event_flyers',
+        message: '¡Aquí tienes nuestros próximos eventos y stands oficiales donde podrás visitarnos!',
+        events: activeEvents
+      });
+      localReply = `¡Por supuesto! Estaremos presentes en estos increíbles eventos y convenciones oficiales. Puedes ver todos los detalles, fechas y flyers aquí abajo:\n\n` +
+                   activeEvents.map(e => `* **${e.title}**${e.standLocation ? ` (Stand: ${e.standLocation})` : ''}: ${e.content}`).join('\n\n') +
+                   `\n\n¿Te gustaría apartar algún cuadro para recoger en nuestro stand?`;
+      return {
+        replyText: localReply,
+        actions: localActions,
+        poweredBy: 'Deco High-Availability Fallback Engine'
+      };
+    } else {
+      localReply = `Por el momento no tenemos eventos o stands presenciales programados para estos días, ¡pero nuestra tienda en línea está 100% activa con envíos a toda Guatemala!\n\n` +
+                   `Fabricamos en madera MDF rígida de 5.5mm con impresión HP Látex y cinta industrial Tesa incluida lista para colgar. ¿Qué diseño te gustaría ver o cotizar?`;
+      return {
+        replyText: localReply,
+        actions: localActions,
+        poweredBy: 'Deco High-Availability Fallback Engine'
+      };
+    }
+  }
+
   const matchedDoc = rawDocs.find(d => {
     const tNorm = (d.title   || '').toLowerCase();
     const cNorm = (d.content || '').toLowerCase();
-    return (tNorm && qLower.includes(tNorm)) ||
-           (qLower.includes('evento')      && (tNorm.includes('fest')        || tNorm.includes('stand')       || tNorm.includes('evento'))) ||
-           (qLower.includes('fan fest')    && (tNorm.includes('fan fest')    || cNorm.includes('fan fest'))) ||
-           ((qLower.includes('parque de la industria') || qLower.includes('parque industria')) && (tNorm.includes('industria') || cNorm.includes('industria') || tNorm.includes('fan fest') || cNorm.includes('fan fest')));
+    return (tNorm && qLower.includes(tNorm));
   });
 
   if (matchedDoc) {
@@ -1247,7 +1353,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
         if (functionCalls && functionCalls.length > 0) {
           for (const call of functionCalls) {
             try {
-              const action = executeFunctionCall(call, posters, topRelevantPosters, liveCatalog);
+              const action = executeFunctionCall(call, posters, topRelevantPosters, liveCatalog, jarvisMemory);
               if (action) {
                 // Solo registrar catalog_matches si realmente contiene posters
                 if (action.type === 'catalog_matches' && (!action.posters || action.posters.length === 0)) {
@@ -1283,6 +1389,9 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
             replyText = `¡Con gusto! Aquí tienes el desglose y cotización para tu cuadro personalizado:`;
           } else if (executedActions.some(a => a.type === 'workshop_status')) {
             replyText = `¡He consultado el estado de tu pedido en el sistema del taller! Aquí tienes los detalles:`;
+          } else if (executedActions.some(a => a.type === 'event_flyers')) {
+            const eventAct = executedActions.find(a => a.type === 'event_flyers');
+            replyText = eventAct?.message || `¡Aquí tienes nuestros próximos eventos y stands oficiales donde podrás visitarnos!`;
           }
         }
 
@@ -1355,7 +1464,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
             }
             if (part.functionCall) {
               try {
-                const action = executeFunctionCall(part.functionCall, posters, topRelevantPosters, liveCatalog);
+                const action = executeFunctionCall(part.functionCall, posters, topRelevantPosters, liveCatalog, jarvisMemory);
                 if (action) {
                   if (action.type === 'catalog_matches' && (!action.posters || action.posters.length === 0)) {
                     // Sin obras coincidentes
@@ -1384,6 +1493,9 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
               replyText = posterNames 
                 ? `¡Por supuesto! Aquí tienes estas geniales obras (${posterNames}) seleccionadas especialmente para tu espacio:`
                 : `¡Por supuesto! Aquí tienes estas excelentes opciones de nuestro catálogo oficial seleccionadas para ti:`;
+            } else if (executedActions.some(a => a.type === 'event_flyers')) {
+              const eventAct = executedActions.find(a => a.type === 'event_flyers');
+              replyText = eventAct?.message || `¡Aquí tienes nuestros próximos eventos y stands oficiales donde podrás visitarnos!`;
             }
           }
 

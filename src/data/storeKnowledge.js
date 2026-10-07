@@ -267,11 +267,15 @@ export function addCustomDocument(doc) {
   const current = getStoreKnowledge();
   const docs = current.customDocuments || [];
   const newDoc = {
-    id: `doc-${Date.now()}`,
+    id: doc.id || `doc-${Date.now()}`,
     title: doc.title || 'Documento sin título',
     category: doc.category || 'General',
     content: doc.content || '',
-    dateAdded: new Date().toLocaleDateString('es-GT')
+    dateAdded: doc.dateAdded || new Date().toLocaleDateString('es-GT'),
+    eventDate: doc.eventDate || null,
+    flyerUrl: doc.flyerUrl || null,
+    standLocation: doc.standLocation || null,
+    ...doc
   };
   docs.push(newDoc);
   current.customDocuments = docs;
@@ -279,7 +283,8 @@ export function addCustomDocument(doc) {
   return saveStoreKnowledge(current);
 }
 
-export function updateCustomDocument(doc) {
+export function updateCustomDocument(idOrDoc, maybeDoc) {
+  const doc = (maybeDoc && typeof idOrDoc === 'string') ? { ...maybeDoc, id: idOrDoc } : idOrDoc;
   const current = getStoreKnowledge();
   current.customDocuments = (current.customDocuments || []).map(d => d.id === doc.id ? { ...d, ...doc } : d);
   current.updatedAt = new Date().toISOString();
