@@ -172,21 +172,22 @@ describe('Tier 1: Feature Coverage', () => {
   });
 
   // Feature 11: WhatsApp URL generation in src/config/constants.js
-  it('F11: WhatsApp URL generation produces RFC-compliant wa.me link with store phone', () => {
+  it('F11: WhatsApp URL generation produces RFC-compliant api.whatsapp.com/send link with store phone', () => {
     const message = 'Hola Deco Vintage, me interesa el póster de Spider-Man';
     const link = generateWhatsAppLink(message);
 
-    assert.ok(link.startsWith(`https://wa.me/${DEFAULT_WHATSAPP_PHONE}?text=`), 'Link must target default store phone');
+    assert.ok(link.startsWith(`https://api.whatsapp.com/send?phone=${DEFAULT_WHATSAPP_PHONE}&text=`), 'Link must target default store phone');
     const parsed = new URL(link);
     assert.equal(parsed.protocol, 'https:');
-    assert.equal(parsed.hostname, 'wa.me');
-    assert.equal(parsed.pathname, `/${DEFAULT_WHATSAPP_PHONE}`);
+    assert.equal(parsed.hostname, 'api.whatsapp.com');
+    assert.equal(parsed.pathname, '/send');
+    assert.equal(parsed.searchParams.get('phone'), DEFAULT_WHATSAPP_PHONE);
     assert.equal(parsed.searchParams.get('text'), message);
 
     // Override phone support
     const customPhone = '50211112222';
     const customLink = generateWhatsAppLink(message, customPhone);
-    assert.ok(customLink.startsWith(`https://wa.me/${customPhone}?text=`));
+    assert.ok(customLink.startsWith(`https://api.whatsapp.com/send?phone=${customPhone}&text=`));
   });
 
   // Feature 9: JARVIS event date strings synchronization (R4)
@@ -262,7 +263,7 @@ describe('Tier 2: Boundary & Corner Cases', () => {
     const { message, waUrl } = buildCartCheckoutMessage([]);
     assert.ok(message.includes('TOTAL A PAGAR: Q0.00'));
     assert.ok(message.includes('Anticipo del 50% para producción: Q0.00'));
-    assert.ok(waUrl.startsWith(`https://wa.me/${DEFAULT_WHATSAPP_PHONE}?text=`));
+    assert.ok(waUrl.startsWith(`https://api.whatsapp.com/send?phone=${DEFAULT_WHATSAPP_PHONE}&text=`));
   });
 
   it('B2: High quantities calculate with exact precision without floating point drift', () => {
@@ -339,7 +340,7 @@ describe('Tier 2: Boundary & Corner Cases', () => {
   // Feature 11: Null and undefined protection on WhatsApp link
   it('B5: WhatsApp URL protects against null and undefined parameter values', () => {
     const linkFromNull = generateWhatsAppLink(null);
-    assert.ok(linkFromNull.startsWith(`https://wa.me/${DEFAULT_WHATSAPP_PHONE}?text=`));
+    assert.ok(linkFromNull.startsWith(`https://api.whatsapp.com/send?phone=${DEFAULT_WHATSAPP_PHONE}&text=`));
     const paramNull = new URL(linkFromNull).searchParams.get('text');
     assert.equal(paramNull, '', 'null message should encode to empty string');
 

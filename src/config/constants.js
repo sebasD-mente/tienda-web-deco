@@ -46,5 +46,5 @@ export function saveStoreWhatsAppPhone(phoneNumber) {
 export function generateWhatsAppLink(message, overridePhone = null) {
   const phone = overridePhone ? overridePhone.replace(/[^0-9]/g, '') : getStoreWhatsAppPhone();
   const encodedText = encodeURIComponent(message || '');
-  return `https://wa.me/${phone}?text=${encodedText}`;
+  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodedText}`;
 }

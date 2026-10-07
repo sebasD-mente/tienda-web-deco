@@ -19,6 +19,7 @@ export default function CartDrawer({
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerDept, setCustomerDept] = useState('Guatemala');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Comprehensive Mobile & Desktop Body Scroll Lock
   useEffect(() => {
@@ -45,49 +46,102 @@ export default function CartDrawer({
   const total = cartItems.reduce((acc, item) => acc + (item.price * (Number(item.quantity) || 1)), 0);
   const deposit50 = total * 0.5;
 
-  const handleCheckoutWhatsApp = () => {
-    if (cartItems.length === 0) return;
+  const handleCheckoutWhatsApp = async () => {
+    if (cartItems.length === 0 || isSubmitting) return;
 
     if (!customerPhone.trim()) {
       alert('Por favor ingresa tu número de teléfono o WhatsApp para coordinar la entrega de tu pedido.');
       return;
     }
 
-    let itemsText = cartItems.map((it, idx) => {
-      const qty = Number(it.quantity) || 1;
-      const subtotal = (it.price * qty).toFixed(2);
-      return `${idx + 1}. *${it.poster.title}*\n   • Tamaño: ${it.size.name} (${it.size.dimensions})\n   • Cantidad: *${qty} unidad(es)*\n   • Precio Unitario: Q${it.price.toFixed(2)}\n   • Subtotal: *Q${subtotal}*`;
-    }).join('\n\n');
-
-    let message = `🛍️ *NUEVO PEDIDO DESDE LA WEB DECO VINTAGE*\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `👤 *Cliente:* ${customerName.trim() || 'Cliente Web'}\n` +
-      `📞 *Teléfono / WhatsApp:* ${customerPhone.trim()}\n` +
-      `📍 *Ubicación / Depto:* ${customerAddress.trim() || 'Por coordinar'} (${customerDept})\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `📦 *DETALLE DE PÓSTERS RÍGIDOS MDF 5.5mm:*\n\n` +
-      `${itemsText}\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `💰 *TOTAL A PAGAR: Q${total.toFixed(2)}*\n` +
-      `💳 *Anticipo del 50% para producción: Q${deposit50.toFixed(2)}*\n` +
-      `🚚 *Saldo del 50% contra entrega: Q${deposit50.toFixed(2)}*\n` +
-      `✨ _Incluye cinta Tesa industrial de montaje rápido._\n\n` +
-      `Hola, me gustaría confirmar mi pedido y coordinar el método de pago del anticipo del 50%. ¿Cuáles son los datos de transferencia?`;
-
-    // Confetti celebration
+    setIsSubmitting(true);
     try {
-      confetti({
-        particleCount: 60,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#00f2fe', '#38bdf8', '#00f5a0']
-      });
-    } catch (e) {
-      // Ignore if confetti fails
-    }
+      // A. Registro Silencioso en Base de Datos (Anti-Abandono)
+      const orderPayload = {
+        items: cartItems.map(it => ({
+          title: it.poster?.title || 'Obra Catálogo',
+          selectedStandardSize: {
+            name: it.size?.name || 'Estándar',
+            dimensions: it.size?.dimensions || ''
+          },
+          baseMaterial: 'mdf',
+          quantity: Number(it.quantity) || 1,
+          unitPrice: Number(it.price) || 0,
+          imageUrl: it.poster?.image || it.poster?.imageUrl || it.poster?.thumb || '',
+          thumbUrl: it.poster?.thumb || it.poster?.thumbUrl || it.poster?.image || ''
+        })),
+        totalPrice: total,
+        totalUnits: totalItemsCount,
+        customerPhone: customerPhone.trim(),
+        customerNotes: `Cliente: ${customerName.trim() || 'Cliente Web'} | Entrega: ${customerAddress.trim() || 'Por coordinar'} (${customerDept})`
+      };
 
-    const waUrl = generateWhatsAppLink(message);
-    window.open(waUrl, '_blank');
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        await fetch('/api/custom-orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(orderPayload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+      } catch (e) {
+        console.warn('Registro en DB completado con fallback a WhatsApp');
+      }
+
+      // B. Construcción del Nuevo Mensaje con Enlaces Directos a los Diseños
+      let itemsText = cartItems.map((it, idx) => {
+        const qty = Number(it.quantity) || 1;
+        const subtotal = (it.price * qty).toFixed(2);
+        const rawImg = it.poster?.image || it.poster?.imageUrl || it.poster?.thumb || it.poster?.thumbUrl || '';
+        const imgUrl = rawImg.startsWith('http') 
+          ? rawImg 
+          : (rawImg ? `${window.location.origin}${rawImg.startsWith('/') ? '' : '/'}${rawImg}` : '');
+        return `${idx + 1}. *${it.poster?.title || 'Obra Catálogo'}*\n` +
+          `   • Formato: ${it.size?.name || 'Estándar'} (${it.size?.dimensions || ''})\n` +
+          `   • Cantidad: *${qty} unidad(es)*\n` +
+          `   • Precio Unitario: Q${(Number(it.price) || 0).toFixed(2)}\n` +
+          `   • Subtotal: *Q${subtotal}*\n` +
+          (imgUrl ? `   🔗 *Ver Diseño:* ${imgUrl}` : '');
+      }).join('\n\n');
+
+      let message = `🧾 *NUEVO PEDIDO DESDE LA WEB DECO VINTAGE*\n` +
+        `──────────────────────────────────────\n` +
+        `👤 *Cliente:* ${customerName.trim() || 'Cliente Web'}\n` +
+        `📱 *Teléfono / WhatsApp:* ${customerPhone.trim()}\n` +
+        `📍 *Ubicación / Depto:* ${customerAddress.trim() || 'Por coordinar'} (${customerDept})\n` +
+        `──────────────────────────────────────\n` +
+        `📦 *DETALLE DE PÓSTERS RÍGIDOS MDF 5.5mm:*\n\n` +
+        `${itemsText}\n\n` +
+        `──────────────────────────────────────\n` +
+        `💰 *TOTAL A PAGAR: Q${total.toFixed(2)}*\n` +
+        `💳 *Anticipo del 50% para producción: Q${deposit50.toFixed(2)}*\n` +
+        `🚚 *Saldo del 50% contra entrega: Q${deposit50.toFixed(2)}*\n` +
+        `✨ _Incluye cinta Tesa industrial de montaje rápido._\n` +
+        `──────────────────────────────────────\n` +
+        `Hola, me gustaría confirmar mi pedido y coordinar el método de pago del anticipo del 50%. ¿Cuáles son los datos de transferencia?`;
+
+      // Confetti celebration
+      try {
+        confetti({
+          particleCount: 60,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#00f2fe', '#38bdf8', '#00f5a0']
+        });
+      } catch (e) {
+        // Ignore if confetti fails
+      }
+
+      const waUrl = generateWhatsAppLink(message);
+      const newWindow = window.open(waUrl, '_blank');
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        window.location.href = waUrl;
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -568,6 +622,7 @@ export default function CartDrawer({
               <button
                 type="button"
                 onClick={handleCheckoutWhatsApp}
+                disabled={isSubmitting}
                 className="btn-cyan"
                 style={{
                   width: '100%',
@@ -575,11 +630,13 @@ export default function CartDrawer({
                   padding: '14px',
                   fontSize: '0.92rem',
                   boxShadow: '0 0 20px rgba(0, 242, 254, 0.35)',
-                  marginTop: '4px'
+                  marginTop: '4px',
+                  opacity: isSubmitting ? 0.7 : 1,
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer'
                 }}
               >
                 <MessageSquare size={18} />
-                <span>Confirmar Pedido por WhatsApp</span>
+                <span>{isSubmitting ? 'Registrando y Abriendo WhatsApp...' : 'Confirmar Pedido por WhatsApp'}</span>
                 <ArrowRight size={16} />
               </button>
             </>
