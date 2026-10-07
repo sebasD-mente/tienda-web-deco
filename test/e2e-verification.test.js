@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { getRouteFromPath, getPathFromRoute } from '../src/utils/routes.js';
 import { OFFICIAL_SIZES, STORE_SETTINGS } from '../src/data/catalogData.js';
 import { generateWhatsAppLink, DEFAULT_WHATSAPP_PHONE } from '../src/config/constants.js';
-import { calculateCustomPrice, buildSystemInstruction, purgeExpiredEventsFromMemory, JARVIS_TOOL_DECLARATIONS, executeFunctionCall } from '../services/jarvisService.js';
+import { calculateCustomPrice, buildSystemInstruction, purgeExpiredEventsFromMemory, JARVIS_TOOL_DECLARATIONS, executeFunctionCall, runFallbackEngine } from '../services/jarvisService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -762,4 +762,40 @@ describe('Tier 4: Real-World Scenarios', () => {
     assert.equal(state5.total, 0);
     assert.equal(state5.deposit50, 0);
   });
+
+  // Direct Human Attention (Vendor Andrés) Verification
+  it('R4: Direct Human Attention (Vendor Andrés) tool, system instruction directive and fallback engine', () => {
+    // 1. Tool declaration exists and is structured properly
+    const humanTool = JARVIS_TOOL_DECLARATIONS.find(t => t.name === 'contactar_vendedor_humano');
+    assert.ok(humanTool, 'contactar_vendedor_humano tool declaration must exist');
+    assert.ok(humanTool.parameters.properties.mensaje_conversacional, 'Tool must define mensaje_conversacional parameter');
+
+    // 2. executeFunctionCall handles contactar_vendedor_humano
+    const action = executeFunctionCall(
+      { name: 'contactar_vendedor_humano', args: { mensaje_conversacional: '¡Con gusto! Escríbele a Andrés:' } },
+      [],
+      [],
+      { settings: { whatsappPhone: '50240275763' } }
+    );
+    assert.ok(action, 'executeFunctionCall must return an action object');
+    assert.equal(action.type, 'contact_human');
+    assert.equal(action.vendorName, 'Andrés');
+    assert.equal(action.phone, '50240275763');
+    assert.ok(action.waUrl.startsWith('https://api.whatsapp.com/send?phone=50240275763'));
+    assert.ok(action.waUrl.includes('Andr%C3%A9s') || action.waUrl.includes('Andr'));
+
+    // 3. System Instruction includes the explicit human vendor directive
+    const sysInstruction = buildSystemInstruction({}, {}, []);
+    assert.ok(sysInstruction.includes('=== SOLICITUD DE ATENCIÓN HUMANA (VENDEDOR ANDRÉS) ==='));
+    assert.ok(sysInstruction.includes('contactar_vendedor_humano'));
+
+    // 4. Local Fallback Engine routes human requests cleanly
+    const fallbackHuman = runFallbackEngine('quiero hablar con un humano o asesor real', [], {}, { settings: { whatsappPhone: '50240275763' } });
+    assert.ok(fallbackHuman.actions.some(a => a.type === 'contact_human'), 'Fallback engine must trigger contact_human action');
+    assert.ok(fallbackHuman.replyText.includes('Andrés'));
+
+    const fallbackAndres = runFallbackEngine('puedo hablar con Andrés vendedor?', [], {}, { settings: { whatsappPhone: '50240275763' } });
+    assert.ok(fallbackAndres.actions.some(a => a.type === 'contact_human'));
+  });
 });
+

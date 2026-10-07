@@ -33,6 +33,11 @@
       "id": "qp-5",
       "label": "Cuadro Personalizado",
       "prompt": "¿Cómo puedo hacer un cuadro personalizado con mi propia foto o diseño?"
+    },
+    {
+      "id": "qp-humano",
+      "label": "👤 Hablar con Andrés",
+      "prompt": "Quiero comunicarme con un asesor humano o vendedor"
     }
   ],
   "customDocuments": [

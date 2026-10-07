@@ -119,6 +119,19 @@ export const JARVIS_TOOL_DECLARATIONS = [
         }
       }
     }
+  },
+  {
+    name: 'contactar_vendedor_humano',
+    description: 'Invocar OBLIGATORIAMENTE siempre que el usuario pida hablar con un humano, comunicarse con una persona, asesor real, vendedor, Andrés, o solicite atención personalizada.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        mensaje_conversacional: {
+          type: 'STRING',
+          description: 'Respuesta muy breve, cálida y natural (máximo 1 línea), ej: "¡Con mucho gusto! Puedes escribirle directamente a nuestro vendedor Andrés por WhatsApp:"'
+        }
+      }
+    }
   }
 ];
 
@@ -572,6 +585,11 @@ REGLA DE EVENTOS: Solo existen y están activos los eventos listados en DOCUMENT
   2. REFINAMIENTO CON IA OBLIGATORIO: Al invocar 'mostrar_eventos_y_flyers', NUNCA copies textualmente el contenido crudo si contiene faltas de ortografía o redacción informal. En el parámetro 'resumenes_eventos', redacta para cada evento una descripcion_refinada impecable, concisa (2 o 3 líneas máximo), con ortografía perfecta y tono entusiasta destacando los atractivos del evento y la presencia del stand de Deco Vintage.
   3. Si NO HAY eventos vigentes listados o no hay ninguno activo: Aclara amablemente en máximo 2 líneas que por ahora no hay ferias o stands programados para estos días, e invítalo a comprar en línea o pedir por WhatsApp con envío a domicilio.
 
+=== SOLICITUD DE ATENCIÓN HUMANA (VENDEDOR ANDRÉS) ===
+- Si el usuario pide hablar con un humano, una persona real, un asesor, un vendedor o menciona a Andrés:
+  1. ESTRICTAMENTE PROHIBIDO dar discursos defensivos, robóticos o largos diciendo "Como soy una inteligencia artificial...".
+  2. Responde en MÁXIMO 1 LÍNEA amable y cálida (ej: "¡Con gusto! Puedes comunicarte directamente con nuestro vendedor Andrés:") e invoca OBLIGATORIAMENTE la herramienta 'contactar_vendedor_humano'.
+
 === ESTILO Y PERSONALIDAD DE J.A.R.V.I.S. ===
 - Eres súper amable, cálido, conversacional, servicial, ameno y educado. Hablas con emoción y cultura sobre cine, Marvel, DC, autos, anime, videojuegos, arte y música.
 - Trato cercano: Trata al cliente de 'tú' de forma natural y respetuosa. NUNCA uses repetitivamente palabras robóticas o frías como 'señor', 'caballero' o estructuras de soporte aburrido.
@@ -947,6 +965,20 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
         };
       }
 
+      case 'contactar_vendedor_humano': {
+        const settings = catalog?.settings || {};
+        const waPhone = settings.whatsappPhone || '50240275763';
+        const msgIntro = args.mensaje_conversacional || '¡Con mucho gusto! Puedes escribirle directamente a nuestro vendedor Andrés:';
+        const waText = encodeURIComponent('Hola Andrés 👋, me gustaría recibir atención personalizada para mis cuadros en Deco Vintage.');
+        return {
+          type: 'contact_human',
+          message: msgIntro,
+          vendorName: 'Andrés',
+          phone: waPhone,
+          waUrl: `https://api.whatsapp.com/send?phone=${waPhone.replace(/[^0-9]/g, '')}&text=${waText}`
+        };
+      }
+
       default:
         console.warn(`[executeFunctionCall] Herramienta desconocida recibida: ${call.name}`);
         return null;
@@ -975,6 +1007,35 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
   const qLower     = (prompt || '').toLowerCase();
   let   localReply = '';
   const localActions = [];
+
+  // 0.5 Check for human advisor / Andrés intent
+  const isHumanIntent = qLower.includes('humano') ||
+    qLower.includes('persona') ||
+    qLower.includes('asesor') ||
+    qLower.includes('andres') ||
+    qLower.includes('andrés') ||
+    qLower.includes('vendedor') ||
+    qLower.includes('atencion personalizada') ||
+    qLower.includes('atención personalizada');
+
+  if (isHumanIntent) {
+    const settings = catalog?.settings || {};
+    const waPhone = settings.whatsappPhone || '50240275763';
+    const msgIntro = '¡Con mucho gusto! Puedes escribirle directamente a nuestro vendedor Andrés:';
+    const waText = encodeURIComponent('Hola Andrés 👋, me gustaría recibir atención personalizada para mis cuadros en Deco Vintage.');
+    localActions.push({
+      type: 'contact_human',
+      message: msgIntro,
+      vendorName: 'Andrés',
+      phone: waPhone,
+      waUrl: `https://api.whatsapp.com/send?phone=${waPhone.replace(/[^0-9]/g, '')}&text=${waText}`
+    });
+    return {
+      replyText: msgIntro,
+      actions: localActions,
+      poweredBy: 'Deco High-Availability Fallback Engine'
+    };
+  }
 
   // 1. Check for custom dimensions calculation first (e.g. 50x70, 80x120)
   const dimMatch = qLower.match(/(\d{2,3})\s*(?:x|\*|por)\s*(\d{2,3})/);
@@ -1426,6 +1487,9 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
           } else if (executedActions.some(a => a.type === 'event_flyers')) {
             const eventAct = executedActions.find(a => a.type === 'event_flyers');
             replyText = eventAct?.message || `¡Aquí tienes nuestros próximos eventos y stands oficiales donde podrás visitarnos!`;
+          } else if (executedActions.some(a => a.type === 'contact_human')) {
+            const humanAct = executedActions.find(a => a.type === 'contact_human');
+            replyText = humanAct?.message || `¡Con mucho gusto! Puedes comunicarte directamente con nuestro vendedor Andrés por WhatsApp:`;
           }
         }
 
@@ -1530,6 +1594,9 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
             } else if (executedActions.some(a => a.type === 'event_flyers')) {
               const eventAct = executedActions.find(a => a.type === 'event_flyers');
               replyText = eventAct?.message || `¡Aquí tienes nuestros próximos eventos y stands oficiales donde podrás visitarnos!`;
+            } else if (executedActions.some(a => a.type === 'contact_human')) {
+              const humanAct = executedActions.find(a => a.type === 'contact_human');
+              replyText = humanAct?.message || `¡Con mucho gusto! Puedes comunicarte directamente con nuestro vendedor Andrés por WhatsApp:`;
             }
           }
 

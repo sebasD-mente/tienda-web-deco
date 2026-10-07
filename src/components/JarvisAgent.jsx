@@ -1344,6 +1344,50 @@ export default function JarvisAgent({
                         );
                       }
 
+                      if (act.type === 'contact_human') {
+                        const targetUrl = act.waUrl || generateWhatsAppLink('Hola Andrés 👋, me gustaría recibir atención personalizada para mis cuadros en Deco Vintage.', act.phone);
+                        const rawPhone = String(act.phone || '50240275763').replace(/[^0-9]/g, '');
+                        const displayPhone = rawPhone.startsWith('502') && rawPhone.length === 11
+                          ? `+502 ${rawPhone.slice(3, 7)}-${rawPhone.slice(7)}`
+                          : `+${rawPhone}`;
+
+                        return (
+                          <div key={actIdx} style={{ marginTop: '12px' }}>
+                            <a
+                              href={targetUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                background: 'linear-gradient(90deg, #00f5a0 0%, #00d2ff 100%)',
+                                color: '#040812',
+                                padding: '12px 20px',
+                                borderRadius: '10px',
+                                fontWeight: 800,
+                                fontSize: '0.86rem',
+                                textDecoration: 'none',
+                                boxShadow: '0 4px 18px rgba(0, 245, 160, 0.4)',
+                                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 22px rgba(0, 245, 160, 0.6)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 18px rgba(0, 245, 160, 0.4)';
+                              }}
+                            >
+                              <MessageSquare size={18} />
+                              <span>Comunícate directamente con nuestro vendedor Andrés ({displayPhone})</span>
+                              <ExternalLink size={14} />
+                            </a>
+                          </div>
+                        );
+                      }
+
                       return null;
                     })}
 
