@@ -49,6 +49,7 @@ export default function AdminJarvisTab({ onShowToast }) {
   const [docTitleInput, setDocTitleInput] = useState('');
   const [docCategoryInput, setDocCategoryInput] = useState('Políticas');
   const [docContentInput, setDocContentInput] = useState('');
+  const [docEventDateInput, setDocEventDateInput] = useState('');
   const [docToDelete, setDocToDelete] = useState(null);
   const [isDeletingDoc, setIsDeletingDoc] = useState(false);
 
@@ -148,6 +149,7 @@ export default function AdminJarvisTab({ onShowToast }) {
     setDocTitleInput('');
     setDocCategoryInput('Políticas');
     setDocContentInput('');
+    setDocEventDateInput('');
     setShowDocModal(true);
   };
 
@@ -156,6 +158,7 @@ export default function AdminJarvisTab({ onShowToast }) {
     setDocTitleInput(doc.title);
     setDocCategoryInput(doc.category || 'General');
     setDocContentInput(doc.content);
+    setDocEventDateInput(doc.eventDate || '');
     setShowDocModal(true);
   };
 
@@ -165,19 +168,18 @@ export default function AdminJarvisTab({ onShowToast }) {
       return;
     }
 
+    const docPayload = {
+      title: docTitleInput.trim(),
+      category: docCategoryInput,
+      content: docContentInput.trim(),
+      eventDate: docEventDateInput || null
+    };
+
     if (docModalId) {
-      await updateCustomDocument(docModalId, {
-        title: docTitleInput.trim(),
-        category: docCategoryInput,
-        content: docContentInput.trim()
-      });
+      await updateCustomDocument(docModalId, docPayload);
       onShowToast('¡Documento de conocimiento actualizado!', 'success');
     } else {
-      await addCustomDocument({
-        title: docTitleInput.trim(),
-        category: docCategoryInput,
-        content: docContentInput.trim()
-      });
+      await addCustomDocument(docPayload);
       onShowToast('¡Nuevo documento agregado a la memoria de J.A.R.V.I.S.!', 'success');
     }
 
@@ -622,6 +624,19 @@ export default function AdminJarvisTab({ onShowToast }) {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span className="badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>{doc.category || 'General'}</span>
+                    {doc.eventDate && (
+                      <span style={{
+                        fontSize: '0.68rem',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        border: '1px solid rgba(245, 158, 11, 0.4)',
+                        color: '#fbbf24',
+                        fontWeight: 700
+                      }}>
+                        📅 Finaliza: {doc.eventDate}
+                      </span>
+                    )}
                   </div>
                   <h4 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff', margin: '0 0 6px 0' }}>{doc.title}</h4>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.4', margin: '0 0 12px 0', maxHeight: '80px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -942,6 +957,33 @@ export default function AdminJarvisTab({ onShowToast }) {
                   <option value="General">General / FAQs</option>
                 </select>
               </div>
+
+              {docCategoryInput === 'Eventos' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', marginBottom: '6px', textTransform: 'uppercase' }}>
+                    Fecha del Evento (Día de finalización):
+                  </label>
+                  <input
+                    type="date"
+                    value={docEventDateInput}
+                    onChange={(e) => setDocEventDateInput(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      color: '#fff',
+                      fontSize: '0.88rem',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                    * Al llegar esta fecha en hora de Guatemala, J.A.R.V.I.S. purgará automáticamente el evento de la memoria y base de datos.
+                  </span>
+                </div>
+              )}
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px', textTransform: 'uppercase' }}>

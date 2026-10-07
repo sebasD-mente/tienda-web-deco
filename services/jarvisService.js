@@ -197,6 +197,71 @@ function getSeedJarvisMemory() {
 }
 
 /**
+ * Auto-purga eventos vencidos de la memoria de J.A.R.V.I.S. y sincroniza con PostgreSQL si hubo cambios.
+ * @param {object} jarvisMemory
+ * @returns {Promise<object>}
+ */
+export async function purgeExpiredEventsFromMemory(jarvisMemory) {
+  if (!jarvisMemory) return jarvisMemory;
+  const now = new Date();
+  // Obtener fecha actual en zona horaria de Guatemala (YYYY-MM-DD)
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(now);
+  const rawDocs = Array.isArray(jarvisMemory.customDocuments) ? jarvisMemory.customDocuments : [];
+  let wasModified = false;
+  const validDocs = rawDocs.filter(doc => {
+    // Si tiene fecha explícita de evento
+    if (doc.eventDate) {
+      if (doc.eventDate < todayStr) {
+        wasModified = true;
+        return false; // Vencido: se elimina
+      }
+      return true;
+    }
+    // Limpieza de eventos viejos conocidos por título o fecha en texto (Fan Fest 6 sep, Autos Escala 27 sep, Comic-Con 3-4 oct)
+    const titleLower = (doc.title || '').toLowerCase();
+    const contentLower = (doc.content || '').toLowerCase();
+    if (
+      titleLower.includes('fan fest') ||
+      titleLower.includes('autos a escala') ||
+      titleLower.includes('comic-con guatemala 2026') ||
+      contentLower.includes('6 de septiembre') ||
+      contentLower.includes('27 de septiembre') ||
+      contentLower.includes('4 de octubre de 2026')
+    ) {
+      wasModified = true;
+      return false; // Vencido: se elimina
+    }
+    return true;
+  });
+  // Limpiar directivas que mencionen eventos viejos
+  const rawDirectives = Array.isArray(jarvisMemory.ownerDirectives) ? jarvisMemory.ownerDirectives : [];
+  const validDirectives = rawDirectives.filter(d => !d.toLowerCase().includes('fan fest') && !d.toLowerCase().includes('6 de septiembre'));
+  if (validDirectives.length !== rawDirectives.length) {
+    wasModified = true;
+  }
+  // Si se detectaron eventos vencidos, actualizar PostgreSQL de inmediato
+  if (wasModified) {
+    try {
+      await prisma.jarvisMemory.update({
+        where: { id: 'default' },
+        data: {
+          customDocuments: validDocs,
+          ownerDirectives: validDirectives
+        }
+      });
+      console.log(`[Deco J.A.R.V.I.S.] Auto-purgados eventos vencidos de PostgreSQL exitosamente.`);
+    } catch (err) {
+      console.error('[Deco J.A.R.V.I.S.] Error persistiendo purga de eventos en PostgreSQL:', err.message);
+    }
+  }
+  return {
+    ...jarvisMemory,
+    customDocuments: validDocs,
+    ownerDirectives: validDirectives
+  };
+}
+
+/**
  * Retrieves J.A.R.V.I.S. training memory directly from PostgreSQL via Prisma.
  * If the database table is empty (cold start), auto-seeds from bundled JSON.
  * @returns {Promise<object>} Merged jarvisConfig object.
@@ -225,7 +290,7 @@ export async function getJarvisMemory() {
       console.log('[Deco J.A.R.V.I.S.] Auto-seeded PostgreSQL jarvis_memory from JSON template.');
     }
 
-    return {
+    const memory = {
       ...seed,
       apiKey: dbRecord.apiKey || seed.apiKey || '',
       systemPrompt: dbRecord.systemPrompt || seed.systemPrompt || '',
@@ -250,12 +315,14 @@ export async function getJarvisMemory() {
         : (seed.faqEntries || []),
       updatedAt: dbRecord.updatedAt.toISOString()
     };
+    return await purgeExpiredEventsFromMemory(memory);
   } catch (err) {
     console.warn('[Deco J.A.R.V.I.S.] Fallback safe recovery from seed JSON:', err.message);
-    return {
+    const fallbackMemory = {
       ...seed,
       updatedAt: new Date().toISOString()
     };
+    return await purgeExpiredEventsFromMemory(fallbackMemory);
   }
 }
 
@@ -384,14 +451,14 @@ export function buildSystemInstruction(catalog, jarvisMemory = {}, relevantPoste
   const allPosters = (catalog && Array.isArray(catalog.posters)) ? catalog.posters.filter(Boolean) : [];
   const settings   = catalog?.settings || {};
   const waPhone    = settings.whatsappPhone || '50238375078';
+  const todayFormatted = new Intl.DateTimeFormat('es-GT', { dateStyle: 'full', timeZone: 'America/Guatemala' }).format(new Date());
 
   const ownerDirectives = (jarvisMemory.ownerDirectives || [
     "Habla siempre de forma amigable, cálida, entusiasta y servicial, como un asesor de diseño experto y buena onda.",
     "Usa un trato de 'tú' neutro e inclusivo. NUNCA asumas género ni uses repetitivamente palabras robóticas.",
     "Escribe en texto conversacional fluido, natural y limpio.",
     "Recomienda siempre el tamaño Mediano (30x45cm) como la opción más balanceada e ideal para cualquier habitación.",
-    "Menciona que la cinta industrial Tesa de montaje viene incluida en el reverso lista para colgar sin taladros.",
-    "El próximo 6 de septiembre tendremos stand disponible en el Fan Fest Guatemala en Parque de la Industria donde estarán disponibles todos nuestros diseños y pósters autografiables con el actor de doblaje invitado Rodo Balderas."
+    "Menciona que la cinta industrial Tesa de montaje viene incluida en el reverso lista para colgar sin taladros."
   ]).map(d => `- ${d}`).join('\n');
 
   const customDocs = (jarvisMemory.customDocuments || [
@@ -428,6 +495,10 @@ export function buildSystemInstruction(catalog, jarvisMemory = {}, relevantPoste
 
   return `Eres J.A.R.V.I.S. (Just A Rather Very Intelligent System), el asesor de inteligencia artificial exclusivo de Deco Vintage Guate (tienda en Guatemala de cuadros rígidos y pósters decorativos de colección en madera MDF de 5.5mm con tecnología HP Látex).
 WhatsApp Oficial de Atención al Cliente: +${waPhone}
+
+=== FECHA ACTUAL DEL SISTEMA ===
+Hoy es ${todayFormatted}.
+REGLA DE EVENTOS: Solo existen y están activos los eventos listados en DOCUMENTOS Y EVENTOS VIGENTES. Si no hay ninguno listado o el cliente pregunta por eventos futuros, aclara amablemente que por ahora no hay ferias o stands programados para estos días, e invítalo a comprar en línea o pedir por WhatsApp con envío a domicilio.
 
 === ESTILO Y PERSONALIDAD DE J.A.R.V.I.S. ===
 - Eres súper amable, cálido, conversacional, servicial, ameno y educado. Hablas con emoción y cultura sobre cine, Marvel, DC, autos, anime, videojuegos, arte y música.
@@ -471,7 +542,7 @@ WhatsApp Oficial de Atención al Cliente: +${waPhone}
 === DIRECTIVAS Y POLÍTICAS DE ATENCIÓN DE LOS DUEÑOS ===
 ${ownerDirectives}
 
-=== DOCUMENTOS, EVENTOS Y GUÍAS OFICIALES DE LA TIENDA ===
+=== DOCUMENTOS Y EVENTOS VIGENTES DE LA TIENDA ===
 ${customDocs}
 
 === MATERIALES Y PRECIOS OFICIALES ===

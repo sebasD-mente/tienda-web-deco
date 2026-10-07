@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { getRouteFromPath, getPathFromRoute } from '../src/utils/routes.js';
 import { OFFICIAL_SIZES, STORE_SETTINGS } from '../src/data/catalogData.js';
 import { generateWhatsAppLink, DEFAULT_WHATSAPP_PHONE } from '../src/config/constants.js';
-import { calculateCustomPrice, buildSystemInstruction } from '../services/jarvisService.js';
+import { calculateCustomPrice, buildSystemInstruction, purgeExpiredEventsFromMemory } from '../services/jarvisService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -190,27 +190,44 @@ describe('Tier 1: Feature Coverage', () => {
     assert.ok(customLink.startsWith(`https://api.whatsapp.com/send?phone=${customPhone}&text=`));
   });
 
-  // Feature 9: JARVIS event date strings synchronization (R4)
-  it('F9: JARVIS event documents and system instruction promote active Fan Fest Guatemala', () => {
+  // Feature 9: JARVIS auto-purge of expired events and system prompt date injection
+  it('F9: JARVIS system instruction injects live system date and event purge rule', async () => {
     const configPath = path.resolve(PROJECT_ROOT, 'src/data/jarvisConfig.json');
     const configRaw = fs.readFileSync(configPath, 'utf-8');
     const jarvisConfig = JSON.parse(configRaw);
 
-    // Verify active event in memory customDocuments
-    const eventDoc = jarvisConfig.customDocuments?.find(d =>
-      (d.title && d.title.toLowerCase().includes('fan fest')) ||
-      (d.category && d.category.toLowerCase().includes('eventos'))
+    // 1. Verify expired Fan Fest has been purged from base config
+    const hasFanFest = jarvisConfig.customDocuments?.some(d =>
+      d.id === 'doc-1787976138406' || (d.title && d.title.toLowerCase().includes('fan fest'))
     );
+    assert.strictEqual(hasFanFest, false, 'jarvisConfig.json must not retain expired Fan Fest document');
 
-    assert.ok(eventDoc, 'jarvisConfig.json must include active Fan Fest event document');
-    assert.ok(eventDoc.content.includes('6 de septiembre'), 'Event document must specify September 6 date');
-    assert.ok(eventDoc.content.includes('Parque de la Industria'), 'Event document must specify Parque de la Industria');
-    assert.ok(eventDoc.content.includes('Rodo Balderas'), 'Event document must mention special guest Rodo Balderas');
-
-    // Build system instruction and verify event injection
+    // 2. Build system instruction and verify live system date and event rule injection
     const systemPrompt = buildSystemInstruction({ posters: [], settings: {} }, jarvisConfig, []);
-    assert.ok(systemPrompt.includes('Fan Fest Guatemala'), 'System prompt must inject Fan Fest Guatemala');
-    assert.ok(systemPrompt.includes('6 de septiembre'), 'System prompt must inject 6 de septiembre');
+    assert.ok(systemPrompt.includes('=== FECHA ACTUAL DEL SISTEMA ==='), 'System prompt must include system date section');
+    assert.ok(systemPrompt.includes('REGLA DE EVENTOS:'), 'System prompt must include event rule');
+    assert.ok(systemPrompt.includes('DOCUMENTOS Y EVENTOS VIGENTES'), 'System prompt must reference active events list');
+
+    // 3. Test purgeExpiredEventsFromMemory utility
+    const testMemory = {
+      customDocuments: [
+        { id: 'ev-expired', title: 'Feria Pasada', category: 'Eventos', eventDate: '2020-01-01' },
+        { id: 'ev-legacy-fanfest', title: 'Fan Fest Antiguo', content: 'Stand el 6 de septiembre' },
+        { id: 'ev-future', title: 'Feria Futura 2030', category: 'Eventos', eventDate: '2030-12-31' },
+        { id: 'doc-policy', title: 'Política Envíos', category: 'Logística', content: 'Envíos a todo el país' }
+      ],
+      ownerDirectives: [
+        'Hablar de forma amigable',
+        'Recordar el stand de Fan Fest del 6 de septiembre'
+      ]
+    };
+
+    const purged = await purgeExpiredEventsFromMemory(testMemory);
+    assert.strictEqual(purged.customDocuments.length, 2, 'Only future event and regular doc should survive purge');
+    assert.strictEqual(purged.customDocuments[0].id, 'ev-future');
+    assert.strictEqual(purged.customDocuments[1].id, 'doc-policy');
+    assert.strictEqual(purged.ownerDirectives.length, 1, 'Expired directive should be removed');
+    assert.strictEqual(purged.ownerDirectives[0], 'Hablar de forma amigable');
   });
 
   // Feature 10: Cart math across all 6 official poster sizes
