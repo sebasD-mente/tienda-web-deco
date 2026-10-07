@@ -109,6 +109,36 @@ function renderCleanMessageText(text) {
   });
 }
 
+// Formats event date ranges into natural, human-friendly Spanish text
+function formatEventDates(startDate, endDate) {
+  if (!endDate && !startDate) return null;
+  
+  const parseDate = (dStr) => {
+    if (!dStr) return null;
+    const [y, m, d] = dStr.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  };
+  const s = parseDate(startDate);
+  const e = parseDate(endDate);
+  const months = [
+    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+  ];
+  if (s && e) {
+    if (s.getTime() === e.getTime()) {
+      return `${s.getDate()} ${months[s.getMonth()]} ${s.getFullYear()}`;
+    }
+    if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+      return `Del ${s.getDate()} al ${e.getDate()} de ${months[s.getMonth()]} ${s.getFullYear()}`;
+    }
+    return `${s.getDate()} ${months[s.getMonth()]} – ${e.getDate()} ${months[e.getMonth()]} ${e.getFullYear()}`;
+  }
+  if (e) return `Hasta el ${e.getDate()} de ${months[e.getMonth()]} ${e.getFullYear()}`;
+  if (s) return `A partir del ${s.getDate()} de ${months[s.getMonth()]} ${s.getFullYear()}`;
+  return null;
+}
+
 export default function JarvisAgent({ 
   isOpen, 
   onClose, 
@@ -1229,7 +1259,7 @@ export default function JarvisAgent({
 
                                       {/* Event Badges (Date & Stand) */}
                                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                        {evDate && (
+                                        {formatEventDates(ev.startDate, ev.eventDate) && (
                                           <span style={{
                                             fontSize: '0.72rem',
                                             background: 'rgba(0, 242, 254, 0.12)',
@@ -1243,7 +1273,7 @@ export default function JarvisAgent({
                                             gap: '4px'
                                           }}>
                                             <Calendar size={11} />
-                                            <span>Hasta: {evDate}</span>
+                                            <span>{formatEventDates(ev.startDate, ev.eventDate)}</span>
                                           </span>
                                         )}
                                         {evStand && (

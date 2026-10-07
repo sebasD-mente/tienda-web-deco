@@ -242,10 +242,11 @@ describe('Tier 1: Feature Coverage', () => {
           id: 'ev-comicon-2030',
           title: 'Comicon Guatemala 2030',
           category: 'Eventos',
+          startDate: '2030-10-01',
           eventDate: '2030-10-04',
           standLocation: 'Stand VP21, Parque de la Industria',
           flyerUrl: 'https://storage.googleapis.com/test-flyer.webp',
-          content: 'Gran convención de cultura pop'
+          content: 'Gran comvencion de kultura pop (con faltas)'
         },
         {
           id: 'ev-past',
@@ -257,7 +258,18 @@ describe('Tier 1: Feature Coverage', () => {
     };
 
     const action = executeFunctionCall(
-      { name: 'mostrar_eventos_y_flyers', args: { mensaje_conversacional: '¡Acompáñanos en nuestros stands!' } },
+      {
+        name: 'mostrar_eventos_y_flyers',
+        args: {
+          mensaje_conversacional: '¡Acompáñanos en nuestros stands!',
+          resumenes_eventos: [
+            {
+              eventoId: 'ev-comicon-2030',
+              descripcion_refinada: 'Edición especial de Comicon Guatemala 2030 con exhibición de arte rígido premium en madera MDF.'
+            }
+          ]
+        }
+      },
       [],
       [],
       null,
@@ -269,8 +281,15 @@ describe('Tier 1: Feature Coverage', () => {
     assert.strictEqual(action.message, '¡Acompáñanos en nuestros stands!');
     assert.strictEqual(action.events.length, 1, 'Should only return the future non-expired event');
     assert.strictEqual(action.events[0].id, 'ev-comicon-2030');
+    assert.strictEqual(action.events[0].startDate, '2030-10-01', 'Should preserve startDate');
+    assert.strictEqual(action.events[0].eventDate, '2030-10-04', 'Should preserve eventDate');
     assert.strictEqual(action.events[0].standLocation, 'Stand VP21, Parque de la Industria');
     assert.strictEqual(action.events[0].flyerUrl, 'https://storage.googleapis.com/test-flyer.webp');
+    assert.strictEqual(
+      action.events[0].content,
+      'Edición especial de Comicon Guatemala 2030 con exhibición de arte rígido premium en madera MDF.',
+      'AI refined description should override raw description'
+    );
 
     // When no active events exist, executeFunctionCall should return null
     const emptyAction = executeFunctionCall(

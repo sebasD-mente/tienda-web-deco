@@ -49,6 +49,7 @@ export default function AdminJarvisTab({ onShowToast }) {
   const [docTitleInput, setDocTitleInput] = useState('');
   const [docCategoryInput, setDocCategoryInput] = useState('Políticas');
   const [docContentInput, setDocContentInput] = useState('');
+  const [docStartDateInput, setDocStartDateInput] = useState('');
   const [docEventDateInput, setDocEventDateInput] = useState('');
   const [docStandInput, setDocStandInput] = useState('');
   const [docFlyerUrlInput, setDocFlyerUrlInput] = useState('');
@@ -153,6 +154,7 @@ export default function AdminJarvisTab({ onShowToast }) {
     setDocTitleInput('');
     setDocCategoryInput('Políticas');
     setDocContentInput('');
+    setDocStartDateInput('');
     setDocEventDateInput('');
     setDocStandInput('');
     setDocFlyerUrlInput('');
@@ -164,6 +166,7 @@ export default function AdminJarvisTab({ onShowToast }) {
     setDocTitleInput(doc.title);
     setDocCategoryInput(doc.category || 'General');
     setDocContentInput(doc.content);
+    setDocStartDateInput(doc.startDate || '');
     setDocEventDateInput(doc.eventDate || '');
     setDocStandInput(doc.standLocation || '');
     setDocFlyerUrlInput(doc.flyerUrl || '');
@@ -204,6 +207,7 @@ export default function AdminJarvisTab({ onShowToast }) {
       title: docTitleInput.trim(),
       category: docCategoryInput,
       content: docContentInput.trim(),
+      startDate: docCategoryInput === 'Eventos' ? (docStartDateInput || null) : null,
       eventDate: docCategoryInput === 'Eventos' ? (docEventDateInput || null) : null,
       flyerUrl: docCategoryInput === 'Eventos' ? (docFlyerUrlInput || null) : null,
       standLocation: docCategoryInput === 'Eventos' ? (docStandInput?.trim() || null) : null
@@ -685,7 +689,7 @@ export default function AdminJarvisTab({ onShowToast }) {
                         color: '#fbbf24',
                         fontWeight: 700
                       }}>
-                        📅 Finaliza: {doc.eventDate}
+                        📅 {doc.startDate ? `${doc.startDate} al ${doc.eventDate}` : `Finaliza: ${doc.eventDate}`}
                       </span>
                     )}
                   </div>
@@ -1027,30 +1031,33 @@ export default function AdminJarvisTab({ onShowToast }) {
 
               {docCategoryInput === 'Eventos' && (
                 <>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', marginBottom: '6px', textTransform: 'uppercase' }}>
-                      Fecha en que finaliza el evento (Auto-purga al día siguiente):
-                    </label>
-                    <input
-                      type="date"
-                      value={docEventDateInput}
-                      onChange={(e) => setDocEventDateInput(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(245, 158, 11, 0.4)',
-                        color: '#fff',
-                        fontSize: '0.88rem',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-                      * Al llegar esta fecha en hora de Guatemala, J.A.R.V.I.S. purgará automáticamente el evento de la memoria y base de datos.
-                    </span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                        Fecha de Inicio:
+                      </label>
+                      <input
+                        type="date"
+                        value={docStartDateInput}
+                        onChange={(e) => setDocStartDateInput(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(0, 242, 254, 0.3)', color: '#fff', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: '#fbbf24', marginBottom: '6px', textTransform: 'uppercase' }}>
+                        Fecha de Finalización (Auto-purga):
+                      </label>
+                      <input
+                        type="date"
+                        value={docEventDateInput}
+                        onChange={(e) => setDocEventDateInput(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(245, 158, 11, 0.4)', color: '#fff', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
                   </div>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '-4px' }}>
+                    * Al llegar la fecha de finalización en hora de Guatemala, J.A.R.V.I.S. purgará automáticamente el evento de la memoria y base de datos.
+                  </span>
 
                   <div>
                     <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px', textTransform: 'uppercase' }}>

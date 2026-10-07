@@ -272,6 +272,7 @@ export function addCustomDocument(doc) {
     category: doc.category || 'General',
     content: doc.content || '',
     dateAdded: doc.dateAdded || new Date().toLocaleDateString('es-GT'),
+    startDate: doc.startDate || null,
     eventDate: doc.eventDate || null,
     flyerUrl: doc.flyerUrl || null,
     standLocation: doc.standLocation || null,

@@ -101,6 +101,21 @@ export const JARVIS_TOOL_DECLARATIONS = [
         mensaje_conversacional: {
           type: 'STRING',
           description: 'Introducción muy breve, cálida y entusiasta (máximo 2 líneas) invitando a ver los eventos o flyers.'
+        },
+        resumenes_eventos: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              eventoId: { type: 'STRING', description: 'ID o título del evento' },
+              descripcion_refinada: {
+                type: 'STRING',
+                description: 'Redacción impecable, profesional y atractiva (máximo 2 a 3 líneas). Corrige cualquier falta ortográfica o error tipográfico del texto original y destaca los atractivos del evento y la presencia del stand de Deco Vintage.'
+              }
+            },
+            required: ['eventoId', 'descripcion_refinada']
+          },
+          description: 'Lista de descripciones refinadas y corregidas por la IA para cada evento activo.'
         }
       }
     }
@@ -522,10 +537,11 @@ export function buildSystemInstruction(catalog, jarvisMemory = {}, relevantPoste
     }
   ]).map(doc => {
     let extra = '';
-    if (doc.eventDate) extra += ` | Fecha límite: ${doc.eventDate}`;
+    if (doc.startDate) extra += ` | Fecha de inicio: ${doc.startDate}`;
+    if (doc.eventDate) extra += ` | Fecha de finalización / límite: ${doc.eventDate}`;
     if (doc.standLocation) extra += ` | Stand: ${doc.standLocation}`;
     if (doc.flyerUrl) extra += ` | Flyer oficial disponible: Sí`;
-    return `[DOCUMENTO / EVENTO: ${doc.title}]\nCategoría: ${doc.category || 'General'}${extra}\nContenido: ${doc.content}`;
+    return `[DOCUMENTO / EVENTO: ${doc.title}${doc.id ? ` (ID: ${doc.id})` : ''}]\nCategoría: ${doc.category || 'General'}${extra}\nContenido original: ${doc.content}`;
   }).join('\n\n');
 
   // Inyección Semántica RAG: Únicamente incluir si realmente hay obras que superaron el umbral de similitud
@@ -553,7 +569,8 @@ Hoy es ${todayFormatted}.
 REGLA DE EVENTOS: Solo existen y están activos los eventos listados en DOCUMENTOS Y EVENTOS VIGENTES.
 - Si el usuario pregunta por eventos, ferias, convenciones, fechas donde estará Deco Vintage, stands o pide ver flyers oficiales:
   1. Si HAY eventos de categoría 'Eventos' vigentes en DOCUMENTOS Y EVENTOS VIGENTES: Responde con un saludo breve y entusiasta de MÁXIMO 2 LÍNEAS y llama OBLIGATORIAMENTE de inmediato a la herramienta 'mostrar_eventos_y_flyers'.
-  2. Si NO HAY eventos vigentes listados o no hay ninguno activo: Aclara amablemente en máximo 2 líneas que por ahora no hay ferias o stands programados para estos días, e invítalo a comprar en línea o pedir por WhatsApp con envío a domicilio.
+  2. REFINAMIENTO CON IA OBLIGATORIO: Al invocar 'mostrar_eventos_y_flyers', NUNCA copies textualmente el contenido crudo si contiene faltas de ortografía o redacción informal. En el parámetro 'resumenes_eventos', redacta para cada evento una descripcion_refinada impecable, concisa (2 o 3 líneas máximo), con ortografía perfecta y tono entusiasta destacando los atractivos del evento y la presencia del stand de Deco Vintage.
+  3. Si NO HAY eventos vigentes listados o no hay ninguno activo: Aclara amablemente en máximo 2 líneas que por ahora no hay ferias o stands programados para estos días, e invítalo a comprar en línea o pedir por WhatsApp con envío a domicilio.
 
 === ESTILO Y PERSONALIDAD DE J.A.R.V.I.S. ===
 - Eres súper amable, cálido, conversacional, servicial, ameno y educado. Hablas con emoción y cultura sobre cine, Marvel, DC, autos, anime, videojuegos, arte y música.
@@ -905,11 +922,28 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
         }
 
         const msgIntro = args.mensaje_conversacional || args.mensaje || '¡Aquí tienes nuestros próximos eventos y stands oficiales donde podrás visitarnos!';
+        const refinedList = Array.isArray(args.resumenes_eventos) ? args.resumenes_eventos : [];
 
         return {
           type: 'event_flyers',
           message: msgIntro,
-          events: activeEvents
+          events: activeEvents.map(e => {
+            const matchedRefined = refinedList.find(r => 
+              r.eventoId === e.id || 
+              (r.eventoId && e.title && r.eventoId.toLowerCase().includes(e.title.toLowerCase())) ||
+              (r.eventoId && e.title && e.title.toLowerCase().includes(r.eventoId.toLowerCase()))
+            );
+            return {
+              id: e.id,
+              title: e.title,
+              startDate: e.startDate || null,
+              eventDate: e.eventDate || null,
+              flyerUrl: e.flyerUrl || null,
+              standLocation: e.standLocation || null,
+              // Se prioriza la redacción pulida de la IA sobre el texto crudo
+              content: matchedRefined?.descripcion_refinada || e.content
+            };
+          })
         };
       }
 
