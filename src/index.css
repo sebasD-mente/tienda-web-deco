@@ -590,4 +590,16 @@ body:has(.jarvis-modal-backdrop) .jarvis-trigger-orb {
   }
 }
 
-
+@media (max-width: 540px) {
+  .jarvis-event-card-row {
+    flex-direction: column !important;
+  }
+  .jarvis-event-card-row > div:first-child {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: 180px !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(0, 242, 254, 0.2) !important;
+  }
+}

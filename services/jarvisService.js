@@ -939,6 +939,12 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
           return null;
         }
 
+        activeEvents.sort((a, b) => {
+          const dateA = a.startDate || a.eventDate || '9999-12-31';
+          const dateB = b.startDate || b.eventDate || '9999-12-31';
+          return dateA.localeCompare(dateB);
+        });
+
         const msgIntro = args.mensaje_conversacional || args.mensaje || '¡Aquí tienes nuestros próximos eventos y stands oficiales donde podrás visitarnos!';
         const refinedList = Array.isArray(args.resumenes_eventos) ? args.resumenes_eventos : [];
 
@@ -1128,6 +1134,11 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
   const rawDocs    = jarvisMemory?.customDocuments || [];
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
   const activeEvents = rawDocs.filter(d => d.category === 'Eventos' && (!d.eventDate || d.eventDate >= todayStr));
+  activeEvents.sort((a, b) => {
+    const dateA = a.startDate || a.eventDate || '9999-12-31';
+    const dateB = b.startDate || b.eventDate || '9999-12-31';
+    return dateA.localeCompare(dateB);
+  });
 
   const isEventQuery = qLower.includes('evento') || qLower.includes('feria') || qLower.includes('stand') ||
                        qLower.includes('flyer') || qLower.includes('convencion') || qLower.includes('conve');
