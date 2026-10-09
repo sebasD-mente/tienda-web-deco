@@ -172,7 +172,11 @@ export default function App() {
   // Modal Open / Close Handlers with Browser History Sync
   const handleOpenPosterModal = (poster) => {
     if (poster) {
-      window.history.pushState({ type: 'modal', modalType: 'poster' }, '');
+      if (window.history.state?.modalType === 'navbarSearch') {
+        window.history.replaceState({ type: 'modal', modalType: 'poster' }, '');
+      } else {
+        window.history.pushState({ type: 'modal', modalType: 'poster' }, '');
+      }
       setSelectedPosterForModal(poster);
     }
   };

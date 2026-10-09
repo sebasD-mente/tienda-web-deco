@@ -70,6 +70,13 @@ export default function Navbar({
     }
   };
 
+  const handleSelectPosterFromSearch = (poster) => {
+    setSearchModalOpen(false);
+    if (onSelectPoster) {
+      onSelectPoster(poster);
+    }
+  };
+
   const toggleMobileMenu = () => {
     if (!mobileMenuOpen) {
       window.history.pushState({ modalType: 'mobileMenu' }, '');
@@ -1015,7 +1022,7 @@ export default function Navbar({
 
                     <button
                       onClick={() => {
-                        handleCloseSearchModal();
+                        setSearchModalOpen(false);
                         if (onSearch) onSearch(localSearch.trim());
                         if (onNavigate) onNavigate('catalog');
                       }}
@@ -1040,10 +1047,7 @@ export default function Navbar({
                     {searchResults.map((poster) => (
                       <div
                         key={poster.id}
-                        onClick={() => {
-                          handleCloseSearchModal();
-                          if (onSelectPoster) onSelectPoster(poster);
-                        }}
+                        onClick={() => handleSelectPosterFromSearch(poster)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
