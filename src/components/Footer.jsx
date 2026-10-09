@@ -110,7 +110,7 @@ export default function Footer({ onNavigate }) {
                   <circle cx="12" cy="12" r="3" stroke="#ffffff" strokeWidth="1.8" fill="none" />
                   <circle cx="15.3" cy="8.7" r="0.9" fill="#ffffff" />
                 </svg>
-                <span>Seguir @decovintage.guate</span>
+                <span>Seguir en Instagram</span>
               </a>
 
               {/* Facebook Card */}
