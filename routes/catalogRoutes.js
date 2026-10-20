@@ -35,6 +35,7 @@ import {
   categoryCreateSchema,
   franchiseCreateSchema,
 } from '../validators/adminSchemas.js';
+import { analyzePosterImageWithVision } from '../services/posterVisionService.js';
 
 const router = Router();
 
@@ -784,6 +785,27 @@ router.post('/catalog/sync-embeddings', requireAuth, async (req, res) => {
       return res.status(500).json({ error: 'Error interno del servidor.' });
     }
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/catalog/analyze-poster-image (Admin — AI Vision Auto-Fill) ──
+router.post('/catalog/analyze-poster-image', requireAuth, async (req, res) => {
+  try {
+    const { dataUrl, imageUrl } = req.body || {};
+    if (!dataUrl && !imageUrl) {
+      return res.status(400).json({
+        error: 'Debes proporcionar un "dataUrl" en base64 o una "imageUrl" válida para el análisis.'
+      });
+    }
+
+    const result = await analyzePosterImageWithVision({ dataUrl, imageUrl });
+    return res.status(200).json({
+      success: true,
+      analysis: result
+    });
+  } catch (err) {
+    console.error('[API Error] POST /api/catalog/analyze-poster-image:', err);
+    return res.status(500).json({ error: err.message || 'Error al analizar la imagen con IA.' });
   }
 });
 

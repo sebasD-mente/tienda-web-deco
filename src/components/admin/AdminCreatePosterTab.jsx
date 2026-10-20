@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Plus, Edit3, Check, Upload, Trash2,
-  Image as ImageIcon, AlertCircle
+  Image as ImageIcon, AlertCircle, Sparkles, Loader2
 } from 'lucide-react';
 import { OFFICIAL_SIZES } from '../../data/catalogData';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
-import { apiUploadPosterImage, apiDeletePosterImage } from '../../utils/apiClient';
+import { apiUploadPosterImage, apiDeletePosterImage, apiAnalyzePosterImage } from '../../utils/apiClient';
 
 export default function AdminCreatePosterTab({
   editingPoster = null,
@@ -55,6 +55,7 @@ export default function AdminCreatePosterTab({
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isUploading,  setIsUploading]  = useState(false);
   const [isSaving,     setIsSaving]     = useState(false);
+  const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
 
   const fileInputRef = useRef(null);
   const prevEditingIdRef = useRef(editingPoster?.id || null);
@@ -155,6 +156,40 @@ export default function AdminCreatePosterTab({
   //
   // RESULTADO: En el submit, imageUrl/thumbUrl ya son URLs del VPS SSD — nunca base64.
 
+  // ── Análisis de Visión IA ────────────────────────────────────────────────────
+  const handleAnalyzeWithAI = async (sourceImage) => {
+    const target = sourceImage || _base64Full || imageUrl;
+    if (!target) {
+      onShowToast('Selecciona o sube una imagen primero para analizarla con IA.', 'info');
+      return;
+    }
+
+    setIsAnalyzingAI(true);
+    try {
+      const res = await apiAnalyzePosterImage(target);
+      if (res?.success && res.analysis) {
+        const { title: aiTitle, subtitle: aiSubtitle, description: aiDesc, category: aiCat, franchiseId: aiFranchise } = res.analysis;
+        if (aiTitle) setTitle(aiTitle);
+        if (aiSubtitle) setSubtitle(aiSubtitle);
+        if (aiDesc) setDescription(aiDesc);
+        if (aiCat && activeCategories.some(c => c.id === aiCat)) {
+          setCategory(aiCat);
+        }
+        if (aiFranchise !== undefined) {
+          setFranchiseId(aiFranchise || '');
+        }
+        onShowToast('✨ Ficha autocompletada con IA. Revisa los datos y elige los tamaños.', 'success');
+      } else {
+        onShowToast('La IA no pudo procesar la imagen en este intento.', 'error');
+      }
+    } catch (err) {
+      console.warn('[AdminCreatePosterTab] Error en análisis con IA:', err.message);
+      onShowToast('Aviso de IA: ' + err.message, 'error');
+    } finally {
+      setIsAnalyzingAI(false);
+    }
+  };
+
   const handleImageFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -170,6 +205,9 @@ export default function AdminCreatePosterTab({
         name:         result.fileName
       });
       setIsOptimizing(false);
+
+      // Disparo automático y paralelo de Visión IA mientras la imagen se sube a GCS/VPS
+      handleAnalyzeWithAI(result.fullDataUrl);
 
       // PASO 2: Subida al VPS con Sharp
       setIsUploading(true);
@@ -384,13 +422,34 @@ export default function AdminCreatePosterTab({
                       ⚠ En memoria — se guardará al publicar
                     </div>
                   )}
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleAnalyzeWithAI(_base64Full || imageUrl)}
+                      className="btn-secondary"
+                      style={{
+                        padding: '4px 12px',
+                        fontSize: '0.75rem',
+                        background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(121, 40, 202, 0.25))',
+                        border: '1px solid rgba(0, 242, 254, 0.5)',
+                        color: '#00f2fe',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                      disabled={isAnalyzingAI || isOptimizing}
+                      title="Analizar obra con IA y autocompletar formulario"
+                    >
+                      {isAnalyzingAI ? <Loader2 size={13} className="spin-slow" /> : <Sparkles size={13} />}
+                      <span>{isAnalyzingAI ? '✨ Analizando con IA…' : (title ? '✨ Regenerar con IA' : '✨ Autocompletar con IA')}</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="btn-secondary"
                       style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                      disabled={isOptimizing || isUploading}
+                      disabled={isOptimizing || isUploading || isAnalyzingAI}
                     >
                       {isOptimizing ? 'Optimizando…' : isUploading ? 'Subiendo…' : 'Cambiar Imagen'}
                     </button>
@@ -439,8 +498,13 @@ export default function AdminCreatePosterTab({
           {/* 2. Title & Subtitle */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '18px' }}>
             <div>
-              <label htmlFor="poster-title" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                2. Título de la Obra *
+              <label htmlFor="poster-title" style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                <span>2. Título de la Obra *</span>
+                {isAnalyzingAI && (
+                  <span style={{ color: '#00f2fe', fontSize: '0.72rem', marginLeft: '8px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <Sparkles size={11} /> Redactando con IA…
+                  </span>
+                )}
               </label>
               <input
                 id="poster-title"
@@ -513,14 +577,19 @@ export default function AdminCreatePosterTab({
 
           {/* 6. Description */}
           <div style={{ marginBottom: '18px' }}>
-            <label htmlFor="poster-description" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              6. Descripción Detallada de la Obra (Opcional)
+            <label htmlFor="poster-description" style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              <span>6. Descripción Detallada de la Obra (Opcional)</span>
+              {isAnalyzingAI && (
+                <span style={{ color: '#00f2fe', fontSize: '0.72rem', marginLeft: '8px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Sparkles size={11} /> Redactando párrafo con IA…
+                </span>
+              )}
             </label>
             <textarea
               id="poster-description"
               name="description"
               rows={3}
-              placeholder="Escribe la descripción de la obra, detalles artísticos, acabado en MDF 5.5mm, etc..."
+              placeholder="Describe el contexto histórico o cultural, composición artística, atmósfera y espacios ideales donde luce..."
               value={description}
               onChange={e => setDescription(e.target.value)}
               style={{

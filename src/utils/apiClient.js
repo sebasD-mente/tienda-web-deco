@@ -442,3 +442,23 @@ export async function apiDeleteCustomOrder(id) {
   return handleResponse(res);
 }
 
+// ── Visión IA para Catálogo ──────────────────────────────────────────────────
+
+/**
+ * Analiza la imagen de un póster mediante visión multimodal con Gemini (Admin).
+ * @param {string|{ dataUrl?: string, imageUrl?: string }} payload
+ * @returns {Promise<{ success: boolean, analysis: { title: string, subtitle: string, description: string, category: string, franchiseId: string, modelUsed: string } }>}
+ */
+export async function apiAnalyzePosterImage(payload) {
+  const body = typeof payload === 'string'
+    ? (payload.startsWith('data:') ? { dataUrl: payload } : { imageUrl: payload })
+    : payload;
+  const res = await fetch('/api/catalog/analyze-poster-image', {
+    method: 'POST',
+    headers: getHeaders(true),
+    body: JSON.stringify(body)
+  });
+  return handleResponse(res);
+}
+
+
