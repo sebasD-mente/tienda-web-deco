@@ -5,69 +5,14 @@
  * - Punctuation and hyphen normalization (Spider-Man -> spiderman / spider man)
  * - Multi-token word matching in any order
  * - Typo tolerance via Damerau-Levenshtein distance (porshe -> porsche)
- * - Synonym and keyword expansion (carros -> autos, dbz -> dragon ball, etc.)
+ * - Laser precision: No blind substrings for short tokens
+ * - Evaluates Title, Subtitle, Category, Franchise, Workshop Tags
+ * - Excludes description paragraph to eliminate noise
  * - Relevance scoring & ranking
  */
 
-// Common synonyms and aliases in pop-culture / posters
-const SYNONYMS = {
-  'spiderman': ['spider-man', 'spider man', 'hombre arana', 'peter parker', 'marvel', 'miles morales'],
-  'spider-man': ['spiderman', 'spider man', 'hombre arana', 'marvel'],
-  'ironman': ['iron man', 'tony stark', 'marvel', 'avengers'],
-  'iron man': ['ironman', 'tony stark', 'marvel', 'avengers'],
-  'batman': ['caballero de la noche', 'dark knight', 'bruce wayne', 'dc comics', 'gotham'],
-  'goku': ['dragon ball', 'dragonball', 'dbz', 'super saiyan', 'kakaroto', 'anime'],
-  'dragonball': ['dragon ball', 'dbz', 'goku', 'vegeta', 'anime'],
-  'dbz': ['dragon ball', 'dragonball', 'goku', 'vegeta', 'anime'],
-  'porshe': ['porsche', 'gt3', '911', 'carrera', 'turbo'],
-  'porche': ['porsche', 'gt3', '911', 'carrera', 'turbo'],
-  'porsche': ['porsche 911', 'gt3', 'carrera', 'turbo', 'rs'],
-  'gtr': ['nissan', 'skyline', 'r34', 'r35', 'godzilla', 'jdm'],
-  'skyline': ['nissan', 'gtr', 'r34', 'jdm', 'paul walker'],
-  'delorean': ['volver al futuro', 'back to the future', 'doc brown', 'marty mcfly', 'cine'],
-  'starwars': ['star wars', 'darth vader', 'yoda', 'jedi', 'sith', 'skywalker', 'mandalorian'],
-  'star wars': ['starwars', 'darth vader', 'yoda', 'jedi', 'mandalorian'],
-  'f1': ['formula 1', 'formula uno', 'senna', 'ayrton senna', 'red bull', 'ferrari', 'monaco', 'carreras', 'carlos sainz', 'leclerc', 'hamilton', 'verstappen', 'checo perez'],
-  'formula 1': ['f1', 'formula uno', 'carreras', 'senna', 'monaco', 'red bull', 'ferrari', 'leclerc', 'verstappen', 'checo perez', 'carlos sainz'],
-  'autos': ['carros', 'coches', 'automovilismo', 'corvette', 'mustang', 'fastback', 'combi', 'volkswagen', 'vw', 'ruta 66', 'f1', 'formula 1', 'carreras', 'ferrari', 'red bull'],
-  'auto': ['autos', 'carros', 'coches', 'corvette', 'mustang', 'fastback', 'combi', 'volkswagen', 'f1', 'formula 1'],
-  'carros': ['autos', 'vehiculos', 'coches', 'corvette', 'mustang', 'combi', 'f1', 'formula 1'],
-  'coches': ['autos', 'carros', 'vehiculos', 'corvette', 'mustang', 'combi', 'f1', 'formula 1'],
-  'corvette': ['autos', 'carros', 'ruta 66', 'vintage', 'muscle car'],
-  'combi': ['autos', 'carros', 'volkswagen', 'vw', 'vintage', 'alma viajera'],
-  'mustang': ['autos', 'carros', 'ford mustang', 'fastback', 'midnight muscle', 'muscle car'],
-  'fastback': ['mustang', 'mustang fastback', 'autos', 'carros', 'muscle car'],
-  'the beatles': ['beatles', 'rock', 'musica', 'john lennon', 'paul mccartney', 'abbey road', 'sombrillas'],
-  'beatles': ['the beatles', 'rock', 'musica', 'john lennon', 'paul mccartney', 'abbey road'],
-  'musica': ['rock', 'the beatles', 'beatles', 'bandas', 'canciones', 'melomano', 'vinilos'],
-  'rock': ['musica', 'the beatles', 'beatles', 'bandas'],
-  'cafe': ['coffee', 'catfe', 'vintage coffee', 'cafeteria', 'barista', 'bebidas'],
-  'coffee': ['cafe', 'vintage coffee', 'catfe', 'cafeteria'],
-  'gato': ['gatos', 'catfe', 'michi', 'michis', 'felino'],
-  'gatos': ['gato', 'catfe', 'michi', 'michis', 'felino'],
-  'catfe': ['gato', 'gatos', 'cafe', 'michi', 'vibras felinas'],
-  'bicho': ['cr7', 'cristiano ronaldo', 'cristiano', 'el bicho', 'comandante', 'futbol', 'real madrid', 'portugal', 'siuuu'],
-  'el bicho': ['bicho', 'cr7', 'cristiano ronaldo', 'futbol'],
-  'cr7': ['cristiano ronaldo', 'bicho', 'el bicho', 'comandante', 'futbol', 'real madrid', 'portugal', 'siuuu'],
-  'cristiano': ['cristiano ronaldo', 'cr7', 'bicho', 'futbol'],
-  'messi': ['lionel messi', 'la pulga', 'pulga', 'futbol', 'argentina', 'barcelona', 'inter miami', 'd10s', 'goat'],
-  'pulga': ['messi', 'lionel messi', 'futbol'],
-  'futbol': ['messi', 'cristiano ronaldo', 'cr7', 'bicho', 'soccer'],
-  'jordan': ['michael jordan', 'basketball', 'nba', 'bulls', 'chicago bulls', '23'],
-  'michael jordan': ['jordan', 'basketball', 'nba', 'bulls'],
-  'basketball': ['michael jordan', 'jordan', 'nba', 'baloncesto'],
-  'fnaf': ['five nights at freddy', 'five nights at freddys', 'freddy fazbear', 'terror'],
-  'cars': ['rayo mcqueen', 'mcqueen', 'carreras', 'copa piston', 'disney'],
-  'mcqueen': ['rayo mcqueen', 'cars', 'carreras'],
-  'zelda': ['the legend of zelda', 'link', 'trifuerza', 'nintendo', 'videojuegos'],
-  'mario': ['super mario', 'mario bros', 'nintendo', 'luigi', 'videojuegos'],
-  'sonic': ['sonic the hedgehog', 'sega', 'videojuegos'],
-  'avengers': ['vengadores', 'marvel', 'iron man', 'spider-man', 'thor', 'capitan america'],
-  'vengadores': ['avengers', 'marvel', 'iron man', 'spider-man'],
-  'peliculas': ['series y peliculas', 'cine', 'cinema', 'hollywood', 'movies'],
-  'pelicula': ['series y peliculas', 'cine', 'cinema', 'hollywood', 'movies'],
-  'anime': ['manga', 'japon', 'shonen', 'otaku', 'dragon ball', 'naruto', 'one piece', 'demon slayer', 'attack on titan']
-};
+// Common synonyms and aliases (Kept empty to eliminate hallucinated expansions)
+const SYNONYMS = {};
 
 /**
  * Strips accents, removes special characters, and normalizes text.
@@ -116,7 +61,7 @@ function levenshteinDistance(a, b) {
 }
 
 /**
- * Checks if queryWord fuzzy matches targetWord with allowed typo threshold
+ * Checks if queryWord fuzzy matches targetWord with allowed typo threshold or valid prefix (>= 3 chars)
  */
 function isFuzzyMatch(queryWord, targetWord) {
   if (!queryWord || !targetWord) return false;
@@ -127,15 +72,14 @@ function isFuzzyMatch(queryWord, targetWord) {
   const cleanT = targetWord.replace(/\s+/g, '');
   if (cleanQ === cleanT) return true;
 
-  // Substring inclusion: only for words of meaningful length (>= 3 chars)
-  // to avoid single-letter tokens ('s', 'to', 'at', 'de') falsely matching words like 'autos'
+  // Prefix matching: only for words of meaningful length (>= 3 chars)
+  // to avoid short tokens ('rs', 'de', 'el') falsely matching arbitrary words ('wars', 'cars')
   if (cleanQ.length >= 3 && cleanT.length >= 3) {
-    if (cleanT.includes(cleanQ)) return true;
-    if (cleanQ.includes(cleanT) && cleanT.length >= cleanQ.length * 0.75) return true;
+    if (cleanT.startsWith(cleanQ)) return true;
+    if (cleanQ.startsWith(cleanT) && cleanT.length >= cleanQ.length * 0.75) return true;
   }
 
-  // Typo thresholds:
-  // length <= 3: exact only
+  // Typo thresholds: length <= 3 requires exact match
   if (cleanQ.length <= 3 || cleanT.length <= 3) return false;
 
   const maxLen = Math.max(cleanQ.length, cleanT.length);
@@ -147,7 +91,23 @@ function isFuzzyMatch(queryWord, targetWord) {
   return dist <= maxDist;
 }
 
-const STOP_WORDS = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'en', 'para', 'con', 'por', 'y', 'o', 'a', 'al', 'que', 'se', 'su', 'sus', 'es']);
+/**
+ * Builds candidate words including adjacent compounds (e.g., 'spider' + 'man' -> 'spiderman')
+ */
+function buildCandidateWords(words) {
+  if (!Array.isArray(words) || words.length === 0) return [];
+  const candidates = [...words];
+  for (let i = 0; i < words.length - 1; i++) {
+    candidates.push(words[i] + words[i + 1]);
+  }
+  return candidates;
+}
+
+const STOP_WORDS = new Set([
+  'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+  'de', 'del', 'en', 'para', 'con', 'por', 'y', 'o',
+  'a', 'al', 'que', 'se', 'su', 'sus', 'es'
+]);
 
 /**
  * Main Search Function with Ranking
@@ -156,94 +116,116 @@ export function searchPosters(rawQuery, posters = []) {
   if (!rawQuery || !rawQuery.trim()) return [];
   if (!Array.isArray(posters) || posters.length === 0) return [];
 
-  const rawClean = rawQuery.trim().toLowerCase();
   const normalizedQuery = normalizeText(rawQuery);
   const queryTokens = normalizedQuery.split(' ').filter(t => t.length > 0 && !STOP_WORDS.has(t));
+  if (queryTokens.length === 0) return [];
 
-  // Expand query tokens with known synonyms
-  const expandedTokens = new Set(queryTokens);
-  queryTokens.forEach(token => {
-    if (SYNONYMS[token]) {
-      SYNONYMS[token].forEach(syn => {
-        normalizeText(syn).split(' ').forEach(st => {
-          if (st.length >= 2 && !STOP_WORDS.has(st)) expandedTokens.add(st);
-        });
-      });
-    }
-  });
-
-  // Also check full query string synonym
-  if (SYNONYMS[rawClean]) {
-    SYNONYMS[rawClean].forEach(syn => {
-      normalizeText(syn).split(' ').forEach(st => {
-        if (st.length >= 2 && !STOP_WORDS.has(st)) expandedTokens.add(st);
-      });
-    });
-  }
-
-  const tokenList = Array.from(expandedTokens);
-
+  const compactQuery = normalizedQuery.replace(/\s+/g, '');
+  const isSingleWordQuery = !normalizedQuery.includes(' ');
   const scoredResults = [];
 
   for (const poster of posters) {
     let score = 0;
 
-    const normTitle = normalizeText(poster.title);
+    const normTitle = normalizeText(poster.title || poster.titulo);
     const compactTitle = normTitle.replace(/\s+/g, '');
-    const normCat = normalizeText(poster.category);
-    const normFran = normalizeText(poster.franchise);
-    const normDesc = normalizeText(poster.description);
-    const normTags = Array.isArray(poster.tags) ? poster.tags.map(t => normalizeText(t)) : [];
+    const normSubtitle = normalizeText(poster.subtitle || poster.subtitulo);
+    const compactSubtitle = normSubtitle.replace(/\s+/g, '');
+    const normCat = normalizeText(poster.category || poster.categoria);
+    const normFran = normalizeText(poster.franchise?.name || poster.franchise);
+    const normTags = Array.isArray(poster.tags) ? poster.tags.map(t => normalizeText(t)).filter(Boolean) : [];
 
-    const titleWords = normTitle.split(' ');
-    const tagWords = normTags.join(' ').split(' ');
+    const titleWords = normTitle.split(' ').filter(Boolean);
+    const candidateTitleWords = buildCandidateWords(titleWords);
 
-    // 1. Direct exact or substring match on title (Highest priority)
-    if (normTitle.includes(normalizedQuery)) {
-      score += 150;
-    } else if (compactTitle.includes(normalizedQuery.replace(/\s+/g, ''))) {
-      score += 130;
+    const subtitleWords = normSubtitle.split(' ').filter(Boolean);
+    const candidateSubtitleWords = buildCandidateWords(subtitleWords);
+
+    const catWords = normCat.split(' ').filter(Boolean);
+    const candidateCatWords = buildCandidateWords(catWords);
+
+    const franWords = normFran.split(' ').filter(Boolean);
+    const candidateFranWords = buildCandidateWords(franWords);
+
+    const tagWords = normTags.join(' ').split(' ').filter(Boolean);
+    const candidateTagWords = buildCandidateWords(tagWords);
+
+    // 1. Direct exact or full phrase match
+    // En Título (+150): frase exacta, o palabra exacta / prefijo >= 3 letras
+    if (normTitle.length > 0) {
+      if (!isSingleWordQuery && normTitle.includes(normalizedQuery)) {
+        score += 150;
+      } else if (isSingleWordQuery && candidateTitleWords.some(tw => tw === normalizedQuery || (normalizedQuery.length >= 3 && tw.startsWith(normalizedQuery)))) {
+        score += 150;
+      } else if (compactQuery.length >= 4 && compactTitle.startsWith(compactQuery)) {
+        score += 130;
+      }
     }
 
-    // 2. Token Matching Across Title, Category, Franchise, Tags
+    // En Subtítulo (+120): frase exacta, o palabra exacta / prefijo >= 3 letras
+    if (normSubtitle.length > 0) {
+      if (!isSingleWordQuery && normSubtitle.includes(normalizedQuery)) {
+        score += 120;
+      } else if (isSingleWordQuery && candidateSubtitleWords.some(sw => sw === normalizedQuery || (normalizedQuery.length >= 3 && sw.startsWith(normalizedQuery)))) {
+        score += 120;
+      } else if (compactQuery.length >= 4 && compactSubtitle.startsWith(compactQuery)) {
+        score += 100;
+      }
+    }
+
+    // En Tags (+140): coincidencia exacta de la consulta con la Palabra Clave de Taller
+    if (normTags.some(t => t === normalizedQuery)) {
+      score += 140;
+    }
+
+    // 2. Token Matching Across Title, Subtitle, Tags, Franchise, Category
     let matchedTokenCount = 0;
 
-    for (const token of tokenList) {
+    for (const token of queryTokens) {
       let tokenMatched = false;
 
-      // Match in Title words
-      if (titleWords.some(tw => tw === token)) {
-        score += 40;
+      // Title Words
+      if (candidateTitleWords.some(tw => tw === token)) {
+        score += 45;
         tokenMatched = true;
-      } else if (titleWords.some(tw => isFuzzyMatch(token, tw))) {
-        score += 25;
-        tokenMatched = true;
-      } else if (normTitle.includes(token)) {
-        score += 20;
-        tokenMatched = true;
-      }
-
-      // Match in Category
-      if (normCat.includes(token)) {
+      } else if (candidateTitleWords.some(tw => isFuzzyMatch(token, tw))) {
         score += 25;
         tokenMatched = true;
       }
 
-      // Match in Franchise
-      if (normFran.includes(token)) {
+      // Subtitle Words
+      if (candidateSubtitleWords.some(sw => sw === token)) {
         score += 35;
         tokenMatched = true;
-      }
-
-      // Match in Tags
-      if (tagWords.some(tw => tw === token || isFuzzyMatch(token, tw))) {
+      } else if (candidateSubtitleWords.some(sw => isFuzzyMatch(token, sw))) {
         score += 20;
         tokenMatched = true;
       }
 
-      // Match in Description (only meaningful tokens)
-      if (token.length >= 3 && !STOP_WORDS.has(token) && normDesc.includes(token)) {
-        score += 10;
+      // Workshop Tags
+      if (candidateTagWords.some(tw => tw === token)) {
+        score += 40;
+        tokenMatched = true;
+      } else if (candidateTagWords.some(tw => isFuzzyMatch(token, tw))) {
+        score += 25;
+        tokenMatched = true;
+      }
+
+      // Franchise
+      if (candidateFranWords.some(fw => fw === token)) {
+        score += 35;
+        tokenMatched = true;
+      } else if (candidateFranWords.some(fw => isFuzzyMatch(token, fw))) {
+        score += 20;
+        tokenMatched = true;
+      }
+
+      // Category
+      if (candidateCatWords.some(cw => cw === token)) {
+        score += 25;
+        tokenMatched = true;
+      } else if (candidateCatWords.some(cw => isFuzzyMatch(token, cw))) {
+        score += 15;
         tokenMatched = true;
       }
 
@@ -252,24 +234,18 @@ export function searchPosters(rawQuery, posters = []) {
       }
     }
 
-    // Require at least 1 token match
-    if (score > 0 || matchedTokenCount > 0) {
-      // Bonus if all original query tokens matched
-      const allOriginalsMatched = queryTokens.every(qt => 
-        normTitle.includes(qt) || 
-        normFran.includes(qt) || 
-        normCat.includes(qt) || 
-        tagWords.some(tw => isFuzzyMatch(qt, tw)) || 
-        titleWords.some(tw => isFuzzyMatch(qt, tw))
-      );
-      if (allOriginalsMatched && queryTokens.length > 1) {
-        score += 50;
+    // 3. Multi-Token and Match Filtering
+    if (queryTokens.length > 1) {
+      // Exigir que TODOS los tokens coincidan en algún metadato de la obra
+      if (matchedTokenCount === queryTokens.length) {
+        score += 50; // Bonus por match completo
+        scoredResults.push({ poster, score });
       }
-
-      scoredResults.push({
-        poster,
-        score
-      });
+    } else {
+      // Para consulta de 1 token, requerir al menos 1 match válido
+      if (score > 0 && matchedTokenCount >= 1) {
+        scoredResults.push({ poster, score });
+      }
     }
   }
 
