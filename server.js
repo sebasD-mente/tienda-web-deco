@@ -170,12 +170,14 @@ process.on('uncaughtException', (err) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 [Deco Vintage Server] Running on http://0.0.0.0:${PORT} on VPS Hostinger 100 GB SSD.`);
   
-  // Background Auto-Sync of RAG Vector Embeddings
-  import('./services/embeddingService.js').then(({ syncPendingEmbeddings }) => {
-    syncPendingEmbeddings().catch(err => {
-      console.warn('[Startup RAG Sync Warning]:', err.message);
-    });
-  }).catch(() => {});
+  // Background Auto-Sync of RAG Vector Embeddings & Idempotent Tag Purge Migration
+  setTimeout(() => {
+    import('./services/embeddingService.js').then(({ runOneTimeTagPurgeAndReindexIfNeeded }) => {
+      runOneTimeTagPurgeAndReindexIfNeeded().catch(err => {
+        console.warn('[Startup RAG Sync Warning]:', err.message);
+      });
+    }).catch(() => {});
+  }, 5000);
 });
 
 import { prisma } from './config/prisma.js';

@@ -701,9 +701,10 @@ export async function findSimilarPosters(userQuery, limit = 8, customApiKey, min
  * @param {string} [customApiKey]
  * @param {number} [batchSize=16]
  * @param {boolean} [forceReindex=false]
+ * @param {boolean} [purgeTags=false]
  * @returns {Promise<{ total: number, synced: number, alreadySynced: number, durationSec: string }>}
  */
-export async function syncPendingEmbeddings(customApiKey, batchSize = 16, forceReindex = false) {
+export async function syncPendingEmbeddings(customApiKey, batchSize = 16, forceReindex = false, purgeTags = false) {
   if (isSyncingEmbeddings) {
     return { alreadyRunning: true };
   }
@@ -717,12 +718,23 @@ export async function syncPendingEmbeddings(customApiKey, batchSize = 16, forceR
       throw new Error('No se encontró GEMINI_API_KEY en el entorno para sincronizar embeddings.');
     }
 
+    if (purgeTags) {
+      console.log('[RAG Auto-Sync] 🧹 Purgando tags masivos residuales en base de datos...');
+      await prisma.$executeRawUnsafe('UPDATE "posters" SET "tags" = \'{}\' WHERE cardinality("tags") > 0');
+    }
+
     const allPosters = await prisma.poster.findMany({
       include: { franchise: true, sizes: true },
       orderBy: { createdAt: 'desc' },
     });
 
-    const pendingPosters = forceReindex
+    if (purgeTags) {
+      for (const p of allPosters) {
+        p.tags = [];
+      }
+    }
+
+    const pendingPosters = (forceReindex || purgeTags)
       ? allPosters
       : allPosters.filter(p => !Array.isArray(p.embedding) || p.embedding.length !== EMBEDDING_DIMENSIONS);
       
@@ -785,7 +797,7 @@ export async function syncPendingEmbeddings(customApiKey, batchSize = 16, forceR
         }
       }
 
-      // Persist generated vectors
+      // Persist generated vectors preserving original timestamps
       for (let j = 0; j < chunk.length; j++) {
         const poster = chunk[j];
         const vector = embeddings[j]?.values;
@@ -793,7 +805,10 @@ export async function syncPendingEmbeddings(customApiKey, batchSize = 16, forceR
         if (Array.isArray(vector) && vector.length === EMBEDDING_DIMENSIONS) {
           await prisma.poster.update({
             where: { id: poster.id },
-            data: { embedding: vector },
+            data: { 
+              embedding: vector,
+              updatedAt: poster.updatedAt
+            },
           });
           successCount++;
         }
@@ -814,5 +829,28 @@ export async function syncPendingEmbeddings(customApiKey, batchSize = 16, forceR
     };
   } finally {
     isSyncingEmbeddings = false;
+  }
+}
+
+/**
+ * One-time idempotent background migration:
+ * If more than 100 posters have legacy massive tags, purges them and re-indexes
+ * embeddings cleanly while preserving original poster creation and update timestamps.
+ */
+export async function runOneTimeTagPurgeAndReindexIfNeeded() {
+  try {
+    const rawResult = await prisma.$queryRawUnsafe('SELECT COUNT(*)::int AS cnt FROM "posters" WHERE cardinality("tags") > 0');
+    const cnt = rawResult?.[0]?.cnt ?? 0;
+    
+    if (cnt > 100) {
+      console.log(`[RAG Auto-Sync] 🚨 Detectadas ${cnt} obras con tags masivos obsoletos. Ejecutando purga e indexación automática...`);
+      await syncPendingEmbeddings(undefined, 16, true, true);
+      console.log('[RAG Auto-Sync] 🏁 Purga e indexación de tags completada exitosamente.');
+    } else {
+      console.log(`[RAG Auto-Sync] ✨ Tags en estado limpio (${cnt} obras con tags específicos). No se requiere purga masiva.`);
+      await syncPendingEmbeddings(undefined, 16, false, false);
+    }
+  } catch (err) {
+    console.warn('[RAG Auto-Sync Migration Error]:', err.message);
   }
 }

@@ -744,18 +744,20 @@ router.get('/catalog/embeddings-status', async (req, res) => {
     const { EMBEDDING_DIMENSIONS } = await import('../services/embeddingService.js');
     
     const all = await prisma.poster.findMany({
-      select: { id: true, embedding: true }
+      select: { id: true, embedding: true, tags: true }
     });
     
     const total = all.length;
     const synced = all.filter(p => Array.isArray(p.embedding) && p.embedding.length === EMBEDDING_DIMENSIONS).length;
     const pending = total - synced;
+    const withTagsCount = all.filter(p => Array.isArray(p.tags) && p.tags.length > 0).length;
     
     return res.status(200).json({
       success: true,
       total,
       synced,
       pending,
+      withTagsCount,
       isFullySynced: pending === 0
     });
   } catch (err) {
@@ -773,7 +775,8 @@ router.post('/catalog/sync-embeddings', requireAuth, async (req, res) => {
   try {
     const { syncPendingEmbeddings } = await import('../services/embeddingService.js');
     const force = req.body?.force === true;
-    const result = await syncPendingEmbeddings(undefined, 16, force);
+    const purgeTags = req.body?.purgeTags === true;
+    const result = await syncPendingEmbeddings(undefined, 16, force, purgeTags);
     return res.status(200).json(result);
   } catch (err) {
     console.error('[API Error] POST /api/catalog/sync-embeddings:', err);

@@ -14,6 +14,7 @@
     "audit:secrets": "node scripts/audit-secrets.js",
     "audit:syntax": "node scripts/audit-syntax.js",
     "audit:monoliths": "node scripts/audit-monoliths.js",
+    "audit:contracts": "node scripts/audit-react-contracts.js",
     "harness:check": "node scripts/audit-harness.js"
   },
   "dependencies": {

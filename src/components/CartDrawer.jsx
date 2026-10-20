@@ -555,6 +555,34 @@ export default function CartDrawer({
                     />
                     <MapPin size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '11px' }} />
                   </div>
+
+                  {/* Departamento */}
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      value={customerDept}
+                      onChange={e => setCustomerDept(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '9px 12px 9px 34px',
+                        borderRadius: '8px',
+                        background: '#0a0f1d',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        color: '#fff',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="Guatemala">Guatemala (Capital y Municipios)</option>
+                      <option value="Sacatepéquez">Sacatepéquez (Antigua)</option>
+                      <option value="Quetzaltenango">Quetzaltenango</option>
+                      <option value="Escuintla">Escuintla</option>
+                      <option value="Chimaltenango">Chimaltenango</option>
+                      <option value="Departamental">Otro Departamento del Interior</option>
+                    </select>
+                    <MapPin size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '11px', pointerEvents: 'none' }} />
+                  </div>
                 </div>
               </div>
 
