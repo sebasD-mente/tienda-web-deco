@@ -650,16 +650,16 @@ export default function AdminCreatePosterTab({
             </div>
           </div>
 
-          {/* 8. Tags */}
+          {/* 8. Palabra Clave de Taller / Identificador Rápido */}
           <div style={{ marginBottom: '18px' }}>
             <label htmlFor="poster-tags" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              8. Etiquetas / Tags de Búsqueda (separadas por coma)
+              8. Palabra Clave de Taller / Identificador Rápido (Opcional)
             </label>
             <input
               id="poster-tags"
               name="tags"
               type="text"
-              placeholder="Ej. Porsche, GT3, Motorsport, Blueprint, Alemania"
+              placeholder="Ej. brincolín, casco amarillo, portada lluvia (dejar vacío si no requiere apodo)"
               value={tagsInput}
               onChange={e => setTagsInput(e.target.value)}
               style={{ width: '100%', padding: '10px 14px', background: '#0a0e18', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '0.92rem', outline: 'none' }}

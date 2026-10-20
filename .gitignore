@@ -42,3 +42,5 @@ reportes_generales_deco/
 # Agent Swarm Workspaces
 .agents/
 test_evidence/
+backups/
+
