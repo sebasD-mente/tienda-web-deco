@@ -1108,9 +1108,9 @@ export default function Navbar({
                             }}>
                               {getPosterCategoryName(poster, categories)}
                             </span>
-                            {poster.franchise && (
+                            {(poster.subtitle || poster.franchise) && (
                               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                • {poster.franchise}
+                                • {poster.subtitle || poster.franchise}
                               </span>
                             )}
                           </div>

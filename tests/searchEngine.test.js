@@ -67,6 +67,24 @@ describe('Search Engine Precision Suite — COM-20261020-002', () => {
       franchise: 'Marvel',
       tags: ['superheroes', 'multiverse'],
       description: 'Viaje a través del multiverso arácnido.'
+    },
+    {
+      id: 'harry-potter-filosofal',
+      title: 'Harry Potter',
+      subtitle: 'La Piedra Filosofal',
+      category: 'SERIESYPELICULAS',
+      franchise: null,
+      tags: ['magia', 'hogwarts'],
+      description: 'Primera entrega del joven mago en Hogwarts.'
+    },
+    {
+      id: 'harry-styles-fine-line',
+      title: 'Harry Styles',
+      subtitle: 'Fine Line',
+      category: 'MUSICA',
+      franchise: 'portadas-de-discos',
+      tags: ['musica', 'cantante', 'vinilo'],
+      description: 'Álbum icónico de pop contemporáneo.'
     }
   ];
 
@@ -153,5 +171,35 @@ describe('Search Engine Precision Suite — COM-20261020-002', () => {
   it('11. Normalización de texto elimina acentos y puntuaciones', () => {
     assert.strictEqual(normalizeText('Spider-Man: Across the Spider-Verse!'), 'spider man across the spider verse');
     assert.strictEqual(normalizeText('¡Campeón del Mundo, 100% Álbum!'), 'campeon del mundo 100 album');
+  });
+
+  it('12. Escritura progresiva multi-token: "Harry" -> "Harry P" -> "Harry Po"', () => {
+    const resultsHarry = searchPosters('Harry', sampleCatalog);
+    const idsHarry = resultsHarry.map(r => r.id);
+    assert.ok(idsHarry.includes('harry-potter-filosofal'), 'Debe incluir Harry Potter');
+    assert.ok(idsHarry.includes('harry-styles-fine-line'), 'Debe incluir Harry Styles');
+
+    const resultsHarryP = searchPosters('Harry P', sampleCatalog);
+    assert.strictEqual(resultsHarryP.length, 1, 'Harry P debe devolver exactamente 1 obra');
+    assert.strictEqual(resultsHarryP[0].id, 'harry-potter-filosofal');
+
+    const resultsHarryPo = searchPosters('Harry Po', sampleCatalog);
+    assert.strictEqual(resultsHarryPo.length, 1, 'Harry Po debe devolver exactamente 1 obra');
+    assert.strictEqual(resultsHarryPo[0].id, 'harry-potter-filosofal');
+  });
+
+  it('13. Aislamiento de prefijos cortos frente a categorías: "Harry S"', () => {
+    const resultsHarryS = searchPosters('Harry S', sampleCatalog);
+    assert.strictEqual(resultsHarryS.length, 1, 'Harry S debe devolver exclusivamente Harry Styles');
+    assert.strictEqual(resultsHarryS[0].id, 'harry-styles-fine-line');
+  });
+
+  it('14. Escritura progresiva de sílabas que coinciden con STOP_WORDS: "Por" para "Porsche"', () => {
+    const resultsPor = searchPosters('Por', sampleCatalog);
+    assert.ok(resultsPor.length >= 1, 'Buscar "Por" en vivo debe encontrar Porsche');
+    assert.strictEqual(resultsPor[0].id, 'porsche-911-gt3-rs');
+
+    // Confirmar que frases vacías de múltiples stop-words siguen dando []
+    assert.deepStrictEqual(searchPosters('de los en', sampleCatalog), []);
   });
 });
