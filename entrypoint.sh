@@ -1,16 +1,13 @@
 #!/bin/sh
 # =============================================================================
-# Deco Vintage Guate — Container Bootstrap Entrypoint
+# Deco Vintage Guate — Container Bootstrap Entrypoint (Zero Split-Brain Edition)
 # =============================================================================
 # PURPOSE:
-#   This script runs ONCE each time the container starts.
-#   It ensures /app/data and /app/public/posters/uploads exist and are
-#   initialized with seed data on a cold (empty) volume, WITHOUT ever
-#   overwriting data that the admin has already saved in production.
+#   Ensures persistent upload directories exist, applies idempotent Prisma
+#   PostgreSQL migrations (fail-fast under set -e), and launches the server.
 #
 # VOLUME LAYOUT (configured in Dokploy):
-#   /app/data                        ← Persistent (catalogStore.json, jarvisConfig.json)
-#   /app/public/posters/uploads      ← Persistent (WebP images uploaded by admin)
+#   /app/public/posters/uploads      ← Persistent (WebP images & custom fallbacks)
 # =============================================================================
 
 set -e
@@ -20,60 +17,20 @@ echo "=============================================="
 echo " Deco Vintage Guate — Entrypoint Bootstrap"
 echo "=============================================="
 
-# ── Step 1: Guarantee the data directory exists ────────────────────────────
-mkdir -p /app/data
-echo "[Boot] /app/data directory: OK"
-
-# ── Step 2: Guarantee the uploads directories exist ────────────────────────
+# ── Step 1: Guarantee the persistent uploads directories exist ─────────────
 mkdir -p /app/public/posters/uploads/full
 mkdir -p /app/public/posters/uploads/thumb
-echo "[Boot] Upload directories: OK"
+mkdir -p /app/public/posters/uploads/custom
+echo "[Boot] Upload directories (/full, /thumb, /custom): OK"
 
-# ── Step 3: Seed catalogStore.json ONLY if volume is empty ────────────────
-# If the admin has already saved a catalog, this file will exist in the
-# persistent volume. We NEVER overwrite it.
-if [ ! -f /app/data/catalogStore.json ]; then
-  if [ -f /app/data_seed/catalogStore.json ]; then
-    cp /app/data_seed/catalogStore.json /app/data/catalogStore.json
-    echo "[Boot] catalogStore.json seeded from repo (cold start)."
-  else
-    echo "[Boot] WARNING: No seed catalogStore.json found. Server will start with empty catalog."
-  fi
-else
-  echo "[Boot] catalogStore.json already exists in volume — skipping seed. Admin data preserved."
-fi
-
-# ── Step 4: Seed jarvisConfig.json ONLY if volume is empty ────────────────
-if [ ! -f /app/data/jarvisConfig.json ]; then
-  if [ -f /app/data_seed/jarvisConfig.json ]; then
-    cp /app/data_seed/jarvisConfig.json /app/data/jarvisConfig.json
-    echo "[Boot] jarvisConfig.json seeded from repo (cold start)."
-  else
-    echo "[Boot] INFO: No seed jarvisConfig.json found. Jarvis will use defaults."
-  fi
-else
-  echo "[Boot] jarvisConfig.json already exists in volume — skipping seed. Config preserved."
-fi
-
-# ── Step 5: Seed any other files in data_seed that do NOT exist in data ───
-if [ -d /app/data_seed ]; then
-  for f in /app/data_seed/*; do
-    filename=$(basename "$f")
-    if [ ! -f "/app/data/$filename" ]; then
-      cp "$f" "/app/data/$filename"
-      echo "[Boot] Seeded extra file: $filename"
-    fi
-  done
-fi
-
-# ── Step 5.5: Run idempotent Prisma migrations ────────────────────────────
+# ── Step 2: Run idempotent Prisma migrations (Fail-Fast under set -e) ──────
 echo "[Boot] Running prisma migrate deploy..."
-npx prisma migrate deploy || echo "[Boot] WARNING: Prisma migrate deploy skipped or failed."
+npx prisma migrate deploy
 
 echo ""
 echo "[Boot] Bootstrap complete. Starting Node.js server..."
 echo "=============================================="
 echo ""
 
-# ── Step 6: Hand off execution to the main server (PID 1) ─────────────────
+# ── Step 3: Hand off execution to the main server (PID 1) ─────────────────
 exec node /app/server.js

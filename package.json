@@ -10,11 +10,9 @@
     "start": "node server.js",
     "optimize:images": "node scripts/optimize-images.js",
     "test:security": "node --test tests/security/zero-trust.test.js",
-    "test:unit": "node --test test/adversarial-security-challenge.test.js",
+    "test:unit": "node --test --test-concurrency=1 tests/repo-hygiene.test.js tests/searchEngine.test.js tests/posterVisionService.test.js tests/adversarial-security-challenge.test.js",
     "audit:secrets": "node scripts/audit-secrets.js",
     "audit:syntax": "node scripts/audit-syntax.js",
-    "audit:monoliths": "node scripts/audit-monoliths.js",
-    "audit:contracts": "node scripts/audit-react-contracts.js",
     "harness:check": "node scripts/audit-harness.js"
   },
   "dependencies": {

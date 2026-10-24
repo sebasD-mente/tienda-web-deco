@@ -47,13 +47,7 @@ COPY services/ ./services/
 COPY utils/ ./utils/
 COPY validators/ ./validators/
 COPY prisma/ ./prisma/
-COPY scripts/ ./scripts/
 COPY data/ ./data/
-
-# Copy repo data as SEED ONLY (read-only bootstrap for first run on a cold volume).
-# The real runtime data lives in the persistent volume mounted at /app/data by Dokploy.
-# The real uploads live in the persistent volume mounted at /app/public/posters/uploads by Dokploy.
-COPY --from=build /app/data ./data_seed
 
 # Copy and enable the entrypoint bootstrap script
 COPY entrypoint.sh ./entrypoint.sh
