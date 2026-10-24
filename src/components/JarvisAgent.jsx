@@ -16,7 +16,8 @@ import {
   Check,
   CheckCheck,
   Calendar,
-  ZoomIn
+  ZoomIn,
+  ImagePlus
 } from 'lucide-react';
 import { generateWhatsAppLink } from '../config/constants';
 import { OFFICIAL_SIZES } from '../data/catalogData';
@@ -169,12 +170,14 @@ export default function JarvisAgent({
   const [addedPosterId, setAddedPosterId] = useState(null);
   const [lastUserPrompt, setLastUserPrompt] = useState('');
   const [lightboxFlyerUrl, setLightboxFlyerUrl] = useState(null);
+  const [attachedImage, setAttachedImage] = useState(null);
 
   const messagesEndRef = useRef(null);
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
   const typingTimerRef = useRef(null);
   const textInputRef = useRef(null);
+  const imageInputRef = useRef(null);
   const prevIsTypingRef = useRef(false);
 
   // Auto-focus the text input when Jarvis finishes responding or when chat opens
@@ -321,16 +324,73 @@ export default function JarvisAgent({
     }
   };
 
+  const handleImageFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo de imagen válido (JPG, PNG o WebP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const rawDataUrl = ev.target?.result;
+      if (typeof rawDataUrl !== 'string') return;
+
+      const img = new window.Image();
+      img.onload = () => {
+        const MAX_DIM = 1024;
+        let width = img.width;
+        let height = img.height;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width >= height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          setAttachedImage(compressedDataUrl);
+        } else {
+          setAttachedImage(rawDataUrl);
+        }
+      };
+      img.onerror = () => setAttachedImage(rawDataUrl);
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const handleSendMessage = async (textToSend) => {
-    const text = (textToSend || inputText).trim();
-    if (!text || isTyping) return;
+    const rawText = (textToSend !== undefined ? textToSend : inputText).trim();
+    const imageToSend = textToSend !== undefined ? null : attachedImage;
+    if ((!rawText && !imageToSend) || isTyping) return;
+
+    const text = rawText || '🔍 Busca obras similares a esta imagen en el catálogo o dime cómo fabricarla como cuadro personalizado.';
 
     if (soundEnabled) playTechSound('blip');
 
     const nowTime = new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
-    const userMsg = { id: `u-${Date.now()}`, sender: 'user', text, time: nowTime, status: 'received' };
+    const userMsg = {
+      id: `u-${Date.now()}`,
+      sender: 'user',
+      text,
+      imageUrl: imageToSend || null,
+      time: nowTime,
+      status: 'received'
+    };
     setMessages(prev => [...prev, userMsg]);
     setInputText('');
+    if (imageToSend) setAttachedImage(null);
     setLastUserPrompt(text);
     setIsTyping(true);
     setShowTypingDots(false);
@@ -344,6 +404,7 @@ export default function JarvisAgent({
     try {
       const response = await askJarvis({
         userMessage: text,
+        imageDataUrl: imageToSend,
         conversationHistory: messages,
         cart,
         onExecuteTool: (actionType, payload) => {
@@ -743,6 +804,15 @@ export default function JarvisAgent({
                     boxShadow: isJarvis ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0, 242, 254, 0.3)',
                     width: msg.actions && msg.actions.length > 0 ? '100%' : 'auto'
                   }}>
+                    {msg.imageUrl && (
+                      <div style={{ marginBottom: '8px', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(4, 6, 9, 0.25)', maxWidth: '240px' }}>
+                        <img
+                          src={msg.imageUrl}
+                          alt="Imagen enviada a J.A.R.V.I.S."
+                          style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', display: 'block' }}
+                        />
+                      </div>
+                    )}
                     <div style={{ wordBreak: 'break-word', fontWeight: isJarvis ? 'normal' : 500 }}>
                       {renderCleanMessageText(msg.text)}
                     </div>
@@ -1571,7 +1641,62 @@ export default function JarvisAgent({
           ))}
         </div>
 
-        {/* 5. Input de Entrada con Micrófono y Envío (Anti-Stress Shield) */}
+        {/* Previsualización de Imagen Adjunta para Búsqueda Visual */}
+        {attachedImage && (
+          <div style={{
+            padding: '8px 20px',
+            background: 'rgba(8, 14, 26, 0.98)',
+            borderTop: '1px solid rgba(0, 242, 254, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexShrink: 0
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img
+                src={attachedImage}
+                alt="Vista previa para J.A.R.V.I.S."
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  objectFit: 'cover',
+                  borderRadius: '8px',
+                  border: '1px solid #00f2fe'
+                }}
+              />
+              <div>
+                <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#00f2fe' }}>
+                  Imagen lista para búsqueda visual IA
+                </div>
+                <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                  Presiona Enviar para buscar cuadros similares o cotizarla personalizada
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAttachedImage(null)}
+              style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#f87171',
+                borderRadius: '8px',
+                width: '30px',
+                height: '30px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+              title="Quitar imagen adjunta"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
+
+        {/* 5. Input de Entrada con Cámara Visual, Micrófono y Envío (Anti-Stress Shield) */}
         <div style={{
           padding: '12px 20px 16px 20px',
           background: 'rgba(6, 10, 18, 0.98)',
@@ -1581,6 +1706,40 @@ export default function JarvisAgent({
           alignItems: 'center',
           flexShrink: 0
         }}>
+          {/* Hidden File Input for Visual Search */}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleImageFileChange}
+            style={{ display: 'none' }}
+          />
+
+          {/* Visual Search / Attach Image Button */}
+          <button
+            type="button"
+            disabled={isTyping}
+            onClick={() => imageInputRef.current?.click()}
+            style={{
+              background: attachedImage ? 'rgba(0, 242, 254, 0.18)' : isTyping ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.06)',
+              border: attachedImage ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.12)',
+              color: isTyping ? '#64748b' : 'var(--accent-cyan)',
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: isTyping ? 'not-allowed' : 'pointer',
+              opacity: isTyping ? 0.5 : 1,
+              flexShrink: 0,
+              transition: 'all 0.2s ease'
+            }}
+            title="Subir imagen para buscar obras similares o cotizar póster personalizado"
+          >
+            <ImagePlus size={18} />
+          </button>
+
           {/* Voice Input Button */}
           <button
             type="button"
@@ -1621,9 +1780,11 @@ export default function JarvisAgent({
             placeholder={
               isTyping 
                 ? 'J.A.R.V.I.S. está procesando tu consulta...' 
-                : isListening 
-                  ? 'Escuchando tu voz...' 
-                  : 'Escribe tu consulta a J.A.R.V.I.S. (ej: recomiéndame cuadros de anime...)'
+                : attachedImage
+                  ? 'Escribe un comentario para tu imagen o presiona Enviar...'
+                  : isListening 
+                    ? 'Escuchando tu voz...' 
+                    : 'Escribe o sube una foto a J.A.R.V.I.S. (ej: busca cuadros como esta imagen...)'
             }
             style={{
               flex: 1,
@@ -1645,7 +1806,7 @@ export default function JarvisAgent({
           <button
             type="button"
             onClick={() => handleSendMessage()}
-            disabled={!inputText.trim() || isTyping}
+            disabled={(!inputText.trim() && !attachedImage) || isTyping}
             className="btn-cyan"
             style={{
               width: '42px',
@@ -1654,8 +1815,8 @@ export default function JarvisAgent({
               borderRadius: '10px',
               justifyContent: 'center',
               flexShrink: 0,
-              opacity: !inputText.trim() || isTyping ? 0.4 : 1,
-              cursor: !inputText.trim() || isTyping ? 'not-allowed' : 'pointer'
+              opacity: (!inputText.trim() && !attachedImage) || isTyping ? 0.4 : 1,
+              cursor: (!inputText.trim() && !attachedImage) || isTyping ? 'not-allowed' : 'pointer'
             }}
             title="Enviar mensaje"
           >

@@ -64,3 +64,11 @@ lesson: Interceptar GET /poster/:id en server.js antes del fallback SPA para iny
 evidence: COM_20261023_GARY_A_FRED_FASE5_DEEPLINK_OPENGRAPH_Y_OPTIMIZACION_CATALOGO, tests/deeplink-opengraph-catalog.test.js y npm run harness:check (55/55 PASS).
 confidence: high
 </experience>
+
+<experience>
+cue: Búsqueda visual multimodal por imagen en el chat de J.A.R.V.I.S. (/api/jarvis/chat, JarvisAgent.jsx, jarvisService.js)
+lesson: Comprimir imágenes adjuntas del cliente en el navegador con HTML5 Canvas (máx 1024px, JPEG 0.82) antes de enviarlas a /api/jarvis/chat (con límite de body de 8mb previo al límite global de 1mb en server.js), validar estrictamente el dataUrl en el servidor (parseClientImageDataUrl: solo image/jpeg|jpg|png|webp <= 6MB), extraer descriptores semánticos con Gemini (analyzeVisualSearchQueryWithGemini) para cruzar contra findSimilarPosters e inyectar inlineData en el turno multimodal ofreciendo tanto las obras similares del catálogo como la fabricación 100% personalizada en MDF 5.5mm.
+evidence: COM_20261023_GARY_A_FRED_FASE6_BUSQUEDA_VISUAL_MULTIMODAL_JARVIS, tests/jarvis-visual-search.test.js y npm run harness:check (55/55 PASS).
+confidence: high
+</experience>
+

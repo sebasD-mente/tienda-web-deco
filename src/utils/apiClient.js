@@ -384,20 +384,26 @@ export async function apiAdminVerify() {
 // ── J.A.R.V.I.S. ─────────────────────────────────────────────────────────────
 
 /**
- * Envía un prompt al backend de J.A.R.V.I.S. (Gemini AI).
+ * Envía un prompt (y opcionalmente una imagen en base64) al backend de J.A.R.V.I.S. (Gemini AI).
  * @param {string} prompt
  * @param {Array} history
+ * @param {string|null} [imageDataUrl=null]
  * @returns {Promise<{ replyText: string, actions: Array }>}
  */
-export async function apiAskJarvis(prompt, history = []) {
+export async function apiAskJarvis(prompt, history = [], imageDataUrl = null) {
   const targetUrl = '/api/jarvis/chat';
-  console.log(`[J.A.R.V.I.S. Network] 📡 Enviando consulta a: "${targetUrl}" (Proxy local: http://localhost:3000/api/jarvis/chat) | Prompt: "${prompt?.slice(0, 50)}..."`);
+  console.log(`[J.A.R.V.I.S. Network] 📡 Enviando consulta a: "${targetUrl}" | Prompt: "${prompt?.slice(0, 50)}..." | Imagen: ${imageDataUrl ? 'SÍ' : 'NO'}`);
 
   try {
+    const payload = { prompt, history };
+    if (imageDataUrl) {
+      payload.imageDataUrl = imageDataUrl;
+    }
+
     const res = await fetch(targetUrl, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ prompt, history }),
+      body:    JSON.stringify(payload),
       signal:  AbortSignal.timeout(30000)
     });
 

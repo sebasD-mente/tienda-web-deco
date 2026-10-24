@@ -121,10 +121,10 @@ router.post('/jarvis/save-key', requireAuth, async (req, res) => {
 });
 
 // ── POST /api/jarvis/chat (Public + Rate Limiting) ───────────────────────────
-// Secure server-side Gemini AI proxy.
+// Secure server-side Gemini AI proxy (supports text + visual image search).
 router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
   try {
-    const { prompt, history } = req.body || {};
+    const { prompt, history, imageDataUrl } = req.body || {};
     const masterServerKey = getJarvisApiKey();
 
     // 1. Obtener catálogo desde caché en RAM (invalidada al editar) y memoria de entrenamiento
@@ -141,7 +141,7 @@ router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
       candidateKeys.push(masterServerKey.trim());
     }
 
-    const result = await chatWithJarvis(prompt, history, candidateKeys, liveCatalog, jarvisMemory);
+    const result = await chatWithJarvis(prompt, history, candidateKeys, liveCatalog, jarvisMemory, imageDataUrl);
 
     if (!result || typeof result !== 'object') {
       return res.status(200).json({

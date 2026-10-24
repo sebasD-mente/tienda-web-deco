@@ -1307,7 +1307,7 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 11. MAIN CHAT ORCHESTRATOR
+// 11. MAIN CHAT ORCHESTRATOR & MULTIMODAL VISUAL SEARCH
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CANDIDATE_MODELS = [
@@ -1315,17 +1315,96 @@ const CANDIDATE_MODELS = [
   { name: 'gemini-3.6-flash', timeoutMs: 7000 }
 ];
 
+const MAX_CLIENT_IMAGE_BYTES = 6 * 1024 * 1024; // 6 MB
+
 /**
- * Orchestrates all three AI engines for a single chat turn.
+ * Valida y extrae { mimeType, data } de un dataUrl base64 enviado por un cliente en el chat.
+ * Bloquea cualquier formato que no sea image/(jpeg|jpg|png|webp) o que exceda 6 MB.
+ *
+ * @param {string|null|undefined} imageDataUrl
+ * @returns {{ mimeType: string, data: string } | null}
+ */
+export function parseClientImageDataUrl(imageDataUrl) {
+  if (!imageDataUrl || typeof imageDataUrl !== 'string') return null;
+  const trimmed = imageDataUrl.trim();
+  const match = trimmed.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/i);
+  if (!match) return null;
+
+  const rawMime = match[1].toLowerCase();
+  const mimeType = rawMime === 'image/jpg' ? 'image/jpeg' : rawMime;
+  const base64Data = match[2].replace(/\s+/g, '');
+  if (!base64Data || base64Data.length < 16) return null;
+
+  const approxBytes = Math.floor((base64Data.length * 3) / 4);
+  if (approxBytes > MAX_CLIENT_IMAGE_BYTES) return null;
+
+  return { mimeType, data: base64Data };
+}
+
+/**
+ * Analiza rápidamente la imagen adjunta por el cliente para extraer palabras clave
+ * de búsqueda semántica (personaje, franquicia, modelo de auto, artista, temática).
+ *
+ * @param {{ mimeType: string, data: string }} inlineData
+ * @param {string} userPrompt
+ * @param {string[]} candidateKeys
+ * @returns {Promise<string>}
+ */
+export async function analyzeVisualSearchQueryWithGemini(inlineData, userPrompt = '', candidateKeys = []) {
+  if (!inlineData || !Array.isArray(candidateKeys) || candidateKeys.length === 0) return '';
+
+  const visionPrompt =
+    'Identifica en máximo 12 palabras clave en español o nombres propios qué personaje, franquicia, ' +
+    'superhéroe, anime, modelo de auto, piloto de F1, banda musical, película, videojuego o estilo artístico ' +
+    'aparece en esta imagen para buscar pósters similares en nuestro catálogo. ' +
+    'Responde SOLO con las palabras clave separadas por espacios, sin puntuación extra.';
+
+  for (const keyToUse of candidateKeys) {
+    for (const modelConfig of CANDIDATE_MODELS) {
+      const modelName = typeof modelConfig === 'string' ? modelConfig : modelConfig.name;
+      let timerId = null;
+      try {
+        const ai = new GoogleGenAI({ apiKey: keyToUse });
+        const timeoutPromise = new Promise((_, reject) => {
+          timerId = setTimeout(() => reject(new Error('Visual query timeout')), 4500);
+        });
+        const res = await Promise.race([
+          ai.models.generateContent({
+            model: modelName,
+            contents: [{
+              role: 'user',
+              parts: [
+                { inlineData },
+                { text: userPrompt ? `${visionPrompt} Contexto del cliente: ${userPrompt}` : visionPrompt }
+              ]
+            }]
+          }),
+          timeoutPromise
+        ]);
+        const text = (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+        if (text) return text.slice(0, 180);
+      } catch (_) {
+        // Intentar siguiente modelo/clave
+      } finally {
+        if (timerId) clearTimeout(timerId);
+      }
+    }
+  }
+  return '';
+}
+
+/**
+ * Orchestrates all three AI engines for a single chat turn (text + optional client image).
  *
  * @param {string}   prompt         - The user's current message.
  * @param {any[]}    history         - Raw chat history array from the client.
  * @param {string[]} candidateKeys  - Ordered list of Gemini API keys to try.
  * @param {object}   catalog        - Full catalog from PostgreSQL.
  * @param {object}   jarvisMemory   - Merged memory from getJarvisMemory().
+ * @param {string|null} [imageDataUrl=null] - Optional base64 image attached by the user.
  * @returns {Promise<{ replyText: string, actions: any[], poweredBy: string }>}
  */
-export async function chatWithJarvis(prompt, history, candidateKeys, catalog, jarvisMemory) {
+export async function chatWithJarvis(prompt, history, candidateKeys, catalog, jarvisMemory, imageDataUrl = null) {
   const safeCandidateKeys = Array.isArray(candidateKeys)
     ? candidateKeys.filter(Boolean)
     : (candidateKeys ? [candidateKeys] : []);
@@ -1346,11 +1425,19 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
   }
 
   const posters = liveCatalog.posters || [];
+  const parsedClientImage = parseClientImageDataUrl(imageDataUrl);
+  let visualKeywords = '';
+
+  if (parsedClientImage) {
+    visualKeywords = await analyzeVisualSearchQueryWithGemini(parsedClientImage, prompt, safeCandidateKeys);
+  }
+
+  const effectiveSearchQuery = [prompt, visualKeywords].filter(Boolean).join(' ').trim() || 'novedades';
 
   // 2. Búsqueda Semántica Vectorial previa (RAG) para inyectar el Top-12 relevante con contexto
   let topRelevantPosters = [];
   try {
-    const scoredMatches = await findSimilarPosters(prompt, 12, safeCandidateKeys[0], undefined, history);
+    const scoredMatches = await findSimilarPosters(effectiveSearchQuery, 12, safeCandidateKeys[0], undefined, history);
     if (scoredMatches && scoredMatches.length > 0) {
       topRelevantPosters = scoredMatches.map((m) => m.poster);
     }
@@ -1362,19 +1449,27 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
   const chatHistory       = formatChatHistory(history);
   let   lastError         = null;
 
+  const userTurnText = parsedClientImage
+    ? `${prompt || 'Analiza esta imagen que te comparto.'}\n\n[SISTEMA VISUAL J.A.R.V.I.S.: El cliente adjuntó una imagen${visualKeywords ? ` (Elementos detectados: ${visualKeywords})` : ''}. Si en el catálogo inyectado existen obras del mismo personaje, auto, franquicia o temática, invoca 'explorar_catalogo' con las mejores coincidencias y además recuérdale con entusiasmo que también podemos fabricarle esa misma imagen que subió como Póster 100% Personalizado en madera MDF de 5.5mm. Si la imagen no coincide con el catálogo o es una foto personal, elogia su imagen y ofrécele cotizarla como Cuadro Personalizado indicando nuestras medidas estándar o personalizadas.]`
+    : (prompt || 'Hola');
+
+  const userTurnParts = parsedClientImage
+    ? [{ inlineData: parsedClientImage }, { text: userTurnText }]
+    : [{ text: userTurnText }];
+
   // ── Engine 1: Google GenAI SDK — multi-key + multi-model failover ───────────
   for (const keyToUse of safeCandidateKeys) {
     let keyAuthFailed = false;
 
     for (const modelConfig of CANDIDATE_MODELS) {
       const modelName = typeof modelConfig === 'string' ? modelConfig : modelConfig.name;
-      const timeoutMs = modelConfig.timeoutMs || 5000;
+      const timeoutMs = parsedClientImage ? Math.max(modelConfig.timeoutMs || 5000, 8000) : (modelConfig.timeoutMs || 5000);
       try {
         const ai = new GoogleGenAI({ apiKey: keyToUse });
 
         const contents = [
           ...chatHistory,
-          { role: 'user', parts: [{ text: prompt || 'Hola' }] }
+          { role: 'user', parts: userTurnParts }
         ];
 
         let timerId = null;
@@ -1444,6 +1539,15 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
           }
         }
 
+        // Si el cliente subió una imagen y existen coincidencias visuales en topRelevantPosters pero el modelo no invocó explorar_catalogo, adjuntarlas
+        if (parsedClientImage && executedActions.length === 0 && topRelevantPosters.length > 0) {
+          executedActions.push({
+            type: 'catalog_matches',
+            posters: topRelevantPosters.slice(0, 4).map(formatPosterForClient),
+            motivo: 'Obras visualmente similares en nuestro catálogo oficial'
+          });
+        }
+
         // Si tenemos tarjetas pero replyText sigue vacío, generar una introducción conversacional dinámica
         if (!replyText && executedActions.length > 0) {
           const catalogAct = executedActions.find(a => a.type === 'catalog_matches');
@@ -1505,7 +1609,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
 
       const vertexContents = [
         ...chatHistory,
-        { role: 'user', parts: [{ text: prompt || 'Hola' }] }
+        { role: 'user', parts: userTurnParts }
       ];
 
       const vertexRes = await fetch(vertexUrl, {

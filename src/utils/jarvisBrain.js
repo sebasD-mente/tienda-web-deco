@@ -37,6 +37,7 @@ export async function askJarvis(queryOrOptions, history = []) {
   let userQuery = '';
   let conversationHistory = history;
   let onExecuteTool = null;
+  let imageDataUrl = null;
 
   if (typeof queryOrOptions === 'string') {
     userQuery = queryOrOptions;
@@ -45,14 +46,15 @@ export async function askJarvis(queryOrOptions, history = []) {
     userQuery = queryOrOptions.userMessage || queryOrOptions.prompt || queryOrOptions.query || '';
     conversationHistory = queryOrOptions.conversationHistory || history;
     onExecuteTool = queryOrOptions.onExecuteTool || null;
+    imageDataUrl = queryOrOptions.imageDataUrl || null;
   }
 
   userQuery = (userQuery || '').trim();
   const posters = getStoredPosters();
 
   try {
-    // 1. Call Secure VPS Backend
-    const serverResponse = await apiAskJarvis(userQuery, conversationHistory);
+    // 1. Call Secure VPS Backend (with optional multimodal imageDataUrl)
+    const serverResponse = await apiAskJarvis(userQuery, conversationHistory, imageDataUrl);
     let replyText = serverResponse.replyText || '';
     let executedActions = serverResponse.actions || [];
 

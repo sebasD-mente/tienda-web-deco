@@ -95,6 +95,7 @@ app.set('trust proxy', 1);
 app.use('/api/catalog/upload', express.json({ limit: '50mb' }));
 app.use('/api/catalog/save', express.json({ limit: '50mb' }));
 app.use('/api/catalog/posters', express.json({ limit: '50mb' }));
+app.use('/api/jarvis/chat', express.json({ limit: '8mb' }));
 
 // Reduced global body limit for all public and general API routes
 app.use(express.json({ limit: '1mb' }));
