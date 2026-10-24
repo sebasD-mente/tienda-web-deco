@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middleware/auth.js';
+import { rateLimitCustomOrders } from '../middleware/rateLimit.js';
 import {
   createCustomOrder,
   getAllCustomOrders,
@@ -126,7 +127,7 @@ const uploadOrderImages = (req, res, next) => {
  * POST /api/custom-orders
  * Endpoint público: Recibe las especificaciones y archivos de imagen del cliente.
  */
-router.post('/', uploadOrderImages, async (req, res) => {
+router.post('/', rateLimitCustomOrders, uploadOrderImages, async (req, res) => {
   try {
     let items = [];
     if (req.body.items) {

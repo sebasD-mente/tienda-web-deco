@@ -497,7 +497,7 @@ router.delete('/catalog/posters/:id', requireAuth, async (req, res) => {
 // Persists catalog items directly to PostgreSQL via Prisma.
 router.post('/catalog/save', requireAuth, async (req, res) => {
   try {
-    const { posters, settings } = req.body;
+    const { posters = [], settings } = req.body || {};
     if (!Array.isArray(posters)) {
       return res.status(400).json({ error: 'posters must be an array' });
     }
@@ -738,21 +738,23 @@ router.post('/catalog/clean-orphans', requireAuth, async (req, res) => {
 });
 
 // ── GET /api/catalog/embeddings-status (Public / Admin) ──────────────────────
-// Returns vectorization metrics for RAG engine
+// Returns vectorization metrics for RAG engine using lightweight PostgreSQL counts
 router.get('/catalog/embeddings-status', async (req, res) => {
   try {
     const { prisma } = await import('../services/catalogService.js');
-    const { EMBEDDING_DIMENSIONS } = await import('../services/embeddingService.js');
-    
-    const all = await prisma.poster.findMany({
-      select: { id: true, embedding: true, tags: true }
-    });
-    
-    const total = all.length;
-    const synced = all.filter(p => Array.isArray(p.embedding) && p.embedding.length === EMBEDDING_DIMENSIONS).length;
-    const pending = total - synced;
-    const withTagsCount = all.filter(p => Array.isArray(p.tags) && p.tags.length > 0).length;
-    
+
+    const [total, synced, withTagsCount] = await Promise.all([
+      prisma.poster.count(),
+      prisma.poster.count({
+        where: { NOT: { embedding: { isEmpty: true } } }
+      }),
+      prisma.poster.count({
+        where: { NOT: { tags: { isEmpty: true } } }
+      })
+    ]);
+
+    const pending = Math.max(0, total - synced);
+
     return res.status(200).json({
       success: true,
       total,

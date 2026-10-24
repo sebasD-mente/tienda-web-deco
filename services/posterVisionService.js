@@ -153,7 +153,18 @@ export function sanitizeVisionAnalysis(rawAnalysis, validCategories = [], validF
  * @param {{ dataUrl?: string, imageUrl?: string }} source
  * @returns {Promise<{ mimeType: string, base64Data: string }>}
  */
-async function resolveImageInlineData({ dataUrl, imageUrl }) {
+const ALLOWED_REMOTE_IMAGE_HOSTS = new Set([
+  'storage.googleapis.com'
+]);
+
+const ALLOWED_LOCAL_IMAGE_EXTENSIONS = new Set([
+  '.webp',
+  '.png',
+  '.jpg',
+  '.jpeg'
+]);
+
+export async function resolveImageInlineData({ dataUrl, imageUrl }) {
   if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
     const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
     if (!match) throw new Error('El formato dataUrl de la imagen no es un base64 válido.');
@@ -164,11 +175,30 @@ async function resolveImageInlineData({ dataUrl, imageUrl }) {
   }
 
   if (imageUrl && typeof imageUrl === 'string') {
-    // URL remota (Google Cloud Storage / CDN)
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      const response = await fetch(imageUrl);
+    const trimmedUrl = imageUrl.trim();
+
+    if (trimmedUrl.includes('\0') || /%00/i.test(trimmedUrl)) {
+      throw new Error('Ruta local no permitida: contiene caracteres inválidos.');
+    }
+
+    // 1. URL remota: Permitir exclusivamente HTTPS desde Google Cloud Storage oficial (Anti-SSRF)
+    if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+      let parsedUrl;
+      try {
+        parsedUrl = new URL(trimmedUrl);
+      } catch {
+        throw new Error('SSRF bloqueado: URL remota malformada.');
+      }
+
+      if (parsedUrl.protocol !== 'https:' || !ALLOWED_REMOTE_IMAGE_HOSTS.has(parsedUrl.hostname.toLowerCase())) {
+        throw new Error('SSRF bloqueado: Solo se permiten URLs HTTPS del bucket oficial storage.googleapis.com.');
+      }
+
+      const response = await fetch(parsedUrl.toString(), {
+        signal: AbortSignal.timeout(10000)
+      });
       if (!response.ok) {
-        throw new Error(`No se pudo descargar la imagen desde ${imageUrl} (HTTP ${response.status})`);
+        throw new Error(`No se pudo descargar la imagen desde ${trimmedUrl} (HTTP ${response.status})`);
       }
       const arrayBuffer = await response.arrayBuffer();
       const mimeType = response.headers.get('content-type') || 'image/jpeg';
@@ -178,23 +208,38 @@ async function resolveImageInlineData({ dataUrl, imageUrl }) {
       };
     }
 
-    // Ruta local dentro de public/
-    const cleanRelPath = imageUrl.replace(/^\/+/, '');
-    const localCandidates = [
-      path.resolve(PROJECT_ROOT, 'public', cleanRelPath),
-      path.resolve(PROJECT_ROOT, cleanRelPath)
-    ];
+    // 2. Ruta local: Confinada estrictamente dentro de public/posters/uploads (Anti-Path Traversal)
+    let decodedPath = trimmedUrl;
+    try {
+      decodedPath = decodeURIComponent(trimmedUrl);
+    } catch {
+      throw new Error('Ruta local no permitida: codificación URL inválida.');
+    }
 
-    for (const candidatePath of localCandidates) {
-      if (fs.existsSync(candidatePath)) {
-        const fileBuffer = await fs.promises.readFile(candidatePath);
-        const ext = path.extname(candidatePath).toLowerCase();
-        const mimeType = ext === '.webp' ? 'image/webp' : (ext === '.png' ? 'image/png' : 'image/jpeg');
-        return {
-          mimeType,
-          base64Data: fileBuffer.toString('base64')
-        };
-      }
+    if (decodedPath.includes('..') || decodedPath.includes('\\')) {
+      throw new Error('Ruta local no permitida: intento de Path Traversal detectado.');
+    }
+
+    const cleanRelPath = decodedPath.replace(/^\/+/, '');
+    const allowedUploadsRoot = path.resolve(PROJECT_ROOT, 'public', 'posters', 'uploads');
+    const candidatePath = path.resolve(PROJECT_ROOT, 'public', cleanRelPath);
+
+    if (!candidatePath.startsWith(allowedUploadsRoot + path.sep)) {
+      throw new Error('Ruta local no permitida: el archivo debe residir dentro de /posters/uploads/.');
+    }
+
+    const ext = path.extname(candidatePath).toLowerCase();
+    if (!ALLOWED_LOCAL_IMAGE_EXTENSIONS.has(ext)) {
+      throw new Error('Ruta local no permitida: extensión de imagen no permitida.');
+    }
+
+    if (fs.existsSync(candidatePath)) {
+      const fileBuffer = await fs.promises.readFile(candidatePath);
+      const mimeType = ext === '.webp' ? 'image/webp' : (ext === '.png' ? 'image/png' : 'image/jpeg');
+      return {
+        mimeType,
+        base64Data: fileBuffer.toString('base64')
+      };
     }
 
     throw new Error(`No se encontró el archivo local de imagen en: ${imageUrl}`);
@@ -339,11 +384,20 @@ Devuelve ÚNICAMENTE un JSON con esta estructura:
         }
       });
 
+      let timeoutId;
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout tras ${candidate.timeoutMs}ms con el modelo ${candidate.name}`)), candidate.timeoutMs);
+        timeoutId = setTimeout(
+          () => reject(new Error(`Timeout tras ${candidate.timeoutMs}ms con el modelo ${candidate.name}`)),
+          candidate.timeoutMs
+        );
       });
 
-      const response = await Promise.race([apiCallPromise, timeoutPromise]);
+      let response;
+      try {
+        response = await Promise.race([apiCallPromise, timeoutPromise]);
+      } finally {
+        clearTimeout(timeoutId);
+      }
       const rawText = response.text || '';
       const parsedJson = JSON.parse(rawText);
 

@@ -40,8 +40,8 @@ async function saveCustomImage(buffer, originalName = 'custom-poster') {
     console.warn('[CustomOrderService] GCS no disponible, usando almacenamiento local:', gcsErr.message);
   }
 
-  // 2. Fallback: Almacenamiento local en uploads/custom
-  const uploadDir = path.join(PROJECT_ROOT, 'public', 'uploads', 'custom');
+  // 2. Fallback: Almacenamiento local dentro del volumen persistente /posters/uploads/custom
+  const uploadDir = path.join(PROJECT_ROOT, 'public', 'posters', 'uploads', 'custom');
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
@@ -51,10 +51,111 @@ async function saveCustomImage(buffer, originalName = 'custom-poster') {
   const filePath = path.join(uploadDir, fileName);
   fs.writeFileSync(filePath, buffer);
 
-  const localUrl = `/uploads/custom/${fileName}`;
+  const localUrl = `/posters/uploads/custom/${fileName}`;
   return {
     imageUrl: localUrl,
     thumbUrl: localUrl
+  };
+}
+
+const AUTHORITATIVE_STANDARD_PRICES = {
+  MINI: 25,
+  PEQUENO: 35,
+  PEQUEÑO: 35,
+  PORTADA_ALBUM: 55,
+  'PORTADA DE ÁLBUM': 55,
+  'PORTADA DE ALBUM': 55,
+  MEDIANO: 65,
+  GRANDE: 125,
+  GIGANTE: 210,
+};
+
+const AUTHORITATIVE_DIMENSIONS_PRICES = {
+  '14x21': 25,
+  '20x30': 25,
+  '21x27': 35,
+  '30x30': 55,
+  '29x43': 65,
+  '30x45': 65,
+  '40x60': 125,
+  '45x60': 125,
+  '60x90': 210,
+  '60x100': 210,
+};
+
+const PVC_SURCHARGE = 15.0;
+
+function resolveStandardBasePrice(stdSize) {
+  if (!stdSize || typeof stdSize !== 'object') return null;
+  const rawId = String(stdSize.id || stdSize.sizeId || '').trim().toUpperCase();
+  if (rawId && AUTHORITATIVE_STANDARD_PRICES[rawId] != null) {
+    return AUTHORITATIVE_STANDARD_PRICES[rawId];
+  }
+  const rawName = String(stdSize.name || stdSize.nombre || '').trim().toUpperCase();
+  if (rawName && AUTHORITATIVE_STANDARD_PRICES[rawName] != null) {
+    return AUTHORITATIVE_STANDARD_PRICES[rawName];
+  }
+  const cleanDims = String(stdSize.dimensions || stdSize.dimensiones || '')
+    .toLowerCase()
+    .replace(/cm|\s+/g, '');
+  if (cleanDims && AUTHORITATIVE_DIMENSIONS_PRICES[cleanDims] != null) {
+    return AUTHORITATIVE_DIMENSIONS_PRICES[cleanDims];
+  }
+  return null;
+}
+
+/**
+ * Recalcula de forma autoritativa en el servidor los precios unitarios, subtotales y unidades
+ * de una orden, impidiendo cualquier manipulación financiera desde el cliente.
+ */
+export function calculateAuthoritativeOrderTotals(rawItems = [], cm2Rate = 0.048) {
+  const safeRate = Number(cm2Rate) > 0 ? Number(cm2Rate) : 0.048;
+  const normalizedItems = [];
+  let totalOrderPrice = 0;
+  let totalOrderUnits = 0;
+
+  for (const rawItem of (Array.isArray(rawItems) ? rawItems : [])) {
+    const item = { ...rawItem };
+    const qty = Math.max(1, Math.min(500, Math.floor(Number(item.quantity) || 1)));
+    const material = String(item.baseMaterial || 'mdf').toLowerCase();
+
+    let basePrice = 0;
+    if (item.sizeMode === 'custom' || (Number(item.customWidth) > 0 && Number(item.customHeight) > 0)) {
+      const w = Math.max(1, Math.min(500, Number(item.customWidth) || 0));
+      const h = Math.max(1, Math.min(500, Number(item.customHeight) || 0));
+      const area = Number((w * h).toFixed(2));
+      item.customArea = area;
+      basePrice = area * safeRate;
+    } else {
+      const resolvedStd = resolveStandardBasePrice(item.selectedStandardSize);
+      basePrice = resolvedStd != null
+        ? resolvedStd
+        : Math.max(25, Number(item.unitPrice) || 25);
+    }
+
+    let unitPrice = basePrice;
+    if (material === 'pvc') {
+      unitPrice = basePrice + PVC_SURCHARGE;
+    } else if (material === 'vinyl_only') {
+      unitPrice = basePrice * 0.5;
+    }
+
+    const roundedUnit = Number(unitPrice.toFixed(2));
+    const roundedSubtotal = Number((roundedUnit * qty).toFixed(2));
+
+    item.quantity = qty;
+    item.unitPrice = roundedUnit;
+    item.totalPrice = roundedSubtotal;
+
+    totalOrderUnits += qty;
+    totalOrderPrice = Number((totalOrderPrice + roundedSubtotal).toFixed(2));
+    normalizedItems.push(item);
+  }
+
+  return {
+    items: normalizedItems,
+    totalPrice: totalOrderPrice,
+    totalUnits: totalOrderUnits || 1,
   };
 }
 
@@ -63,19 +164,25 @@ async function saveCustomImage(buffer, originalName = 'custom-poster') {
  */
 export async function createCustomOrder({
   items = [],
-  totalPrice = 0,
-  totalUnits = 1,
   customerPhone = null,
   customerNotes = null,
   files = []
 }) {
   const orderNumber = generateOrderNumber();
 
-  // Procesar y asociar imágenes a cada póster del pedido
+  let cm2Rate = 0.048;
+  try {
+    const settings = await prisma.storeSettings.findUnique({ where: { id: 'default' } });
+    if (settings?.customCm2Price != null && Number(settings.customCm2Price) > 0) {
+      cm2Rate = Number(settings.customCm2Price);
+    }
+  } catch (_) {}
+
+  const authoritative = calculateAuthoritativeOrderTotals(items, cm2Rate);
   const processedItems = [];
 
-  for (let i = 0; i < items.length; i++) {
-    const item = { ...items[i] };
+  for (let i = 0; i < authoritative.items.length; i++) {
+    const item = { ...authoritative.items[i] };
     const matchingFile = files.find(f => f.fieldname === `image_${i}` || f.fieldname === `file_${i}`) || files[i];
 
     if (matchingFile && matchingFile.buffer) {
@@ -108,8 +215,8 @@ export async function createCustomOrder({
   const createdOrder = await prisma.customOrder.create({
     data: {
       orderNumber,
-      totalPrice: Number(totalPrice) || 0,
-      totalUnits: Number(totalUnits) || processedItems.length || 1,
+      totalPrice: authoritative.totalPrice,
+      totalUnits: authoritative.totalUnits,
       items: processedItems,
       status: 'PENDIENTE',
       customerPhone: customerPhone ? String(customerPhone).trim() : null,

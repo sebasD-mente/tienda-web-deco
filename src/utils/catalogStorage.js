@@ -249,8 +249,9 @@ export async function deletePosterById(posterId) {
 // En una futura migración se moverán a una tabla de PostgreSQL.
 
 async function persistMetadata({ categories, franchises, settings } = {}) {
+  // NUNCA enviar los 546 pósters al persistir únicamente metadatos (settings/categories/franchises)
   const payload = {
-    posters:    _cachedPosters    ?? [],
+    posters:    [],
     categories: categories ?? _cachedCategories ?? BASE_CATEGORIES,
     franchises: franchises ?? _cachedFranchises ?? BASE_FRANCHISES,
     settings:   settings   ?? _cachedSettings   ?? BASE_SETTINGS,

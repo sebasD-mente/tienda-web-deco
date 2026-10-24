@@ -109,3 +109,44 @@ export function resetLoginFailures(req) {
 // Alias canónico compatible
 export const loginRateLimiter = rateLimitLogin;
 
+// ── Rate Limiter para Pedidos Personalizados (Protección anti-DoS GCS/DB) ─────
+const customOrderRequests = new Map();
+const CUSTOM_ORDER_WINDOW_MS = 10 * 60 * 1000; // 10 minutos
+const MAX_CUSTOM_ORDERS_PER_WINDOW = 10;
+
+const customOrderCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of customOrderRequests.entries()) {
+    if (now > record.resetTime) {
+      customOrderRequests.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
+
+if (customOrderCleanupTimer && customOrderCleanupTimer.unref) {
+  customOrderCleanupTimer.unref();
+}
+
+/**
+ * Limita la creación de órdenes personalizadas a un máximo de 10 cada 10 minutos por IP.
+ */
+export function rateLimitCustomOrders(req, res, next) {
+  const ip = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const record = customOrderRequests.get(ip);
+
+  if (!record || now > record.resetTime) {
+    customOrderRequests.set(ip, { count: 1, resetTime: now + CUSTOM_ORDER_WINDOW_MS });
+    return next();
+  }
+
+  record.count++;
+  if (record.count > MAX_CUSTOM_ORDERS_PER_WINDOW) {
+    return res.status(429).json({
+      success: false,
+      error: 'Has enviado demasiadas solicitudes de cotización seguidas. Por favor espera unos minutos.'
+    });
+  }
+
+  next();
+}

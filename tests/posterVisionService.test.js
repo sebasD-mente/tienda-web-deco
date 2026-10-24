@@ -5,7 +5,8 @@ import {
   stripCliches,
   sanitizeVisionAnalysis,
   posterVisionRawSchema,
-  VISION_CANDIDATE_MODELS
+  VISION_CANDIDATE_MODELS,
+  resolveImageInlineData
 } from '../services/posterVisionService.js';
 
 describe('🔬 Suite de Pruebas: Motor de Visión IA de Pósters (posterVisionService)', () => {
@@ -104,4 +105,16 @@ describe('🔬 Suite de Pruebas: Motor de Visión IA de Pósters (posterVisionSe
       });
     });
   });
+
+  it('7. resolveImageInlineData procesa dataUrl base64 válido y bloquea rutas fuera de /posters/uploads/', async () => {
+    const valid = await resolveImageInlineData({ dataUrl: 'data:image/webp;base64,UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=' });
+    assert.equal(valid.mimeType, 'image/webp');
+    assert.ok(valid.base64Data.length > 10);
+
+    await assert.rejects(
+      async () => resolveImageInlineData({ imageUrl: 'server.js' }),
+      /Ruta local no permitida/i
+    );
+  });
 });
+

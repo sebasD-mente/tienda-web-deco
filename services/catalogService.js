@@ -426,20 +426,46 @@ export async function upsertPosterFromAdmin(data) {
 
   const sizesData = buildSizesForUpsert(sizes, availableSizes);
 
-  // Generar vector de embedding semántico de 768 dimensiones (RAG)
+  // Determina primero si la obra ya existe por id (UUID) o por legacyId
+  let existingPoster = null;
+  if (inputId && isUUID(inputId)) {
+    existingPoster = await prisma.poster.findUnique({ where: { id: inputId } });
+  }
+  if (!existingPoster && finalLegacyId) {
+    existingPoster = await prisma.poster.findUnique({ where: { legacyId: finalLegacyId } });
+  }
+
+  const nextSubtitulo = subtitle ?? subtitulo ?? existingPoster?.subtitulo ?? null;
+  const nextDescripcion = description ?? descripcion ?? existingPoster?.descripcion ?? null;
+  const nextTags = Array.isArray(tags) ? tags : (existingPoster?.tags || []);
+
+  const hasValidExistingEmbedding =
+    Array.isArray(existingPoster?.embedding) && existingPoster.embedding.length === 768;
+
+  const semanticFieldsChanged = !existingPoster ||
+    (finalTitle && finalTitle !== existingPoster.titulo) ||
+    (nextSubtitulo !== existingPoster.subtitulo) ||
+    (nextDescripcion !== existingPoster.descripcion) ||
+    (finalCategory !== existingPoster.categoria) ||
+    (finalFranchiseId !== existingPoster.franchiseId) ||
+    (JSON.stringify(nextTags) !== JSON.stringify(existingPoster.tags || []));
+
+  // Generar vector de embedding semántico de 768 dimensiones (RAG) SOLO si es nuevo, no tiene vector o cambió su semántica
   let embeddingVector = undefined;
-  try {
-    const { generatePosterEmbedding } = await import('./embeddingService.js');
-    embeddingVector = await generatePosterEmbedding({
-      titulo: finalTitle,
-      categoria: finalCategory,
-      subtitulo: subtitle ?? subtitulo,
-      descripcion: description ?? descripcion,
-      tags: Array.isArray(tags) ? tags : [],
-      franchise: rawFranchiseKey
-    });
-  } catch (embErr) {
-    console.warn('[Deco Catalog] No se pudo generar embedding en tiempo real para la obra:', embErr.message);
+  if (!hasValidExistingEmbedding || semanticFieldsChanged) {
+    try {
+      const { generatePosterEmbedding } = await import('./embeddingService.js');
+      embeddingVector = await generatePosterEmbedding({
+        titulo: finalTitle || existingPoster?.titulo || '',
+        categoria: finalCategory,
+        subtitulo: nextSubtitulo,
+        descripcion: nextDescripcion,
+        tags: nextTags,
+        franchise: rawFranchiseKey
+      });
+    } catch (embErr) {
+      console.warn('[Deco Catalog] No se pudo generar embedding en tiempo real para la obra:', embErr.message);
+    }
   }
 
   // Asegurar que la categoría exista en PostgreSQL para satisfacer la clave foránea
@@ -457,15 +483,6 @@ export async function upsertPosterFromAdmin(data) {
     } catch (catErr) {
       console.warn(`[Deco Catalog] No se pudo auto-registrar la categoría "${finalCategory}":`, catErr.message);
     }
-  }
-
-  // Determina si existe por id (UUID) o por legacyId
-  let existingPoster = null;
-  if (inputId && isUUID(inputId)) {
-    existingPoster = await prisma.poster.findUnique({ where: { id: inputId } });
-  }
-  if (!existingPoster && finalLegacyId) {
-    existingPoster = await prisma.poster.findUnique({ where: { legacyId: finalLegacyId } });
   }
 
   if (existingPoster) {
