@@ -9,7 +9,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { rateLimitAI } from '../middleware/rateLimit.js';
 import {
   prisma,
-  getFullCatalog
+  getCachedFullCatalog
 } from '../services/catalogService.js';
 import {
   getJarvisApiKey,
@@ -127,8 +127,8 @@ router.post('/jarvis/chat', rateLimitAI, async (req, res) => {
     const { prompt, history } = req.body || {};
     const masterServerKey = getJarvisApiKey();
 
-    // 1. Obtener catálogo y memoria de entrenamiento en VIVO directamente desde PostgreSQL
-    const liveCatalog  = await getFullCatalog();
+    // 1. Obtener catálogo desde caché en RAM (invalidada al editar) y memoria de entrenamiento
+    const liveCatalog  = await getCachedFullCatalog();
     const jarvisMemory = await getJarvisMemory();
     const dbApiKey     = (jarvisMemory?.apiKey || '').trim();
 

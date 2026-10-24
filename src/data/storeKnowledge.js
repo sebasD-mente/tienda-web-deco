@@ -5,7 +5,7 @@ export const DEFAULT_STORE_KNOWLEDGE = {
   "company": {
     "name": "Deco Vintage Guate",
     "country": "Guatemala",
-    "phone": "+502 5998-0504",
+    "phone": "+502 3837-5078",
     "specialty": "Fabricación de pósters rígidos de colección y cuadros decorativos premium impresos en madera MDF de 5.5mm con tecnología HP Látex.",
     "motto": "El arte de decorar con tus pasiones: autos, anime, geek, cine y música con durabilidad para toda la vida."
   },
@@ -214,21 +214,36 @@ export function sanitizeKnowledgeForLocalStorage(data) {
   return cleanNode(data);
 }
 
-// Auto-hydrate from VPS SSD / PostgreSQL backend on startup
-if (typeof window !== 'undefined') {
-  fetch('/api/jarvis')
-    .then(r => r.ok ? r.json() : null)
+let _inFlightKnowledgeSync = null;
+
+export function syncKnowledgeFromServer(force = false) {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  if (_inFlightKnowledgeSync && !force) {
+    return _inFlightKnowledgeSync;
+  }
+
+  _inFlightKnowledgeSync = fetch('/api/jarvis')
+    .then(r => (r.ok ? r.json() : null))
     .then(serverData => {
       if (serverData && typeof serverData === 'object' && Object.keys(serverData).length > 0) {
         const sanitized = sanitizeKnowledgeForLocalStorage(serverData);
         localStorage.setItem(KNOWLEDGE_STORAGE_KEY, JSON.stringify(sanitized));
         window.dispatchEvent(new CustomEvent('deco-jarvis-knowledge-updated', { detail: sanitized }));
         console.log('[Deco JARVIS] Memoria sincronizada desde backend PostgreSQL.');
+        return sanitized;
       }
+      return null;
     })
     .catch((err) => {
       console.warn('[Deco JARVIS] Fallback a memoria local:', err);
+      return null;
     });
+
+  return _inFlightKnowledgeSync;
+}
+
+if (typeof window !== 'undefined') {
+  syncKnowledgeFromServer();
 }
 
 export async function saveStoreKnowledge(knowledge) {
@@ -375,16 +390,17 @@ export function exportJarvisMemoryAsJSON() {
   downloadAnchor.remove();
 }
 
-export function importJarvisMemoryFromJSON(jsonData) {
+export async function importJarvisMemoryFromJSON(jsonData) {
   try {
     const parsed = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-    if (parsed && typeof parsed === 'object') {
-      saveStoreKnowledge(parsed);
-      return true;
+    if (!parsed || typeof parsed !== 'object') {
+      return { success: false, error: 'El archivo JSON no contiene un objeto de memoria válido.' };
     }
+    await saveStoreKnowledge(parsed);
+    return { success: true };
   } catch (e) {
     console.error('Failed to import Jarvis memory:', e);
+    return { success: false, error: e.message || 'Error al guardar la memoria importada.' };
   }
-  return false;
 }
 

@@ -225,7 +225,7 @@ function getSeedJarvisMemory() {
     company: {
       name: "Deco Vintage Guate",
       country: "Guatemala",
-      phone: "+502 5998-0504",
+      phone: "+502 3837-5078",
       specialty: "Fabricación de pósters rígidos de colección y cuadros decorativos premium impresos en madera MDF de 5.5mm con tecnología HP Látex.",
       motto: "El arte de decorar con tus pasiones: autos, anime, geek, cine y música con durabilidad para toda la vida."
     },
@@ -248,86 +248,48 @@ export async function purgeExpiredEventsFromMemory(jarvisMemory) {
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(now);
   const rawDocs = Array.isArray(jarvisMemory.customDocuments) ? jarvisMemory.customDocuments : [];
   let wasModified = false;
-  // IDs exactos de eventos vencidos que viven en la base de datos de producción
+
+  // IDs exactos de eventos históricos ya concluidos
   const EXPIRED_DOC_IDS = new Set([
-    'doc-1788571609262', // Comicon Guatemala (3-4 Octubre)
-    'doc-1788579952808', // Feria Cayala (4-20 Septiembre)
-    'doc-1787976138406', // Fan Fest (6 Septiembre)
-    'doc-autos-escala-2026', // Autos a Escala (27 Septiembre)
-    'doc-1788571142293'  // Comic-Con Octubre
+    'doc-1788571609262',
+    'doc-1788579952808',
+    'doc-1787976138406',
+    'doc-autos-escala-2026',
+    'doc-1788571142293'
   ]);
+
   const validDocs = rawDocs.filter(doc => {
-    // 1. Purga por ID directo conocido
     if (doc.id && EXPIRED_DOC_IDS.has(doc.id)) {
       wasModified = true;
       return false;
     }
-    // 2. Si tiene fecha explícita de evento y ya pasó
-    if (doc.eventDate) {
-      if (doc.eventDate < todayStr) {
-        wasModified = true;
-        return false;
-      }
-      return true;
-    }
-    // 3. Purga inteligente por términos de eventos pasados conocidos
-    const titleLower = (doc.title || '').toLowerCase();
-    const contentLower = (doc.content || '').toLowerCase();
-    const isEventCategory = doc.category === 'Eventos';
-    if (
-      isEventCategory ||
-      titleLower.includes('comicon') ||
-      titleLower.includes('comic-con') ||
-      titleLower.includes('comic con') ||
-      titleLower.includes('cayala') ||
-      titleLower.includes('fan fest')
-    ) {
-      if (
-        titleLower.includes('comicon') ||
-        titleLower.includes('comic-con') ||
-        titleLower.includes('comic con') ||
-        titleLower.includes('cayala') ||
-        titleLower.includes('fan fest') ||
-        titleLower.includes('autos a escala') ||
-        contentLower.includes('mario castañeda') ||
-        contentLower.includes('septiembre') ||
-        contentLower.includes('3 y 4 de octubre') ||
-        contentLower.includes('4 de octubre')
-      ) {
+    if (doc.eventDate && typeof doc.eventDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(doc.eventDate.trim())) {
+      if (doc.eventDate.trim() < todayStr) {
         wasModified = true;
         return false;
       }
     }
     return true;
   });
-  // Limpiar directivas que mencionen eventos viejos
-  const rawDirectives = Array.isArray(jarvisMemory.ownerDirectives) ? jarvisMemory.ownerDirectives : [];
-  const validDirectives = rawDirectives.filter(d => {
-    const dLower = d.toLowerCase();
-    return !dLower.includes('fan fest') && 
-           !dLower.includes('comicon') && 
-           !dLower.includes('comic-con') && 
-           !dLower.includes('6 de septiembre') &&
-           !dLower.includes('3 y 4 de octubre');
-  });
-  if (validDirectives.length !== rawDirectives.length) {
-    wasModified = true;
-  }
-  // Sincronizar de inmediato con PostgreSQL
+
+  const validDirectives = Array.isArray(jarvisMemory.ownerDirectives)
+    ? jarvisMemory.ownerDirectives
+    : [];
+
   if (wasModified) {
     try {
       await prisma.jarvisMemory.update({
         where: { id: 'default' },
         data: {
-          customDocuments: validDocs,
-          ownerDirectives: validDirectives
+          customDocuments: validDocs
         }
       });
-      console.log(`[Deco J.A.R.V.I.S.] Auto-purgados eventos vencidos (Comicon, Cayalá, Fan Fest) de PostgreSQL exitosamente.`);
+      console.log('[Deco J.A.R.V.I.S.] Auto-purgados documentos de eventos con fecha vencida en PostgreSQL.');
     } catch (err) {
       console.error('[Deco J.A.R.V.I.S.] Error persistiendo purga de eventos en PostgreSQL:', err.message);
     }
   }
+
   return {
     ...jarvisMemory,
     customDocuments: validDocs,
@@ -973,7 +935,7 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
 
       case 'contactar_vendedor_humano': {
         const settings = catalog?.settings || {};
-        const waPhone = settings.whatsappPhone || '50240275763';
+        const waPhone = settings.whatsappPhone || '50238375078';
         const msgIntro = args.mensaje_conversacional || '¡Con mucho gusto! Puedes escribirle directamente a nuestro vendedor Andrés:';
         const waText = encodeURIComponent('Hola Andrés 👋, me gustaría recibir atención personalizada para mis cuadros en Deco Vintage.');
         return {
@@ -1026,7 +988,7 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
 
   if (isHumanIntent) {
     const settings = catalog?.settings || {};
-    const waPhone = settings.whatsappPhone || '50240275763';
+    const waPhone = settings.whatsappPhone || '50238375078';
     const msgIntro = '¡Con mucho gusto! Puedes escribirle directamente a nuestro vendedor Andrés:';
     const waText = encodeURIComponent('Hola Andrés 👋, me gustaría recibir atención personalizada para mis cuadros en Deco Vintage.');
     localActions.push({
@@ -1539,7 +1501,7 @@ export async function chatWithJarvis(prompt, history, candidateKeys, catalog, ja
     const vertexToken = await getVertexAccessToken();
     if (vertexToken) {
       const projectId  = process.env.GOOGLE_CLOUD_PROJECT || 'tienda-deco-vintage-web';
-      const vertexUrl  = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`;
+      const vertexUrl  = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-3.6-flash:generateContent`;
 
       const vertexContents = [
         ...chatHistory,

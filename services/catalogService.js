@@ -62,10 +62,21 @@ const POSTER_INCLUDE_LIGHT = {
   franchise: true,
 };
 
+// ── Caché en RAM del Catálogo Completo para J.A.R.V.I.S. (TTL 5 min) ──────────
+let _cachedFullCatalog = null;
+let _cachedFullCatalogAt = 0;
+const FULL_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
+
+export function invalidateCatalogCache() {
+  _cachedFullCatalog = null;
+  _cachedFullCatalogAt = 0;
+}
+
 /**
- * Invalida de forma segura la caché en memoria de vectores RAG tras mutaciones en BD.
+ * Invalida de forma segura tanto la caché de catálogo como la de vectores RAG tras mutaciones en BD.
  */
 async function safeInvalidateEmbeddingsCache() {
+  invalidateCatalogCache();
   try {
     const { invalidateEmbeddingsCache } = await import('./embeddingService.js');
     if (typeof invalidateEmbeddingsCache === 'function') {
@@ -740,6 +751,7 @@ export async function upsertCategory({ id, name, icon }) {
     create: { id: 'default', categories: currentFiltered }
   });
 
+  invalidateCatalogCache();
   return await getAllCategories();
 }
 
@@ -786,6 +798,7 @@ export async function deleteCategory(categoryId) {
     create: { id: 'default', categories: updatedCategories }
   });
 
+  invalidateCatalogCache();
   return await getAllCategories();
 }
 
@@ -838,7 +851,7 @@ export async function upsertFranchise({ id, slug, name, img, imageUrl, category 
     }
   }
 
-  return await prisma.franchise.upsert({
+  const upserted = await prisma.franchise.upsert({
     where: { slug: cleanSlug },
     update: {
       name,
@@ -852,6 +865,8 @@ export async function upsertFranchise({ id, slug, name, img, imageUrl, category 
       category: validCategory,
     }
   });
+  invalidateCatalogCache();
+  return upserted;
 }
 
 /**
@@ -877,6 +892,7 @@ export async function deleteFranchise(slugOrId) {
     where: { id: franchise.id }
   });
 
+  invalidateCatalogCache();
   return true;
 }
 
@@ -931,6 +947,7 @@ export async function updateStoreSettings(newSettings = {}) {
       }
     });
 
+    invalidateCatalogCache();
     return {
       whatsappPhone: settings.whatsappPhone,
       storeName: settings.storeName,
@@ -968,6 +985,20 @@ export async function getFullCatalog(options = {}) {
     count: posters.length,
     updatedAt: new Date().toISOString()
   };
+}
+
+/**
+ * Retorna el catálogo completo desde la caché en RAM (TTL 5 min) para respuestas instantáneas en J.A.R.V.I.S.
+ */
+export async function getCachedFullCatalog() {
+  const now = Date.now();
+  if (_cachedFullCatalog && (now - _cachedFullCatalogAt) < FULL_CATALOG_CACHE_TTL_MS) {
+    return _cachedFullCatalog;
+  }
+  const fresh = await getFullCatalog({ includeUnpublished: false });
+  _cachedFullCatalog = fresh;
+  _cachedFullCatalogAt = now;
+  return fresh;
 }
 
 // ── Helper privado ────────────────────────────────────────────────────────────

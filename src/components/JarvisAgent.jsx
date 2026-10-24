@@ -22,7 +22,7 @@ import { generateWhatsAppLink } from '../config/constants';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 import ArcReactor from './ArcReactor';
 import { askJarvis } from '../utils/jarvisBrain';
-import { getStoreKnowledge } from '../data/storeKnowledge';
+import { getStoreKnowledge, syncKnowledgeFromServer } from '../data/storeKnowledge';
 
 // High-tech sound synthesis using shared Web Audio API singleton (prevents audio context leaks)
 let sharedAudioCtx = null;
@@ -197,11 +197,9 @@ export default function JarvisAgent({
     }
   }, [isOpen]);
 
-  // Sync knowledge live on admin edits and initial mount
+  // Sync knowledge live on admin edits and initial mount (reutilizando promesa compartida)
   useEffect(() => {
-    // 1. Fetch live knowledge from server on mount
-    fetch('/api/jarvis')
-      .then(res => res.ok ? res.json() : null)
+    syncKnowledgeFromServer()
       .then(data => {
         if (data && data.initialGreeting) {
           setKnowledge(prev => ({ ...prev, ...data }));
