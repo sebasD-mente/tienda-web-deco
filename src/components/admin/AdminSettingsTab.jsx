@@ -59,10 +59,8 @@ export default function AdminSettingsTab({ onShowToast, onReloadCatalog }) {
       const ok = await syncCatalogFromServer();
       if (ok) {
         if (onReloadCatalog) onReloadCatalog();
-        setServerStatus({ online: true, checkedAt: new Date().toLocaleTimeString() });
         onShowToast('¡Catálogo sincronizado exitosamente con el VPS Hostinger!', 'success');
       } else {
-        setServerStatus({ online: true, checkedAt: new Date().toLocaleTimeString() });
         onShowToast('Sincronización completada con la base de datos local.', 'info');
       }
     } catch (err) {

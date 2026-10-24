@@ -76,21 +76,28 @@ export default function CartDrawer({
         customerNotes: `Cliente: ${customerName.trim() || 'Cliente Web'} | Entrega: ${customerAddress.trim() || 'Por coordinar'} (${customerDept})`
       };
 
+      let registeredOrderNumber = null;
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 4000);
-        await fetch('/api/custom-orders', {
+        const res = await fetch('/api/custom-orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(orderPayload),
           signal: controller.signal
         });
         clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && data.orderNumber) {
+            registeredOrderNumber = data.orderNumber;
+          }
+        }
       } catch (e) {
         console.warn('Registro en DB completado con fallback a WhatsApp');
       }
 
-      // B. Construcción del Nuevo Mensaje con Enlaces Directos a los Diseños
+      // B. Construcción del Nuevo Mensaje con Código Oficial #CP-XXXX y Enlaces Directos a los Diseños
       let itemsText = cartItems.map((it, idx) => {
         const qty = Number(it.quantity) || 1;
         const subtotal = (it.price * qty).toFixed(2);
@@ -106,8 +113,12 @@ export default function CartDrawer({
           (imgUrl ? `   🔗 *Ver Diseño:* ${imgUrl}` : '');
       }).join('\n\n');
 
-      let message = `🧾 *NUEVO PEDIDO DESDE LA WEB DECO VINTAGE*\n` +
+      const orderHeaderTag = registeredOrderNumber ? ` (#${registeredOrderNumber})` : '';
+      const orderIdLine = registeredOrderNumber ? `🔖 *Código de Orden:* #${registeredOrderNumber}\n` : '';
+
+      let message = `🧾 *NUEVO PEDIDO DESDE LA WEB DECO VINTAGE${orderHeaderTag}*\n` +
         `──────────────────────────────────────\n` +
+        orderIdLine +
         `👤 *Cliente:* ${customerName.trim() || 'Cliente Web'}\n` +
         `📱 *Teléfono / WhatsApp:* ${customerPhone.trim()}\n` +
         `📍 *Ubicación / Depto:* ${customerAddress.trim() || 'Por coordinar'} (${customerDept})\n` +
@@ -120,7 +131,7 @@ export default function CartDrawer({
         `🚚 *Saldo del 50% contra entrega: Q${deposit50.toFixed(2)}*\n` +
         `✨ _Incluye cinta Tesa industrial de montaje rápido._\n` +
         `──────────────────────────────────────\n` +
-        `Hola, me gustaría confirmar mi pedido y coordinar el método de pago del anticipo del 50%. ¿Cuáles son los datos de transferencia?`;
+        `Hola, me gustaría confirmar mi pedido${orderHeaderTag} y coordinar el método de pago del anticipo del 50%. ¿Cuáles son los datos de transferencia?`;
 
       // Confetti celebration
       try {
@@ -138,6 +149,13 @@ export default function CartDrawer({
       const newWindow = window.open(waUrl, '_blank');
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
         window.location.href = waUrl;
+      }
+
+      if (typeof onClearCart === 'function') {
+        onClearCart();
+      }
+      if (typeof onClose === 'function') {
+        onClose();
       }
     } finally {
       setIsSubmitting(false);

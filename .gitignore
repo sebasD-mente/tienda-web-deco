@@ -39,8 +39,10 @@ Thumbs.db
 scratch/
 reportes/
 reportes_generales_deco/
-# Agent Swarm Workspaces
-.agents/
+# Agent Swarm Workspaces (preserve Harness² library)
+.agents/*
+!.agents/library/
+!.agents/library/**
 test_evidence/
 backups/
 

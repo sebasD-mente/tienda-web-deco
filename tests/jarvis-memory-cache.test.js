@@ -34,7 +34,7 @@ describe('🤖 Suite J.A.R.V.I.S.: Preservación de Directivas, Expiración por 
       ],
     };
 
-    const result = await purgeExpiredEventsFromMemory(sampleMemory);
+    const result = await purgeExpiredEventsFromMemory(sampleMemory, { persist: false });
 
     assert.equal(
       result.ownerDirectives.length,
@@ -69,7 +69,7 @@ describe('🤖 Suite J.A.R.V.I.S.: Preservación de Directivas, Expiración por 
       ],
     };
 
-    const result = await purgeExpiredEventsFromMemory(sampleMemory);
+    const result = await purgeExpiredEventsFromMemory(sampleMemory, { persist: false });
     assert.equal(result.customDocuments.length, 1);
     assert.equal(result.customDocuments[0].id, 'doc-vigente-2099');
   });

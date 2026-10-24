@@ -10,7 +10,7 @@
     "start": "node server.js",
     "optimize:images": "node scripts/optimize-images.js",
     "test:security": "node --test tests/security/zero-trust.test.js",
-    "test:unit": "node --test --test-concurrency=1 tests/repo-hygiene.test.js tests/searchEngine.test.js tests/posterVisionService.test.js tests/backend-security-catalog.test.js tests/jarvis-memory-cache.test.js tests/adversarial-security-challenge.test.js",
+    "test:unit": "node --test --test-concurrency=1 tests/repo-hygiene.test.js tests/searchEngine.test.js tests/posterVisionService.test.js tests/backend-security-catalog.test.js tests/jarvis-memory-cache.test.js tests/frontend-contracts.test.js tests/adversarial-security-challenge.test.js",
     "audit:secrets": "node scripts/audit-secrets.js",
     "audit:syntax": "node scripts/audit-syntax.js",
     "harness:check": "node scripts/audit-harness.js"

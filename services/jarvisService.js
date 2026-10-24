@@ -242,7 +242,7 @@ function getSeedJarvisMemory() {
  * @param {object} jarvisMemory
  * @returns {Promise<object>}
  */
-export async function purgeExpiredEventsFromMemory(jarvisMemory) {
+export async function purgeExpiredEventsFromMemory(jarvisMemory, { persist = true } = {}) {
   if (!jarvisMemory) return jarvisMemory;
   const now = new Date();
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(now);
@@ -276,7 +276,7 @@ export async function purgeExpiredEventsFromMemory(jarvisMemory) {
     ? jarvisMemory.ownerDirectives
     : [];
 
-  if (wasModified) {
+  if (wasModified && persist) {
     try {
       await prisma.jarvisMemory.update({
         where: { id: 'default' },

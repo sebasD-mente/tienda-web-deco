@@ -437,12 +437,14 @@ export async function importCatalogFromJSON(rawJson) {
 }
 
 /**
- * Restablece el catálogo a los datos por defecto del bundle.
+ * Restablece la configuración de la tienda a los valores por defecto y resincroniza el catálogo desde PostgreSQL
+ * sin borrar jamás las obras publicadas en memoria.
  */
 export async function resetCatalogToDefault() {
-  _cachedPosters    = [...BASE_POSTERS];
-  _cachedCategories = [...BASE_CATEGORIES];
-  _cachedFranchises = [...BASE_FRANCHISES];
-  _cachedSettings   = { ...BASE_SETTINGS };
-  await persistMetadata();
+  _cachedSettings = { ...BASE_SETTINGS };
+  if (BASE_SETTINGS.whatsappPhone) {
+    saveStoreWhatsAppPhone(BASE_SETTINGS.whatsappPhone);
+  }
+  await persistMetadata({ settings: _cachedSettings });
+  await syncCatalogFromServer();
 }
