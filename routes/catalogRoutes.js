@@ -16,12 +16,14 @@ import {
   updatePosterStatus,
   deletePoster,
   getFullCatalog,
+  getCachedFullCatalog,
   getAllFranchises,
   upsertFranchise,
   deleteFranchise,
   getAllCategories,
   upsertCategory,
   deleteCategory,
+  getStoreSettings,
   updateStoreSettings,
 } from '../services/catalogService.js';
 import { processImageBuffer, dataUrlToBuffer } from '../services/imageService.js';
@@ -79,7 +81,9 @@ router.get('/catalog', async (req, res, next) => {
       }
     }
 
-    const catalog = await getFullCatalog({ includeUnpublished: wantsUnpublished });
+    const catalog = wantsUnpublished
+      ? await getFullCatalog({ includeUnpublished: true })
+      : await getCachedFullCatalog();
     return res.status(200).json({
       success: true,
       data: catalog,
@@ -493,11 +497,44 @@ router.delete('/catalog/posters/:id', requireAuth, async (req, res) => {
   }
 });
 
+// ── GET /api/catalog/settings (Public — Store settings) ──────────────────────
+router.get('/catalog/settings', async (req, res) => {
+  try {
+    const settings = await getStoreSettings();
+    return res.status(200).json({ success: true, settings });
+  } catch (err) {
+    console.error('[API Error] GET /api/catalog/settings:', err);
+    return res.status(500).json({ success: false, error: 'Error al obtener la configuración.' });
+  }
+});
+
+// ── PUT /api/catalog/settings & POST /api/settings/save (Protected Admin) ────
+const handleSaveStoreSettings = async (req, res) => {
+  try {
+    const payload = req.body?.settings || req.body || {};
+    const settings = await updateStoreSettings(payload);
+    return res.status(200).json({
+      success: true,
+      settings,
+      updatedAt: settings.updatedAt
+    });
+  } catch (err) {
+    console.error('[API Error] Save Store Settings:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
+    }
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+router.put('/catalog/settings', requireAuth, handleSaveStoreSettings);
+router.post('/settings/save', requireAuth, handleSaveStoreSettings);
+
 // ── POST /api/catalog/save (Protected Admin) ─────────────────────────────────
-// Persists catalog items directly to PostgreSQL via Prisma.
+// Persists catalog items or metadata directly to PostgreSQL via Prisma.
 router.post('/catalog/save', requireAuth, async (req, res) => {
   try {
-    const { posters = [], settings } = req.body || {};
+    const { posters = [], categories, franchises, settings } = req.body || {};
     if (!Array.isArray(posters)) {
       return res.status(400).json({ error: 'posters must be an array' });
     }
@@ -536,8 +573,45 @@ router.post('/catalog/save', requireAuth, async (req, res) => {
       processedPosters.push(...batchResults);
     }
 
+    if (Array.isArray(categories) && categories.length > 0) {
+      for (const cat of categories) {
+        if (cat && (cat.id || cat.name) && cat.id !== 'TODOS') {
+          await upsertCategory({ id: cat.id || cat.name, name: cat.name || cat.id, icon: cat.icon });
+        }
+      }
+    }
+
+    if (Array.isArray(franchises) && franchises.length > 0) {
+      for (const fr of franchises) {
+        if (fr && (fr.slug || fr.id || fr.name) && fr.name) {
+          await upsertFranchise(fr);
+        }
+      }
+    }
+
     if (settings) {
       await updateStoreSettings(settings);
+    }
+
+    // Si solo se guardaron metadatos (posters vacío), evitamos descargar las 546 obras innecesariamente
+    if (posters.length === 0) {
+      const [updatedCategories, updatedFranchises, updatedSettings] = await Promise.all([
+        getAllCategories(),
+        getAllFranchises(),
+        getStoreSettings()
+      ]);
+      const updatedAt = new Date().toISOString();
+      return res.status(200).json({
+        success:   true,
+        count:     0,
+        updatedAt,
+        catalog: {
+          categories: updatedCategories,
+          franchises: updatedFranchises,
+          settings:   updatedSettings,
+          updatedAt
+        }
+      });
     }
 
     const updatedCatalog = await getFullCatalog();

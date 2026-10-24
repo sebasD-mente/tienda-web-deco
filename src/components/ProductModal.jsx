@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShoppingBag, MessageSquare, Check } from 'lucide-react';
+import { X, ShoppingBag, MessageSquare, Check, Share2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 import { getPosterAvailableSizes, getPosterCategoryName } from '../utils/posterHelpers';
@@ -7,6 +7,7 @@ import { getPosterAvailableSizes, getPosterCategoryName } from '../utils/posterH
 export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhatsApp, onOpenCart }) {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const availableSizes = getPosterAvailableSizes(poster);
 
@@ -22,6 +23,7 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
       }
       setQuantity(1);
       setAdded(false);
+      setCopiedLink(false);
     }
   }, [poster]);
 
@@ -29,6 +31,28 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
 
   const selectedSize = availableSizes.find(s => s.id === selectedSizeId) || availableSizes[0] || OFFICIAL_SIZES[0];
   const currentPrice = selectedSize.price * quantity;
+
+  const handleSharePoster = async () => {
+    const posterKey = poster.legacyId || poster.id;
+    const shareUrl = `${window.location.origin}/poster/${encodeURIComponent(posterKey)}`;
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+        return;
+      }
+    } catch (e) {}
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${poster.title} | Deco Vintage Guate`,
+          text: `Mira este póster en madera MDF 5.5mm: ${poster.title}`,
+          url: shareUrl
+        });
+      } catch (e) {}
+    }
+  };
 
   const handleAdd = () => {
     onAddToCart({
@@ -186,11 +210,33 @@ export default function ProductModal({ poster, onClose, onAddToCart, onQuickWhat
             justifyContent: 'flex-start'
           }}>
             
-            {/* Category Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            {/* Category Badge & Share Direct Link Button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px', paddingRight: '34px' }}>
               <span className="badge-cyan" style={{ fontSize: '0.72rem', padding: '2px 10px', textTransform: 'uppercase' }}>
                 {getPosterCategoryName(poster)}
               </span>
+              <button
+                type="button"
+                onClick={handleSharePoster}
+                title="Copiar enlace directo a esta obra"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 11px',
+                  borderRadius: '999px',
+                  background: copiedLink ? 'rgba(0, 245, 160, 0.14)' : 'rgba(0, 242, 254, 0.08)',
+                  border: copiedLink ? '1px solid rgba(0, 245, 160, 0.45)' : '1px solid rgba(0, 242, 254, 0.28)',
+                  color: copiedLink ? '#00f5a0' : 'var(--accent-cyan)',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {copiedLink ? <Check size={13} /> : <Share2 size={13} />}
+                <span>{copiedLink ? '¡Enlace copiado!' : 'Compartir obra'}</span>
+              </button>
             </div>
 
             {/* Main Title & Subtitle */}

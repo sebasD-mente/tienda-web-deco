@@ -148,6 +148,36 @@ if (fs.existsSync(DIST_DIR)) {
     }
   }));
 
+  // Dynamic OpenGraph SSR injection for shareable poster deep-links (/poster/:id)
+  app.get('/poster/:id', async (req, res, next) => {
+    try {
+      const indexHtmlPath = path.resolve(DIST_DIR, 'index.html');
+      if (!fs.existsSync(indexHtmlPath)) return next();
+
+      const { getPosterById } = await import('./services/catalogService.js');
+      const { buildPosterOpenGraphHtml } = await import('./services/openGraphService.js');
+
+      const poster = await getPosterById(req.params.id);
+      if (!poster || poster.isPublished === false) {
+        return next();
+      }
+
+      const baseHtml = await fs.promises.readFile(indexHtmlPath, 'utf8');
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.get('host') || 'www.decovintage.online';
+      const originUrl = `${protocol}://${host}`;
+      const enrichedHtml = buildPosterOpenGraphHtml(baseHtml, poster, originUrl);
+
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma',        'no-cache');
+      res.setHeader('Expires',       '0');
+      return res.status(200).type('html').send(enrichedHtml);
+    } catch (err) {
+      console.warn('[OpenGraph SSR] Fallback a SPA index.html:', err.message);
+      return next();
+    }
+  });
+
   // SPA fallback for all client-side HTML routes (strictly no-cache)
   app.use((req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

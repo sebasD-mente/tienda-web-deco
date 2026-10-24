@@ -26,6 +26,7 @@ import {
 import {
   apiGetCatalog,
   apiSaveCatalog,
+  apiSaveSettings,
   apiCreatePoster,
   apiUpdatePoster,
   apiPatchPoster,
@@ -383,9 +384,18 @@ export async function saveStoreSettings(settings) {
   if (newSettings.whatsappPhone) {
     saveStoreWhatsAppPhone(newSettings.whatsappPhone);
   }
-  // Solo persiste settings via su endpoint dedicado
-  await persistMetadata({ settings: newSettings });
-  return newSettings;
+  try {
+    const res = await apiSaveSettings(newSettings);
+    if (res?.settings) {
+      _cachedSettings = res.settings;
+    }
+    emitCatalogUpdate();
+    return _cachedSettings;
+  } catch (e) {
+    console.warn('[Deco Storage] apiSaveSettings fallback a persistMetadata:', e.message);
+    await persistMetadata({ settings: newSettings });
+    return newSettings;
+  }
 }
 
 // ── Utilidades ────────────────────────────────────────────────────────────────

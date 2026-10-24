@@ -58,4 +58,9 @@ evidence: COM-20261023-FASE4-FRONTEND-UX-ADMIN, tests/frontend-contracts.test.js
 confidence: high
 </experience>
 
-
+<experience>
+cue: Enlaces compartibles por obra (/poster/:id), previsualización OpenGraph para crawlers y optimización de GET /api/catalog y POST /api/settings/save
+lesson: Interceptar GET /poster/:id en server.js antes del fallback SPA para inyectar dinámicamente metadatos OpenGraph y Twitter Card escapados contra XSS (buildPosterOpenGraphHtml), sincronizar la barra de direcciones e historial al abrir/cerrar ProductModal.jsx con hidratación directa por deep-link (pendingDeepLinkPosterId + apiGetPosterById), servir GET /api/catalog público desde getCachedFullCatalog() (TTL 5 min con invalidación instantánea en mutaciones) y persistir ajustes mediante el endpoint atómico POST /api/settings/save sin recargar las 546 obras cuando posters viene vacío.
+evidence: COM_20261023_GARY_A_FRED_FASE5_DEEPLINK_OPENGRAPH_Y_OPTIMIZACION_CATALOGO, tests/deeplink-opengraph-catalog.test.js y npm run harness:check (55/55 PASS).
+confidence: high
+</experience>

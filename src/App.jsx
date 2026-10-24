@@ -10,7 +10,7 @@ import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
 import { Loader2 } from 'lucide-react';
 import { getStoredPosters, getStoredCategories, getStoredFranchises, syncCatalogFromServer } from './utils/catalogStorage';
-import { getAuthToken, clearAuthToken, apiAdminVerify } from './utils/apiClient';
+import { getAuthToken, clearAuthToken, apiAdminVerify, apiGetPosterById } from './utils/apiClient';
 import { generateWhatsAppLink } from './config/constants';
 import { getRouteFromPath, getPathFromRoute } from './utils/routes';
 
@@ -64,7 +64,10 @@ function PageLoader() {
 
 export default function App() {
   // Initialize route directly from browser URL (supports direct links & F5 reload)
-  const initialRoute = getRouteFromPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const initialRoute = getRouteFromPath(
+    typeof window !== 'undefined' ? window.location.pathname : '/',
+    typeof window !== 'undefined' ? window.location.hash : ''
+  );
   const [currentPage, setCurrentPage] = useState(initialRoute.page); // 'home' | 'catalog' | 'category' | 'franchise' | 'about' | 'custom' | 'admin'
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialRoute.categoryId || 'SUPERHEROES');
   const [selectedFranchiseId, setSelectedFranchiseId] = useState(initialRoute.franchiseId || 'avengers');
@@ -79,6 +82,7 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isJarvisOpen, setIsJarvisOpen] = useState(false);
   const [selectedPosterForModal, setSelectedPosterForModal] = useState(null);
+  const [pendingDeepLinkPosterId, setPendingDeepLinkPosterId] = useState(initialRoute.posterId || null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Persist cart changes to localStorage for resilience against page reloads/closing tab
@@ -124,9 +128,50 @@ export default function App() {
     return () => window.removeEventListener('deco-catalog-updated', handleUpdate);
   }, []);
 
+  // Resolve shareable deep-link (/poster/:id) automatically when catalog hydrates or via direct API lookup
+  useEffect(() => {
+    if (!pendingDeepLinkPosterId) return;
+
+    const targetId = String(pendingDeepLinkPosterId).trim();
+    const localMatch = posters.find(
+      p => String(p.id) === targetId || String(p.legacyId) === targetId
+    );
+
+    if (localMatch) {
+      setSelectedPosterForModal(localMatch);
+      setPendingDeepLinkPosterId(null);
+      return;
+    }
+
+    let cancelled = false;
+    apiGetPosterById(targetId).then(remotePoster => {
+      if (cancelled) return;
+      if (remotePoster) {
+        setSelectedPosterForModal(remotePoster);
+      }
+      setPendingDeepLinkPosterId(null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingDeepLinkPosterId, posters]);
+
   // Initialize initial history entry with correct URL on first load
   useEffect(() => {
-    const currentRoute = getRouteFromPath(window.location.pathname);
+    const currentRoute = getRouteFromPath(window.location.pathname, window.location.hash);
+    if (currentRoute.posterId) {
+      const posterPath = getPathFromRoute('poster', null, null, currentRoute.posterId);
+      if (!window.history.state) {
+        window.history.replaceState({
+          type: 'modal',
+          modalType: 'poster',
+          posterId: currentRoute.posterId,
+          directEntry: true
+        }, '', posterPath);
+      }
+      return;
+    }
     const currentPath = getPathFromRoute(currentRoute.page, currentRoute.categoryId, currentRoute.franchiseId);
     if (!window.history.state) {
       window.history.replaceState({
@@ -157,10 +202,11 @@ export default function App() {
         if (state.categoryId) setSelectedCategoryId(state.categoryId);
         if (state.franchiseId) setSelectedFranchiseId(state.franchiseId);
       } else {
-        const route = getRouteFromPath(window.location.pathname);
+        const route = getRouteFromPath(window.location.pathname, window.location.hash);
         setCurrentPage(route.page);
         if (route.categoryId) setSelectedCategoryId(route.categoryId);
         if (route.franchiseId) setSelectedFranchiseId(route.franchiseId);
+        if (route.posterId) setPendingDeepLinkPosterId(route.posterId);
       }
       window.scrollTo(0, 0);
     };
@@ -169,13 +215,15 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [selectedPosterForModal, isCartOpen, isJarvisOpen, showAdminLoginModal]);
 
-  // Modal Open / Close Handlers with Browser History Sync
+  // Modal Open / Close Handlers with Browser History Sync & Shareable URL (/poster/:id)
   const handleOpenPosterModal = (poster) => {
     if (poster) {
+      const posterKey = poster.legacyId || poster.id;
+      const posterPath = posterKey ? getPathFromRoute('poster', null, null, posterKey) : window.location.pathname;
       if (window.history.state?.modalType === 'navbarSearch') {
-        window.history.replaceState({ type: 'modal', modalType: 'poster' }, '');
+        window.history.replaceState({ type: 'modal', modalType: 'poster', posterId: posterKey }, '', posterPath);
       } else {
-        window.history.pushState({ type: 'modal', modalType: 'poster' }, '');
+        window.history.pushState({ type: 'modal', modalType: 'poster', posterId: posterKey }, '', posterPath);
       }
       setSelectedPosterForModal(poster);
     }
@@ -184,7 +232,25 @@ export default function App() {
   const handleClosePosterModal = () => {
     setSelectedPosterForModal(null);
     if (window.history.state?.type === 'modal' && window.history.state?.modalType === 'poster') {
-      window.history.back();
+      if (window.history.state?.directEntry) {
+        const fallbackPath = getPathFromRoute(currentPage, selectedCategoryId, selectedFranchiseId);
+        window.history.replaceState({
+          type: 'page',
+          page: currentPage,
+          categoryId: selectedCategoryId,
+          franchiseId: selectedFranchiseId
+        }, '', fallbackPath);
+      } else {
+        window.history.back();
+      }
+    } else if (window.location.pathname.startsWith('/poster/')) {
+      const fallbackPath = getPathFromRoute(currentPage, selectedCategoryId, selectedFranchiseId);
+      window.history.replaceState({
+        type: 'page',
+        page: currentPage,
+        categoryId: selectedCategoryId,
+        franchiseId: selectedFranchiseId
+      }, '', fallbackPath);
     }
   };
 

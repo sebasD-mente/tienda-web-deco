@@ -118,6 +118,26 @@ export async function apiGetCatalog() {
   }
 }
 
+/**
+ * Obtiene un póster específico por UUID o legacyId desde el backend.
+ * @param {string} posterId
+ * @returns {Promise<object|null>}
+ */
+export async function apiGetPosterById(posterId) {
+  if (!posterId) return null;
+  try {
+    const res = await fetch(`/api/catalog/posters/${encodeURIComponent(posterId)}`, {
+      method:  'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.poster || data?.data || null;
+  } catch (err) {
+    return null;
+  }
+}
+
 // ── Pósters — Admin CRUD ───────────────────────────────────────────────────────
 
 /**
