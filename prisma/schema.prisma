@@ -135,18 +135,25 @@ model JarvisMemory {
 }
 
 model CustomOrder {
-  id            String   @id @default(uuid())
-  orderNumber   String   @unique
-  totalPrice    Decimal  @db.Decimal(10, 2)
-  totalUnits    Int      @default(1)
-  items         Json     @default("[]")
-  status        String   @default("PENDIENTE")
-  customerPhone String?
-  customerNotes String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  orderNumber        String    @unique
+  orderSource        String    @default("WEB_CUSTOM")
+  totalPrice         Decimal   @db.Decimal(10, 2)
+  totalUnits         Int       @default(1)
+  items              Json      @default("[]")
+  status             String    @default("PENDIENTE")
+  customerName       String?
+  customerPhone      String?
+  customerAddress    String?   @db.Text
+  customerDepartment String?
+  customerNotes      String?   @db.Text
+  externalSaleNumber String?
+  importedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([status])
+  @@index([orderSource])
   @@index([createdAt])
   @@map("custom_orders")
 }

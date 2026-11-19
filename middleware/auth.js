@@ -29,6 +29,10 @@ export function getAuthSecret() {
   return secret;
 }
 
+export function getIntegrationSecret() {
+  return (process.env.WEB_ORDERS_WEBHOOK_SECRET || process.env.CATALOG_WEBHOOK_SECRET || '').trim();
+}
+
 // Fail-Fast: Abortar arranque si ADMIN_SECRET no está configurada en el entorno
 if (!process.env.ADMIN_SECRET || !process.env.ADMIN_SECRET.trim()) {
   if (process.env.NODE_ENV !== 'test') {
@@ -128,4 +132,40 @@ export function requireAuth(req, res, next) {
     return next();
   }
   return res.status(401).json({ success: false, error: 'Acceso no autorizado. Inicie sesión nuevamente.' });
+}
+
+/**
+ * Express middleware — protects Server-to-Server (S2S) integration endpoints
+ * using constant-time comparison (safeCompare) over x-webhook-secret or Bearer token.
+ * Fail-closed: returns 503 if server secret is unconfigured, 401 if missing/invalid.
+ */
+export function requireIntegrationSecret(req, res, next) {
+  const expectedSecret = getIntegrationSecret();
+  if (!expectedSecret) {
+    return res.status(503).json({
+      success: false,
+      error: 'Integración S2S no configurada en el servidor.'
+    });
+  }
+
+  const rawWebhookHeader = req.headers['x-webhook-secret'];
+  const webhookSecret = Array.isArray(rawWebhookHeader)
+    ? String(rawWebhookHeader[0] || '').trim()
+    : String(rawWebhookHeader || '').trim();
+
+  const authHeader = String(req.headers.authorization || '');
+  const bearerSecret = /^Bearer\s+/i.test(authHeader)
+    ? authHeader.replace(/^Bearer\s+/i, '').trim()
+    : '';
+
+  const providedSecret = webhookSecret || bearerSecret;
+
+  if (providedSecret && safeCompare(providedSecret, expectedSecret)) {
+    return next();
+  }
+
+  return res.status(401).json({
+    success: false,
+    error: 'Acceso S2S no autorizado. Secreto de integración inválido o ausente.'
+  });
 }

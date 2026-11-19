@@ -67,12 +67,13 @@
       "area": "s2s-orders-integration",
       "user_visible_behavior": "Cada pedido creado en la web se persiste con metadatos completos de cliente/canal y se sincroniza de forma segura S2S con la Bandeja de Pedidos Web de Modulo_Ventas mediante Push en vivo, Pull anti-pérdida y Callback de estado IMPORTADO.",
       "priority": "P0",
-      "status": "not-started",
+      "status": "done",
       "dependencies": [
         "feat-002"
       ],
       "required_files": [
         "prisma/schema.prisma",
+        "prisma/migrations/20261118203500_add_web_order_integration_fields/migration.sql",
         "validators/adminSchemas.js",
         "middleware/auth.js",
         "services/customOrderService.js",
@@ -87,7 +88,7 @@
         "bash ./init.sh",
         "npm run harness:check"
       ],
-      "evidence": "",
+      "evidence": "npx prisma generate -> Generated Prisma Client v6.9.0 OK; node --test tests/web-orders-s2s-integration.test.js -> 9/9 PASS (DDL idempotente, requireIntegrationSecret 503/401/200, URLs absolutas HTTPS, WebOrderPayload, Push AbortController 5000ms, Pull /integration/inbox y Callback IMPORTADO preservando importedAt); npm run harness:check -> HARNESS_PASS (Overall: 100/100, 79/79 tests PASS, vite build OK); bash ./init.sh -> Exit code 0 (CLEAN STATE)",
       "notes": "PROHIBIDO conectar bases de datos cruzadas o leer/editar .env / .env.local. La migración SQL debe ser idempotente (IF NOT EXISTS) para proteger entrypoint.sh bajo set -e. Ver docs/product-specs/web-orders-and-custom-pricing-s2s.md §3."
     },
     {

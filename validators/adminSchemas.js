@@ -33,6 +33,7 @@ export const POSTER_STATUSES = [
 
 export const CUSTOM_ORDER_STATUSES = [
   'PENDIENTE',
+  'IMPORTADO',
   'COTIZADO',
   'EN_PROCESO',
   'EN_PRODUCCION',
@@ -40,6 +41,14 @@ export const CUSTOM_ORDER_STATUSES = [
   'COMPLETADO',
   'ENTREGADO',
   'CANCELADO'
+];
+
+export const INTEGRATION_ORDER_STATUSES = [
+  'IMPORTADO',
+  'EN_PRODUCCION',
+  'COMPLETADO',
+  'CANCELADO',
+  'PENDIENTE'
 ];
 
 export async function isValidCategory(val) {
@@ -292,4 +301,14 @@ export const orderStatusPatchSchema = z.object({
   status: z.enum(CUSTOM_ORDER_STATUSES, {
     errorMap: () => ({ message: 'Estado de la orden personalizado no válido.' })
   })
+}).passthrough();
+
+/**
+ * Schema for S2S callback status synchronization (PATCH /api/custom-orders/integration/:orderNumber/status)
+ */
+export const integrationOrderStatusPatchSchema = z.object({
+  status: z.enum(INTEGRATION_ORDER_STATUSES, {
+    errorMap: () => ({ message: 'Estado de sincronización S2S no válido.' })
+  }),
+  externalSaleNumber: z.string().trim().max(120, 'externalSaleNumber excede el límite de caracteres.').nullable().optional()
 }).passthrough();

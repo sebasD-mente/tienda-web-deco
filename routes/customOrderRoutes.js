@@ -6,17 +6,23 @@
 
 import { Router } from 'express';
 import multer from 'multer';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireIntegrationSecret } from '../middleware/auth.js';
 import { rateLimitCustomOrders } from '../middleware/rateLimit.js';
 import {
   createCustomOrder,
   getAllCustomOrders,
   getCustomOrderById,
   updateCustomOrderStatus,
-  deleteCustomOrder
+  deleteCustomOrder,
+  getIntegrationInboxOrders,
+  updateCustomOrderIntegrationStatus,
+  buildWebOrderPayload
 } from '../services/customOrderService.js';
 import { validate } from '../middleware/validate.js';
-import { orderStatusPatchSchema } from '../validators/adminSchemas.js';
+import {
+  orderStatusPatchSchema,
+  integrationOrderStatusPatchSchema
+} from '../validators/adminSchemas.js';
 
 const router = Router();
 
@@ -136,8 +142,13 @@ router.post('/', rateLimitCustomOrders, uploadOrderImages, async (req, res) => {
 
     const totalPrice = Number(req.body.totalPrice) || 0;
     const totalUnits = Number(req.body.totalUnits) || (Array.isArray(items) ? items.length : 1);
-    const customerPhone = req.body.customerPhone || null;
-    const customerNotes = req.body.customerNotes || null;
+    const rawCustomer = (req.body.customer && typeof req.body.customer === 'object') ? req.body.customer : {};
+    const orderSource = req.body.orderSource || 'WEB_CUSTOM';
+    const customerName = req.body.customerName ?? rawCustomer.fullName ?? rawCustomer.name ?? null;
+    const customerPhone = req.body.customerPhone ?? rawCustomer.phone ?? null;
+    const customerAddress = req.body.customerAddress ?? rawCustomer.address ?? null;
+    const customerDepartment = req.body.customerDepartment ?? rawCustomer.department ?? null;
+    const customerNotes = req.body.customerNotes ?? rawCustomer.notes ?? null;
     const files = req.files || [];
 
     // Verificación estricta de firma binaria (magic bytes) para cada archivo en memoria
@@ -154,7 +165,11 @@ router.post('/', rateLimitCustomOrders, uploadOrderImages, async (req, res) => {
       items,
       totalPrice,
       totalUnits,
+      orderSource,
+      customerName,
       customerPhone,
+      customerAddress,
+      customerDepartment,
       customerNotes,
       files
     });
@@ -202,6 +217,78 @@ router.get('/', requireAuth, async (req, res) => {
     });
   }
 });
+
+/**
+ * GET /api/custom-orders/integration/inbox
+ * Endpoint S2S (Pull anti-pérdida): Devuelve pedidos pendientes en formato WebOrderPayload.
+ * IMPORTANTE: Declarado estrictamente ANTES de router.get('/:id', ...).
+ */
+router.get('/integration/inbox', requireIntegrationSecret, async (req, res) => {
+  try {
+    if (typeof res.setHeader === 'function') {
+      res.setHeader('Cache-Control', 'no-store, private');
+    }
+    const status = req.query.status || 'PENDIENTE';
+    const limit = req.query.limit !== undefined ? Number(req.query.limit) : 100;
+    const data = await getIntegrationInboxOrders({ status, limit });
+    return res.status(200).json({
+      success: true,
+      data,
+      count: data.length
+    });
+  } catch (err) {
+    console.error('[API Error] GET /api/custom-orders/integration/inbox:', err);
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
+    }
+    return res.status(500).json({
+      success: false,
+      error: 'Error al consultar la bandeja S2S de pedidos web.',
+      details: err.message
+    });
+  }
+});
+
+/**
+ * PATCH /api/custom-orders/integration/:orderNumber/status
+ * Endpoint S2S (Callback desde Modulo_Ventas): Marca una orden como IMPORTADO / EN_PRODUCCION / etc.
+ * IMPORTANTE: Declarado estrictamente ANTES de router.get('/:id', ...).
+ */
+router.patch(
+  '/integration/:orderNumber/status',
+  requireIntegrationSecret,
+  validate(integrationOrderStatusPatchSchema),
+  async (req, res) => {
+    try {
+      const { status, externalSaleNumber } = req.body;
+      const updated = await updateCustomOrderIntegrationStatus(req.params.orderNumber, {
+        status,
+        externalSaleNumber
+      });
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          error: 'Orden no encontrada.'
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        data: buildWebOrderPayload(updated),
+        order: updated
+      });
+    } catch (err) {
+      console.error('[API Error] PATCH /api/custom-orders/integration/:orderNumber/status:', err);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ success: false, error: 'Error interno del servidor.' });
+      }
+      return res.status(500).json({
+        success: false,
+        error: 'Error al actualizar el estado de integración S2S.',
+        details: err.message
+      });
+    }
+  }
+);
 
 /**
  * GET /api/custom-orders/:id
