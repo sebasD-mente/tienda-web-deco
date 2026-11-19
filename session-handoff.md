@@ -1,54 +1,52 @@
 # Session Handoff
 
 ## Current Objective
-- **Goal:** Ejecutar y certificar `feat-003` (Migración aditiva de `CustomOrder` y contrato S2S con `Modulo_Ventas`: Push Webhook asíncrono + Pull `/integration/inbox` + Callback `/integration/:orderNumber/status`).
-- **Current status:** `clean-state` (`WIP = 0`; `feat-001`, `feat-002` y `feat-003` en `done`; `feat-004` en `not-started`; `Overall: 100/100`)
-- **Branch / commit:** `main` (sobre `3b4dcf8` + `feat-003` completada)
+- **Goal:** Ejecutar y certificar `feat-004` (Captura estructurada de cliente en los 3 flujos de venta web `WEB_CART`, `WEB_CUSTOM`, `WEB_QUICK_POSTER` y soporte de estado `'IMPORTADO'` + `externalSaleNumber` en `AdminCustomOrdersTab.jsx`).
+- **Current status:** `clean-state` (`WIP = 0`; `feat-001`, `feat-002`, `feat-003` y `feat-004` en `done`; `Overall: 100/100`)
+- **Branch / commit:** `main` (sobre `9aa7118` + `feat-004` completada)
 
 ## Completed This Session
-- [x] Extensión aditiva de `model CustomOrder` en `prisma/schema.prisma` (`orderSource`, `customerName`, `customerAddress`, `customerDepartment`, `externalSaleNumber`, `importedAt` e índice `@@index([orderSource])`) y migración SQL idempotente `prisma/migrations/20261118203500_add_web_order_integration_fields/migration.sql` con `npx prisma generate`.
-- [x] Actualización de `validators/adminSchemas.js` añadiendo `'IMPORTADO'` a `CUSTOM_ORDER_STATUSES` y exportando `INTEGRATION_ORDER_STATUSES` + `integrationOrderStatusPatchSchema`.
-- [x] Implementación de `getIntegrationSecret` y `requireIntegrationSecret` en `middleware/auth.js` con comparación en tiempo constante (`safeCompare`), `503` fail-closed sin secreto configurado y `401` ante secreto inválido/ausente.
-- [x] Implementación en `services/customOrderService.js` y `routes/customOrderRoutes.js` de `toAbsolutePublicUrl`, `mapCanonicalMaterial`, `buildWebOrderPayload`, Push no bloqueante `notifySalesModuleNewOrder` (`AbortController` `5000ms`), `GET /api/custom-orders/integration/inbox` y `PATCH /api/custom-orders/integration/:orderNumber/status` declarados antes de `/:id`.
-- [x] Documentación de `PUBLIC_WEB_URL`, `WEB_ORDERS_WEBHOOK_SECRET`, `CATALOG_WEBHOOK_SECRET` y `VENTAS_API_URL` en `.env.example` y certificación con `tests/web-orders-s2s-integration.test.js` (`9/9` pruebas nuevas; `79/79` pruebas automatizadas totales en verde).
+- [x] Actualización de `src/components/CartDrawer.jsx` (`WEB_CART`) enviando `orderSource`, `customerName`, `customerPhone`, `customerAddress`, `customerDepartment` e ítems enriquecidos (`isCustom: false`, `posterId`, `legacyId`, `sku: 'WEB-...'`, `sizeMode: 'standard'`, `selectedStandardSize` completo y URLs absolutas), con etiquetas `<label htmlFor>`, `autoComplete`, `role="alert"` y preservación de `registeredOrderNumber`, `data.orderNumber` y `onClearCart()`.
+- [x] Incorporación en `src/pages/CustomPostersPage.jsx` (`WEB_CUSTOM`) de la sección obligatoria **Datos de Contacto y Entrega** (`Nombre Completo *`, `Teléfono / WhatsApp *`, `Dirección, Zona o Municipio`, `Departamento`), validación previa accesible, envío en `FormData` (`image_${idx}` indexado e `isCustom: true`) e inyección de cliente + `#CP-XXXX` en WhatsApp.
+- [x] Implementación en `src/components/ProductModal.jsx` y `src/App.jsx` (`WEB_QUICK_POSTER`) del mini-formulario rápido desplegable dentro del modal (`aria-expanded` / `aria-controls`) que registra la orden en `POST /api/custom-orders` con `AbortController` (`4000ms`) y fallback seguro a WhatsApp ante fallos de red.
+- [x] Actualización de `src/components/admin/AdminCustomOrdersTab.jsx` soportando filtro, badge de alto contraste y selector para `'IMPORTADO'`, visualización de `order.externalSaleNumber`, canal `orderSource` y panel de datos estructurados del cliente.
+- [x] Ampliación de `tests/frontend-contracts.test.js` (`8/8 PASS`, `84/84` pruebas totales del proyecto en verde) incluyendo simulación E2E de los 3 canales contra `createCustomOrder` y `buildWebOrderPayload`.
 
 ## Verification Evidence
 
 | Check | Command | Result | Notes |
 | :--- | :--- | :--- | :--- |
-| Cliente Prisma | `npx prisma generate` | `PASS` | `@prisma/client` v6.9.0 regenerado con campos S2S de `CustomOrder` |
-| Suite S2S Bandeja Web | `node --test tests/web-orders-s2s-integration.test.js` | `PASS (9/9)` | DDL idempotente, `503`/`401`/`200`, URLs absolutas HTTPS, Push no bloqueante, Pull inbox y Callback `IMPORTADO` |
-| Compuerta Unificada Deko Labs | `npm run harness:check` | `PASS (HARNESS_PASS)` | `Overall: 100/100`, 0 secretos, 59 archivos JS limpios, `79/79` tests PASS y `vite build` limpio |
-| Inicialización Integral en 3 Puertas | `bash ./init.sh` | `PASS (Exit code 0)` | Confirmado `CLEAN STATE` en Puertas 1, 2 y 3 con `Pass-State Gating` activo sobre `feat-003` |
+| Suite Contratos Frontend y Canales Web | `node --test tests/frontend-contracts.test.js` | `PASS (8/8)` | Valida `WEB_CART`, `WEB_CUSTOM`, `WEB_QUICK_POSTER`, `IMPORTADO` + `externalSaleNumber` y simulación E2E S2S |
+| Build Producción Frontend | `npm run build` | `PASS` | `vite build` limpio en `dist/` (1508 módulos transformados) |
+| Compuerta Unificada Deko Labs | `npm run harness:check` | `PASS (HARNESS_PASS)` | `Overall: 100/100`, 0 secretos, 59 archivos JS limpios, `84/84` tests PASS y `vite build` limpio |
+| Inicialización Integral en 3 Puertas | `bash ./init.sh` | `PASS (Exit code 0)` | Confirmado `CLEAN STATE` en Puertas 1, 2 y 3 con `Pass-State Gating` activo sobre `feat-001`..`feat-004` |
 
 ## Files Changed
-- `prisma/schema.prisma`
-- `prisma/migrations/20261118203500_add_web_order_integration_fields/migration.sql`
-- `validators/adminSchemas.js`
-- `middleware/auth.js`
-- `services/customOrderService.js`
-- `routes/customOrderRoutes.js`
-- `.env.example`
-- `tests/web-orders-s2s-integration.test.js`
-- `package.json`
+- `src/components/CartDrawer.jsx`
+- `src/pages/CustomPostersPage.jsx`
+- `src/components/ProductModal.jsx`
+- `src/App.jsx`
+- `src/components/admin/AdminCustomOrdersTab.jsx`
+- `tests/frontend-contracts.test.js`
 - `ARCHITECTURE.md`
+- `docs/product-specs/web-orders-and-custom-pricing-s2s.md`
 - `feature_list.json`
 - `sprint-contract.md`
 - `progress.md`
 - `session-handoff.md`
 
 ## Decisions Made
-- **Respeto direccional `Service -> Runtime`**: `services/customOrderService.js` no importa `middleware/auth.js`, manteniendo intacta la separación de las 6 capas.
-- **Normalización de URLs absolutas en `buildWebOrderPayload`**: Asegura URLs `https://decovintage.online/...` o GCS para `Modulo_Ventas` tanto en órdenes nuevas como históricas sin romper CSP `'self'` en `www.decovintage.online` o `localhost`.
+- **Accesibilidad WCAG 2.1 AA en formularios de checkout**: Uso de `<form noValidate>`, `<label htmlFor>`, `autoComplete`, `fontSize: '1rem'` (evita auto-zoom en iOS), `:focus-visible` de alto contraste y anuncios `role="alert"` con ruteo de foco al primer campo inválido en lugar de `window.alert`.
+- **Asociación 1:1 de fotos personalizadas (`image_${idx}`) y fallback anti-popup móvil**: Asegura correspondencia exacta de archivos en cotizaciones multi-póster y apertura garantizada de WhatsApp tras `await fetch`.
 
 ## Blockers / Risks
-- Ninguno activo. Para `feat-004`, preservar `registeredOrderNumber`, `data.orderNumber` y `onClearCart()` en `CartDrawer.jsx`, cero `window.confirm` nativos y accesibilidad WCAG.
+- Ninguno activo. Al desplegar a producción en Dokploy, configurar `WEB_ORDERS_WEBHOOK_SECRET`, `VENTAS_API_URL=https://ventas.decovintage.online` y `PUBLIC_WEB_URL=https://decovintage.online` en las variables de entorno del contenedor.
 
 ## Next Session Startup
 1. Confirmar `pwd`.
 2. Leer `AGENTS.md`, `progress.md`, `session-handoff.md`, `memory/INDEX.md` y `feature_list.json`.
-3. Leer `docs/product-specs/web-orders-and-custom-pricing-s2s.md` (§4) y `sprint-contract.md`.
-4. Ejecutar `bash ./init.sh` antes de modificar código.
+3. Revisar `git log --oneline -5`.
+4. Ejecutar `bash ./init.sh` antes de modificar cualquier entregable.
 
 ## Recommended Next Step
-- Activar **`feat-004`** (`status: "in-progress"`, `WIP = 1`) e implementar la captura estructurada de cliente en `CartDrawer.jsx` (`WEB_CART`), `CustomPostersPage.jsx` (`WEB_CUSTOM`), `ProductModal.jsx` (`WEB_QUICK_POSTER`) y el estado `'IMPORTADO'` + `externalSaleNumber` en `AdminCustomOrdersTab.jsx`.
+- Desplegar la rama `main` a producción (`https://decovintage.online`), configurar las variables S2S con `Modulo_Ventas` (`https://ventas.decovintage.online`) y ejecutar la verificación post-despliegue con Chrome DevTools MCP.

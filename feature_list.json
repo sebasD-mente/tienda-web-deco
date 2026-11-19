@@ -98,7 +98,7 @@
       "area": "frontend-checkout-admin",
       "user_visible_behavior": "Tanto el Carrito del Catálogo como el Cotizador Personalizado y el botón rápido de WhatsApp en cada póster capturan los datos del cliente, registran la orden #CP-XXXX hacia Modulo_Ventas y reflejan el estado IMPORTADO y número de venta vinculado en el panel Admin.",
       "priority": "P0",
-      "status": "not-started",
+      "status": "done",
       "dependencies": [
         "feat-003"
       ],
@@ -115,7 +115,7 @@
         "bash ./init.sh",
         "npm run harness:check"
       ],
-      "evidence": "",
+      "evidence": "node --test tests/frontend-contracts.test.js -> 8/8 PASS (contratos WEB_CART, WEB_CUSTOM, WEB_QUICK_POSTER, Admin IMPORTADO + externalSaleNumber y simulación E2E S2S); npm run build -> vite build 2.21s PASS; npm run harness:check -> HARNESS_PASS (Overall: 100/100, 84/84 tests PASS, vite build OK); bash ./init.sh -> Exit code 0 (CLEAN STATE)",
       "notes": "Preservar registeredOrderNumber, data.orderNumber y onClearCart() en CartDrawer.jsx, cero window.confirm nativos y accesibilidad WCAG. Ver docs/product-specs/web-orders-and-custom-pricing-s2s.md §4."
     }
   ]

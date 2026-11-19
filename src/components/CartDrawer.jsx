@@ -1,25 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  X, ShoppingBag, Trash2, MessageSquare, ArrowRight, 
-  Plus, Minus, Phone, User, MapPin, ShieldCheck, 
-  Clock, CreditCard, Sparkles, Check
+import React, { useState, useEffect, useRef, useId } from 'react';
+import {
+  X, ShoppingBag, Trash2, MessageSquare, ArrowRight,
+  Plus, Minus, Phone, User, MapPin, ShieldCheck,
+  Clock, CreditCard, AlertCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { generateWhatsAppLink } from '../config/constants';
 
-export default function CartDrawer({ 
-  isOpen, 
-  onClose, 
-  cartItems = [], 
-  onRemoveItem, 
+const GUATEMALA_DEPARTMENTS = [
+  { value: 'Guatemala', label: 'Guatemala (Capital y Municipios)' },
+  { value: 'Sacatepéquez', label: 'Sacatepéquez (Antigua)' },
+  { value: 'Chimaltenango', label: 'Chimaltenango' },
+  { value: 'Escuintla', label: 'Escuintla' },
+  { value: 'Quetzaltenango', label: 'Quetzaltenango' },
+  { value: 'Alta Verapaz', label: 'Alta Verapaz' },
+  { value: 'Baja Verapaz', label: 'Baja Verapaz' },
+  { value: 'Chiquimula', label: 'Chiquimula' },
+  { value: 'El Progreso', label: 'El Progreso' },
+  { value: 'Huehuetenango', label: 'Huehuetenango' },
+  { value: 'Izabal', label: 'Izabal' },
+  { value: 'Jalapa', label: 'Jalapa' },
+  { value: 'Jutiapa', label: 'Jutiapa' },
+  { value: 'Petén', label: 'Petén' },
+  { value: 'Quiché', label: 'Quiché' },
+  { value: 'Retalhuleu', label: 'Retalhuleu' },
+  { value: 'San Marcos', label: 'San Marcos' },
+  { value: 'Santa Rosa', label: 'Santa Rosa' },
+  { value: 'Sololá', label: 'Sololá' },
+  { value: 'Suchitepéquez', label: 'Suchitepéquez' },
+  { value: 'Totonicapán', label: 'Totonicapán' },
+  { value: 'Zacapa', label: 'Zacapa' }
+];
+
+function resolveAbsoluteAssetUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  const origin = (typeof window !== 'undefined' && window.location?.origin)
+    ? window.location.origin
+    : 'https://decovintage.online';
+  return `${origin}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
+}
+
+export default function CartDrawer({
+  isOpen,
+  onClose,
+  cartItems = [],
+  onRemoveItem,
   onUpdateQuantity,
-  onClearCart 
+  onClearCart
 }) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerDept, setCustomerDept] = useState('Guatemala');
+  const [phoneError, setPhoneError] = useState('');
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const phoneInputRef = useRef(null);
+  const fieldIdPrefix = useId();
 
   // Comprehensive Mobile & Desktop Body Scroll Lock
   useEffect(() => {
@@ -46,34 +89,68 @@ export default function CartDrawer({
   const total = cartItems.reduce((acc, item) => acc + (item.price * (Number(item.quantity) || 1)), 0);
   const deposit50 = total * 0.5;
 
-  const handleCheckoutWhatsApp = async () => {
+  const validatePhoneDigits = (rawPhone) => {
+    const digits = String(rawPhone || '').replace(/\D/g, '');
+    return digits.length >= 8;
+  };
+
+  const handleCheckoutWhatsApp = async (e) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     if (cartItems.length === 0 || isSubmitting) return;
 
-    if (!customerPhone.trim()) {
-      alert('Por favor ingresa tu número de teléfono o WhatsApp para coordinar la entrega de tu pedido.');
+    if (!validatePhoneDigits(customerPhone)) {
+      setPhoneTouched(true);
+      setPhoneError('Por favor ingresa un número de teléfono o WhatsApp válido (mínimo 8 dígitos).');
+      phoneInputRef.current?.focus();
       return;
     }
 
+    setPhoneError('');
     setIsSubmitting(true);
+
     try {
-      // A. Registro Silencioso en Base de Datos (Anti-Abandono)
+      const cleanName = customerName.trim() || 'Cliente Web';
+      const cleanPhone = customerPhone.trim();
+      const cleanAddress = customerAddress.trim() || null;
+      const cleanDept = customerDept || 'Guatemala';
+
+      // A. Registro Estructurado en Base de Datos + Sincronización S2S con Modulo_Ventas
       const orderPayload = {
-        items: cartItems.map(it => ({
-          title: it.poster?.title || 'Obra Catálogo',
-          selectedStandardSize: {
-            name: it.size?.name || 'Estándar',
-            dimensions: it.size?.dimensions || ''
-          },
-          baseMaterial: 'mdf',
-          quantity: Number(it.quantity) || 1,
-          unitPrice: Number(it.price) || 0,
-          imageUrl: it.poster?.image || it.poster?.imageUrl || it.poster?.thumb || '',
-          thumbUrl: it.poster?.thumb || it.poster?.thumbUrl || it.poster?.image || ''
-        })),
+        orderSource: 'WEB_CART',
+        customerName: cleanName,
+        customerPhone: cleanPhone,
+        customerAddress: cleanAddress,
+        customerDepartment: cleanDept,
+        customerNotes: `Cliente: ${cleanName} | Entrega: ${cleanAddress || 'Por coordinar'} (${cleanDept})`,
         totalPrice: total,
         totalUnits: totalItemsCount,
-        customerPhone: customerPhone.trim(),
-        customerNotes: `Cliente: ${customerName.trim() || 'Cliente Web'} | Entrega: ${customerAddress.trim() || 'Por coordinar'} (${customerDept})`
+        items: cartItems.map(it => {
+          const rawImg = it.poster?.image || it.poster?.imageUrl || it.poster?.thumb || it.poster?.thumbUrl || '';
+          const rawThumb = it.poster?.thumb || it.poster?.thumbUrl || it.poster?.image || it.poster?.imageUrl || '';
+          const posterCode = it.poster?.legacyId || it.poster?.id;
+
+          return {
+            isCustom: false,
+            posterId: it.poster?.id || null,
+            legacyId: it.poster?.legacyId || null,
+            sku: posterCode ? 'WEB-' + posterCode : null,
+            title: it.poster?.title || 'Obra Catálogo',
+            sizeMode: 'standard',
+            selectedStandardSize: {
+              id: it.size?.id || null,
+              name: it.size?.name || 'Estándar',
+              dimensions: it.size?.dimensions || '',
+              price: Number(it.price) || 0
+            },
+            baseMaterial: 'mdf',
+            quantity: Number(it.quantity) || 1,
+            unitPrice: Number(it.price) || 0,
+            imageUrl: resolveAbsoluteAssetUrl(rawImg),
+            thumbUrl: resolveAbsoluteAssetUrl(rawThumb)
+          };
+        })
       };
 
       let registeredOrderNumber = null;
@@ -93,18 +170,16 @@ export default function CartDrawer({
             registeredOrderNumber = data.orderNumber;
           }
         }
-      } catch (e) {
+      } catch (err) {
         console.warn('Registro en DB completado con fallback a WhatsApp');
       }
 
-      // B. Construcción del Nuevo Mensaje con Código Oficial #CP-XXXX y Enlaces Directos a los Diseños
-      let itemsText = cartItems.map((it, idx) => {
+      // B. Construcción del Mensaje con Código Oficial #CP-XXXX y Enlaces Directos a los Diseños
+      const itemsText = cartItems.map((it, idx) => {
         const qty = Number(it.quantity) || 1;
         const subtotal = (it.price * qty).toFixed(2);
         const rawImg = it.poster?.image || it.poster?.imageUrl || it.poster?.thumb || it.poster?.thumbUrl || '';
-        const imgUrl = rawImg.startsWith('http') 
-          ? rawImg 
-          : (rawImg ? `${window.location.origin}${rawImg.startsWith('/') ? '' : '/'}${rawImg}` : '');
+        const imgUrl = resolveAbsoluteAssetUrl(rawImg);
         return `${idx + 1}. *${it.poster?.title || 'Obra Catálogo'}*\n` +
           `   • Formato: ${it.size?.name || 'Estándar'} (${it.size?.dimensions || ''})\n` +
           `   • Cantidad: *${qty} unidad(es)*\n` +
@@ -116,12 +191,12 @@ export default function CartDrawer({
       const orderHeaderTag = registeredOrderNumber ? ` (#${registeredOrderNumber})` : '';
       const orderIdLine = registeredOrderNumber ? `🔖 *Código de Orden:* #${registeredOrderNumber}\n` : '';
 
-      let message = `🧾 *NUEVO PEDIDO DESDE LA WEB DECO VINTAGE${orderHeaderTag}*\n` +
+      const message = `🧾 *NUEVO PEDIDO DESDE LA WEB DECO VINTAGE${orderHeaderTag}*\n` +
         `──────────────────────────────────────\n` +
         orderIdLine +
-        `👤 *Cliente:* ${customerName.trim() || 'Cliente Web'}\n` +
-        `📱 *Teléfono / WhatsApp:* ${customerPhone.trim()}\n` +
-        `📍 *Ubicación / Depto:* ${customerAddress.trim() || 'Por coordinar'} (${customerDept})\n` +
+        `👤 *Cliente:* ${cleanName}\n` +
+        `📱 *Teléfono / WhatsApp:* ${cleanPhone}\n` +
+        `📍 *Ubicación / Depto:* ${cleanAddress || 'Por coordinar'} (${cleanDept})\n` +
         `──────────────────────────────────────\n` +
         `📦 *DETALLE DE PÓSTERS RÍGIDOS MDF 5.5mm:*\n\n` +
         `${itemsText}\n\n` +
@@ -141,7 +216,7 @@ export default function CartDrawer({
           origin: { y: 0.6 },
           colors: ['#00f2fe', '#38bdf8', '#00f5a0']
         });
-      } catch (e) {
+      } catch (_) {
         // Ignore if confetti fails
       }
 
@@ -162,9 +237,15 @@ export default function CartDrawer({
     }
   };
 
+  const nameId = `${fieldIdPrefix}-cart-name`;
+  const phoneId = `${fieldIdPrefix}-cart-phone`;
+  const phoneErrId = `${fieldIdPrefix}-cart-phone-error`;
+  const addressId = `${fieldIdPrefix}-cart-address`;
+  const deptId = `${fieldIdPrefix}-cart-dept`;
+
   return (
-    <div 
-      className="cart-drawer-backdrop" 
+    <div
+      className="cart-drawer-backdrop"
       onClick={onClose}
       style={{
         position: 'fixed',
@@ -185,6 +266,9 @@ export default function CartDrawer({
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${fieldIdPrefix}-cart-title`}
         className="glass-card cart-drawer-panel"
         style={{
           position: 'fixed',
@@ -231,10 +315,10 @@ export default function CartDrawer({
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <ShoppingBag size={20} color="var(--accent-cyan)" />
+              <ShoppingBag size={20} color="var(--accent-cyan)" aria-hidden="true" />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+              <h3 id={`${fieldIdPrefix}-cart-title`} style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', margin: 0 }}>
                 Tu Carrito de Compras
               </h3>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
@@ -246,6 +330,7 @@ export default function CartDrawer({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Cerrar carrito de compras"
             style={{
               background: 'rgba(255, 255, 255, 0.05)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -261,12 +346,12 @@ export default function CartDrawer({
             }}
             title="Cerrar carrito"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
         {/* 2. ÚNICO Contenedor de Scroll Unificado para todo el contenido */}
-        <div 
+        <div
           className="cart-single-scroll-body"
           style={{
             flex: 1,
@@ -294,7 +379,7 @@ export default function CartDrawer({
                 justifyContent: 'center',
                 margin: '0 auto 16px auto'
               }}>
-                <ShoppingBag size={32} color="var(--accent-cyan)" style={{ opacity: 0.6 }} />
+                <ShoppingBag size={32} color="var(--accent-cyan)" style={{ opacity: 0.6 }} aria-hidden="true" />
               </div>
               <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>Tu carrito está vacío</h4>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 20px 0' }}>
@@ -307,7 +392,7 @@ export default function CartDrawer({
                 style={{ padding: '10px 22px', fontSize: '0.85rem', margin: '0 auto' }}
               >
                 <span>Explorar Catálogo</span>
-                <ArrowRight size={15} />
+                <ArrowRight size={15} aria-hidden="true" />
               </button>
             </div>
           ) : (
@@ -409,6 +494,7 @@ export default function CartDrawer({
                             <button
                               type="button"
                               onClick={() => onUpdateQuantity ? onUpdateQuantity(idx, -1) : onRemoveItem(idx)}
+                              aria-label={`Disminuir cantidad de ${item.poster.title}`}
                               style={{
                                 background: 'none',
                                 border: 'none',
@@ -422,7 +508,7 @@ export default function CartDrawer({
                               }}
                               title="Disminuir cantidad"
                             >
-                              <Minus size={13} strokeWidth={3} />
+                              <Minus size={13} strokeWidth={3} aria-hidden="true" />
                             </button>
 
                             <span style={{
@@ -438,6 +524,7 @@ export default function CartDrawer({
                             <button
                               type="button"
                               onClick={() => onUpdateQuantity ? onUpdateQuantity(idx, 1) : null}
+                              aria-label={`Aumentar cantidad de ${item.poster.title}`}
                               style={{
                                 background: 'none',
                                 border: 'none',
@@ -451,7 +538,7 @@ export default function CartDrawer({
                               }}
                               title="Aumentar cantidad"
                             >
-                              <Plus size={13} strokeWidth={3} />
+                              <Plus size={13} strokeWidth={3} aria-hidden="true" />
                             </button>
                           </div>
 
@@ -474,6 +561,7 @@ export default function CartDrawer({
                       <button
                         type="button"
                         onClick={() => onRemoveItem(idx)}
+                        aria-label={`Eliminar ${item.poster.title} del carrito`}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -485,206 +573,285 @@ export default function CartDrawer({
                           transition: 'opacity 0.2s ease',
                           flexShrink: 0
                         }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                        onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
+                        onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
+                        onMouseLeave={e => { e.currentTarget.style.opacity = '0.75'; }}
                         title="Eliminar póster"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={16} aria-hidden="true" />
                       </button>
                     </div>
                   );
                 })}
               </div>
 
-              {/* SECCIÓN 2: Formulario de Datos del Cliente */}
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '12px',
-                padding: '14px'
-              }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
-                  Datos de Entrega y Coordinación:
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {/* Nombre */}
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type="text"
-                      placeholder="Tu Nombre Completo (Opcional)"
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px 9px 34px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#fff',
-                        fontSize: '0.85rem',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                    <User size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '11px' }} />
-                  </div>
-
-                  {/* Teléfono */}
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type="tel"
-                      placeholder="Teléfono / WhatsApp de Contacto *"
-                      value={customerPhone}
-                      onChange={e => setCustomerPhone(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px 9px 34px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: customerPhone ? '1px solid rgba(0, 242, 254, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#fff',
-                        fontSize: '0.85rem',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                    <Phone size={15} color={customerPhone ? 'var(--accent-cyan)' : 'var(--text-muted)'} style={{ position: 'absolute', left: '10px', top: '11px' }} />
-                  </div>
-
-                  {/* Dirección */}
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type="text"
-                      placeholder="Dirección, Zona o Municipio de Entrega"
-                      value={customerAddress}
-                      onChange={e => setCustomerAddress(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px 9px 34px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#fff',
-                        fontSize: '0.85rem',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                    <MapPin size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '11px' }} />
-                  </div>
-
-                  {/* Departamento */}
-                  <div style={{ position: 'relative' }}>
-                    <select
-                      value={customerDept}
-                      onChange={e => setCustomerDept(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px 9px 34px',
-                        borderRadius: '8px',
-                        background: '#0a0f1d',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#fff',
-                        fontSize: '0.85rem',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="Guatemala">Guatemala (Capital y Municipios)</option>
-                      <option value="Sacatepéquez">Sacatepéquez (Antigua)</option>
-                      <option value="Quetzaltenango">Quetzaltenango</option>
-                      <option value="Escuintla">Escuintla</option>
-                      <option value="Chimaltenango">Chimaltenango</option>
-                      <option value="Departamental">Otro Departamento del Interior</option>
-                    </select>
-                    <MapPin size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '11px', pointerEvents: 'none' }} />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECCIÓN 3: Desglose de Total y Anticipo del 50% */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-end',
-                padding: '12px 16px',
-                background: 'rgba(0, 242, 254, 0.04)',
-                border: '1px solid rgba(0, 242, 254, 0.25)',
-                borderRadius: '10px'
-              }}>
-                <div>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
-                    Total a Pagar ({totalItemsCount} {totalItemsCount === 1 ? 'obra' : 'obras'}):
-                  </span>
-                  <div style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--accent-cyan)', lineHeight: 1.1, marginTop: '2px' }}>
-                    Q {total.toFixed(2)}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 800, display: 'block' }}>
-                    50% Anticipo: Q {deposit50.toFixed(2)}
-                  </span>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    Saldo contra entrega: Q {deposit50.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* SECCIÓN 4: Políticas de Fabricación y Entrega */}
-              <div style={{
-                padding: '10px 12px',
-                background: 'rgba(0, 0, 0, 0.4)',
-                border: '1px solid rgba(255, 255, 255, 0.07)',
-                borderRadius: '8px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '6px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.35' }}>
-                  <CreditCard size={13} color="var(--accent-cyan)" style={{ flexShrink: 0, marginTop: '1px' }} />
-                  <span>
-                    <strong style={{ color: '#fff' }}>Anticipo del 50%:</strong> Requerido para iniciar fabricación artesanal en MDF 5.5mm. Saldo restante contra entrega o previo a despacho.
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.35' }}>
-                  <Clock size={13} color="var(--accent-cyan)" style={{ flexShrink: 0, marginTop: '1px' }} />
-                  <span>
-                    <strong style={{ color: '#fff' }}>Tiempo de Entrega:</strong> 2 a 4 días hábiles en toda Guatemala.
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.35' }}>
-                  <ShieldCheck size={13} color="var(--accent-cyan)" style={{ flexShrink: 0, marginTop: '1px' }} />
-                  <span>
-                    <strong style={{ color: '#fff' }}>Garantía:</strong> Tintas HP Látex de alta definición. Incluye cinta Tesa de montaje rápido.
-                  </span>
-                </div>
-              </div>
-
-              {/* SECCIÓN 5: Botón de Checkout por WhatsApp */}
-              <button
-                type="button"
-                onClick={handleCheckoutWhatsApp}
-                disabled={isSubmitting}
-                className="btn-cyan"
-                style={{
-                  width: '100%',
-                  justifyContent: 'center',
-                  padding: '14px',
-                  fontSize: '0.92rem',
-                  boxShadow: '0 0 20px rgba(0, 242, 254, 0.35)',
-                  marginTop: '4px',
-                  opacity: isSubmitting ? 0.7 : 1,
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer'
-                }}
+              {/* SECCIÓN 2: Formulario Semántico de Datos del Cliente */}
+              <form
+                onSubmit={handleCheckoutWhatsApp}
+                noValidate
+                aria-label="Datos de entrega y confirmación de pedido"
+                style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
               >
-                <MessageSquare size={18} />
-                <span>{isSubmitting ? 'Registrando y Abriendo WhatsApp...' : 'Confirmar Pedido por WhatsApp'}</span>
-                <ArrowRight size={16} />
-              </button>
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '12px',
+                  padding: '14px'
+                }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
+                    Datos de Entrega y Coordinación:
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {/* Nombre */}
+                    <div>
+                      <label htmlFor={nameId} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                        Nombre Completo
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          id={nameId}
+                          name="customerName"
+                          type="text"
+                          autoComplete="name"
+                          enterKeyHint="next"
+                          placeholder="Ej. María Fernanda López"
+                          value={customerName}
+                          onChange={e => setCustomerName(e.target.value)}
+                          className="deco-checkout-input"
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px 10px 34px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(255, 255, 255, 0.14)',
+                            color: '#fff',
+                            fontSize: '1rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                        <User size={15} color="var(--text-muted)" aria-hidden="true" style={{ position: 'absolute', left: '10px', top: '13px', pointerEvents: 'none' }} />
+                      </div>
+                    </div>
+
+                    {/* Teléfono */}
+                    <div>
+                      <label htmlFor={phoneId} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                        Teléfono / WhatsApp de Contacto <span style={{ color: 'var(--accent-cyan)' }} aria-hidden="true">*</span>
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          ref={phoneInputRef}
+                          id={phoneId}
+                          name="customerPhone"
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          enterKeyHint="next"
+                          required
+                          aria-invalid={phoneError ? 'true' : undefined}
+                          aria-describedby={phoneError ? phoneErrId : undefined}
+                          placeholder="Ej. 5544 3322"
+                          value={customerPhone}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setCustomerPhone(val);
+                            if (phoneError && validatePhoneDigits(val)) {
+                              setPhoneError('');
+                            }
+                          }}
+                          onBlur={() => {
+                            if (customerPhone.trim().length > 0 && !validatePhoneDigits(customerPhone)) {
+                              setPhoneTouched(true);
+                              setPhoneError('Ingresa al menos 8 dígitos de teléfono o WhatsApp.');
+                            } else if (phoneTouched && validatePhoneDigits(customerPhone)) {
+                              setPhoneError('');
+                            }
+                          }}
+                          className="deco-checkout-input"
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px 10px 34px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: phoneError
+                              ? '1px solid #f87171'
+                              : (customerPhone ? '1px solid rgba(0, 242, 254, 0.45)' : '1px solid rgba(255, 255, 255, 0.14)'),
+                            color: '#fff',
+                            fontSize: '1rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                        <Phone size={15} color={phoneError ? '#f87171' : (customerPhone ? 'var(--accent-cyan)' : 'var(--text-muted)')} aria-hidden="true" style={{ position: 'absolute', left: '10px', top: '13px', pointerEvents: 'none' }} />
+                      </div>
+                      {phoneError && (
+                        <div
+                          id={phoneErrId}
+                          role="alert"
+                          style={{
+                            marginTop: '5px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            color: '#fca5a5',
+                            fontSize: '0.76rem',
+                            fontWeight: 700
+                          }}
+                        >
+                          <AlertCircle size={13} aria-hidden="true" style={{ flexShrink: 0 }} />
+                          <span>{phoneError}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dirección */}
+                    <div>
+                      <label htmlFor={addressId} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                        Dirección, Zona o Municipio de Entrega
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          id={addressId}
+                          name="customerAddress"
+                          type="text"
+                          autoComplete="street-address"
+                          enterKeyHint="done"
+                          placeholder="Ej. Zona 10, Ciudad de Guatemala"
+                          value={customerAddress}
+                          onChange={e => setCustomerAddress(e.target.value)}
+                          className="deco-checkout-input"
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px 10px 34px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(255, 255, 255, 0.14)',
+                            color: '#fff',
+                            fontSize: '1rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                        <MapPin size={15} color="var(--text-muted)" aria-hidden="true" style={{ position: 'absolute', left: '10px', top: '13px', pointerEvents: 'none' }} />
+                      </div>
+                    </div>
+
+                    {/* Departamento */}
+                    <div>
+                      <label htmlFor={deptId} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                        Departamento
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <select
+                          id={deptId}
+                          name="customerDepartment"
+                          autoComplete="address-level1"
+                          value={customerDept}
+                          onChange={e => setCustomerDept(e.target.value)}
+                          className="deco-checkout-input"
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px 10px 34px',
+                            borderRadius: '8px',
+                            background: '#0a0f1d',
+                            border: '1px solid rgba(255, 255, 255, 0.14)',
+                            color: '#fff',
+                            fontSize: '1rem',
+                            boxSizing: 'border-box',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {GUATEMALA_DEPARTMENTS.map(dept => (
+                            <option key={dept.value} value={dept.value}>
+                              {dept.label}
+                            </option>
+                          ))}
+                        </select>
+                        <MapPin size={15} color="var(--text-muted)" aria-hidden="true" style={{ position: 'absolute', left: '10px', top: '13px', pointerEvents: 'none' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECCIÓN 3: Desglose de Total y Anticipo del 50% */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-end',
+                  padding: '12px 16px',
+                  background: 'rgba(0, 242, 254, 0.04)',
+                  border: '1px solid rgba(0, 242, 254, 0.25)',
+                  borderRadius: '10px'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Total a Pagar ({totalItemsCount} {totalItemsCount === 1 ? 'obra' : 'obras'}):
+                    </span>
+                    <div style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--accent-cyan)', lineHeight: 1.1, marginTop: '2px' }}>
+                      Q {total.toFixed(2)}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 800, display: 'block' }}>
+                      50% Anticipo: Q {deposit50.toFixed(2)}
+                    </span>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                      Saldo contra entrega: Q {deposit50.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* SECCIÓN 4: Políticas de Fabricación y Entrega */}
+                <div style={{
+                  padding: '10px 12px',
+                  background: 'rgba(0, 0, 0, 0.4)',
+                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.35' }}>
+                    <CreditCard size={13} color="var(--accent-cyan)" aria-hidden="true" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <span>
+                      <strong style={{ color: '#fff' }}>Anticipo del 50%:</strong> Requerido para iniciar fabricación artesanal en MDF 5.5mm. Saldo restante contra entrega o previo a despacho.
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.35' }}>
+                    <Clock size={13} color="var(--accent-cyan)" aria-hidden="true" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <span>
+                      <strong style={{ color: '#fff' }}>Tiempo de Entrega:</strong> 2 a 4 días hábiles en toda Guatemala.
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.35' }}>
+                    <ShieldCheck size={13} color="var(--accent-cyan)" aria-hidden="true" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <span>
+                      <strong style={{ color: '#fff' }}>Garantía:</strong> Tintas HP Látex de alta definición. Incluye cinta Tesa de montaje rápido.
+                    </span>
+                  </div>
+                </div>
+
+                {/* SECCIÓN 5: Botón de Checkout por WhatsApp */}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="btn-cyan"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'center',
+                    padding: '14px',
+                    fontSize: '0.92rem',
+                    boxShadow: '0 0 20px rgba(0, 242, 254, 0.35)',
+                    marginTop: '2px',
+                    opacity: isSubmitting ? 0.7 : 1,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <MessageSquare size={18} aria-hidden="true" />
+                  <span>{isSubmitting ? 'Registrando y Abriendo WhatsApp...' : 'Confirmar Pedido por WhatsApp'}</span>
+                  <ArrowRight size={16} aria-hidden="true" />
+                </button>
+              </form>
             </>
           )}
 
@@ -696,6 +863,12 @@ export default function CartDrawer({
         @keyframes slideInRight {
           from { transform: translateX(100%); }
           to { transform: translateX(0); }
+        }
+
+        .deco-checkout-input:focus-visible,
+        .cart-drawer-panel button:focus-visible {
+          outline: 2px solid var(--accent-cyan);
+          outline-offset: 2px;
         }
 
         .cart-single-scroll-body::-webkit-scrollbar {

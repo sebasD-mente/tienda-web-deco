@@ -1,7 +1,7 @@
 # Especificación de Producto e Integración S2S: Cotizador Canónico de Medidas Especiales y Bandeja de Pedidos Web (`deco-vintage-web` <-> `Modulo_Ventas`)
 
 - **ID de Especificación:** `SPEC-2026-11-18-WEB-ORDERS-S2S`
-- **Estado:** Planificado y listo para ejecución secuencial (`feat-002` -> `feat-003` -> `feat-004`)
+- **Estado:** Implementado y certificado de punta a punta (`feat-002`, `feat-003` y `feat-004` en `done`)
 - **Repositorios involucrados:** `Web Deco Vintage Proyect` (`https://decovintage.online`) -> `Modulo_Ventas` (`https://ventas.decovintage.online`)
 - **Regla de Oro de Frontera:** **PROHIBIDO conectar bases de datos cruzadas** o leer/modificar `.env` / `.env.local`. Toda comunicación entre sistemas ocurre exclusivamente vía HTTPS Server-to-Server (`x-webhook-secret` comparado con `safeCompare` en tiempo constante).
 

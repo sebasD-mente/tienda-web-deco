@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import {
   Sparkles,
   MessageSquare,
@@ -20,7 +20,10 @@ import {
   Maximize2,
   FileCheck,
   Droplets,
-  HelpCircle
+  HelpCircle,
+  User,
+  Phone,
+  MapPin
 } from 'lucide-react';
 import { generateWhatsAppLink } from '../config/constants';
 import { OFFICIAL_SIZES } from '../data/catalogData';
@@ -32,6 +35,44 @@ import {
   parseDecimalCm,
   calculateCanonicalPosterItemPrice
 } from '../../utils/customPricing.js';
+
+const GUATEMALA_DEPARTMENTS = [
+  { value: 'Guatemala', label: 'Guatemala (Capital y Municipios)' },
+  { value: 'Sacatepéquez', label: 'Sacatepéquez (Antigua)' },
+  { value: 'Chimaltenango', label: 'Chimaltenango' },
+  { value: 'Escuintla', label: 'Escuintla' },
+  { value: 'Quetzaltenango', label: 'Quetzaltenango' },
+  { value: 'Alta Verapaz', label: 'Alta Verapaz' },
+  { value: 'Baja Verapaz', label: 'Baja Verapaz' },
+  { value: 'Chiquimula', label: 'Chiquimula' },
+  { value: 'El Progreso', label: 'El Progreso' },
+  { value: 'Huehuetenango', label: 'Huehuetenango' },
+  { value: 'Izabal', label: 'Izabal' },
+  { value: 'Jalapa', label: 'Jalapa' },
+  { value: 'Jutiapa', label: 'Jutiapa' },
+  { value: 'Petén', label: 'Petén' },
+  { value: 'Quiché', label: 'Quiché' },
+  { value: 'Retalhuleu', label: 'Retalhuleu' },
+  { value: 'San Marcos', label: 'San Marcos' },
+  { value: 'Santa Rosa', label: 'Santa Rosa' },
+  { value: 'Sololá', label: 'Sololá' },
+  { value: 'Suchitepéquez', label: 'Suchitepéquez' },
+  { value: 'Totonicapán', label: 'Totonicapán' },
+  { value: 'Zacapa', label: 'Zacapa' }
+];
+
+function resolveAbsoluteAssetUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  const origin = (typeof window !== 'undefined' && window.location?.origin)
+    ? window.location.origin
+    : 'https://decovintage.online';
+  return `${origin}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
+}
 
 const createNewCustomPoster = (index = 1) => ({
   id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -54,8 +95,17 @@ export default function CustomPostersPage({ onNavigate, settings }) {
 
   // List of Custom Posters configured by the customer
   const [postersList, setPostersList] = useState([createNewCustomPoster(1)]);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerDepartment, setCustomerDepartment] = useState('Guatemala');
+  const [contactErrors, setContactErrors] = useState({ name: '', phone: '', config: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const fileInputRefs = useRef({});
+  const nameInputRef = useRef(null);
+  const phoneInputRef = useRef(null);
+  const fieldIdPrefix = useId();
 
   // Quick preset dimensions for custom mode
   const customPresets = [
@@ -162,12 +212,44 @@ export default function CustomPostersPage({ onNavigate, settings }) {
   const totalUnits = postersList.reduce((acc, p) => acc + (p.quantity || 1), 0);
 
   // WhatsApp Quote Link con Registro Blindado en Base de Datos y Fallback Seguro
-  const handleWhatsAppQuote = async () => {
+  const handleWhatsAppQuote = async (e) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+
     const unconfiguredIdx = postersList.findIndex(p => !getPosterPrice(p).isConfigured);
     if (unconfiguredIdx !== -1) {
-      alert(`Por favor selecciona el tipo de base y las medidas para el Póster #${unconfiguredIdx + 1}.`);
+      setContactErrors(prev => ({
+        ...prev,
+        config: `Por favor selecciona el tipo de base y las medidas para el Póster #${unconfiguredIdx + 1}.`
+      }));
       return;
     }
+
+    const cleanName = customerName.trim();
+    const cleanPhone = customerPhone.trim();
+    const phoneDigits = cleanPhone.replace(/\D/g, '');
+    const cleanAddress = customerAddress.trim();
+    const cleanDept = customerDepartment || 'Guatemala';
+
+    const nameErr = cleanName.length < 2
+      ? 'Ingresa tu nombre completo (mínimo 2 caracteres).'
+      : '';
+    const phoneErr = phoneDigits.length < 8
+      ? 'Ingresa un número de teléfono o WhatsApp válido (mínimo 8 dígitos).'
+      : '';
+
+    if (nameErr || phoneErr) {
+      setContactErrors({ name: nameErr, phone: phoneErr, config: '' });
+      if (nameErr) {
+        nameInputRef.current?.focus();
+      } else {
+        phoneInputRef.current?.focus();
+      }
+      return;
+    }
+
+    setContactErrors({ name: '', phone: '', config: '' });
 
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -176,8 +258,19 @@ export default function CustomPostersPage({ onNavigate, settings }) {
     let registeredOrder = null;
 
     try {
-      // Intentar registrar la cotización en el servidor con sus imágenes
+      // Intentar registrar la cotización en el servidor con metadatos de cliente e imágenes
       const formData = new FormData();
+      formData.append('orderSource', 'WEB_CUSTOM');
+      formData.append('customerName', cleanName);
+      formData.append('customerPhone', cleanPhone);
+      if (cleanAddress) {
+        formData.append('customerAddress', cleanAddress);
+      }
+      formData.append('customerDepartment', cleanDept);
+      formData.append(
+        'customerNotes',
+        `Cliente: ${cleanName} | Entrega: ${cleanAddress || 'Por coordinar'} (${cleanDept})`
+      );
       formData.append('totalPrice', totalOrderPrice);
       formData.append('totalUnits', totalUnits);
 
@@ -185,6 +278,10 @@ export default function CustomPostersPage({ onNavigate, settings }) {
         const calc = getPosterPrice(p);
         const itemData = {
           id: p.id,
+          isCustom: true,
+          title: p.imageDetails?.name
+            ? `Póster Personalizado (${p.imageDetails.name})`
+            : `Póster Personalizado #${idx + 1}`,
           sizeMode: p.sizeMode,
           selectedStandardSize: p.selectedStandardSize,
           customWidth: p.sizeMode === 'custom' ? parseDecimalCm(p.customWidth) : p.customWidth,
@@ -199,7 +296,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
         };
 
         if (p.imageFile) {
-          formData.append('images', p.imageFile);
+          formData.append(idx < 5 ? `image_${idx}` : 'images', p.imageFile);
         } else if (p.uploadedImage && p.uploadedImage.startsWith('data:image/')) {
           itemData.uploadedImage = p.uploadedImage;
         }
@@ -232,9 +329,16 @@ export default function CustomPostersPage({ onNavigate, settings }) {
       setIsSubmitting(false);
     }
 
-    // Generación del mensaje para WhatsApp con el código #CP-XXXX y los enlaces directos a las fotos
+    // Generación del mensaje para WhatsApp con el código #CP-XXXX, datos del cliente y enlaces directos a las fotos
     let message = '';
     const codeTag = registeredOrderNumber ? ` #${registeredOrderNumber}` : '';
+    const orderIdLine = registeredOrderNumber ? `🔖 *Código de Orden:* #${registeredOrderNumber}\n` : '';
+    const customerBlock =
+      orderIdLine +
+      `👤 *Cliente:* ${cleanName}\n` +
+      `📱 *Teléfono / WhatsApp:* ${cleanPhone}\n` +
+      `📍 *Ubicación / Depto:* ${cleanAddress || 'Por coordinar'} (${cleanDept})\n` +
+      `──────────────────────────────────────\n`;
 
     if (postersList.length === 1) {
       const p = postersList[0];
@@ -251,12 +355,14 @@ export default function CustomPostersPage({ onNavigate, settings }) {
       }
 
       const registeredItem = registeredOrder?.items?.[0];
-      const directImageUrl = registeredItem?.imageUrl;
+      const directImageUrl = resolveAbsoluteAssetUrl(registeredItem?.imageUrl);
       const imageDetailLine = directImageUrl
         ? `🖼️ *Foto HD:* ${directImageUrl}`
         : `🖼️ *Imagen:* ${p.imageDetails ? `Archivo listo (${p.imageDetails.name})` : 'Lista para enviar por WhatsApp'}`;
 
-      message = `👋 *¡Hola Deco Vintage! Quiero cotizar un PÓSTER PERSONALIZADO${codeTag}:*\n\n` +
+      message = `👋 *¡Hola Deco Vintage! Quiero cotizar un PÓSTER PERSONALIZADO${codeTag}:*\n` +
+        `──────────────────────────────────────\n` +
+        customerBlock +
         `📐 *Dimensiones:* ${sizeName}\n` +
         `🪵 *Base / Material:* ${materialName}\n` +
         `${imageDetailLine}\n` +
@@ -267,7 +373,9 @@ export default function CustomPostersPage({ onNavigate, settings }) {
           ? `✅ *Foto en alta resolución subida y vinculada.* ¿Me pueden confirmar para iniciar la fabricación?`
           : `Adjunto mi imagen a continuación para validación de resolución y confirmación de pedido. ¿Me pueden asesorar?`);
     } else {
-      message = `👋 *¡Hola Deco Vintage! Quiero cotizar ${postersList.length} PÓSTERS PERSONALIZADOS${codeTag}:*\n\n`;
+      message = `👋 *¡Hola Deco Vintage! Quiero cotizar ${postersList.length} PÓSTERS PERSONALIZADOS${codeTag}:*\n` +
+        `──────────────────────────────────────\n` +
+        customerBlock;
 
       postersList.forEach((p, idx) => {
         const calc = getPosterPrice(p);
@@ -280,7 +388,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
         if (p.baseMaterial === 'vinyl_only') materialName = 'Solo Impresión en Vinil Adhesivo HD (50%)';
 
         const registeredItem = registeredOrder?.items?.[idx];
-        const directImageUrl = registeredItem?.imageUrl;
+        const directImageUrl = resolveAbsoluteAssetUrl(registeredItem?.imageUrl);
         const imageDetailLine = directImageUrl
           ? `• *Foto HD:* ${directImageUrl}`
           : `• *Imagen:* ${p.imageDetails ? p.imageDetails.name : 'Lista para enviar por WhatsApp'}`;
@@ -294,13 +402,16 @@ export default function CustomPostersPage({ onNavigate, settings }) {
       });
 
       message += `💰 *TOTAL GENERAL COTIZADO (${totalUnits} unidades en ${postersList.length} diseños):* Q ${totalOrderPrice.toFixed(2)}\n\n` +
-        (registeredOrderNumber 
-          ? `✅ *Cotización registrada con fotos en alta resolución vinculadas.* ¿Me pueden confirmar para iniciar?` 
+        (registeredOrderNumber
+          ? `✅ *Cotización registrada con fotos en alta resolución vinculadas.* ¿Me pueden confirmar para iniciar?`
           : `Adjunto mis imágenes a continuación para validación de resolución y confirmación de pedido. ¿Me pueden asesorar?`);
     }
 
     const waUrl = generateWhatsAppLink(message);
-    window.open(waUrl, '_blank');
+    const newWindow = window.open(waUrl, '_blank');
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      window.location.href = waUrl;
+    }
   };
 
   return (
@@ -1162,76 +1273,335 @@ export default function CustomPostersPage({ onNavigate, settings }) {
               </button>
             </div>
 
-            {/* SECCIÓN FINAL: RESUMEN TOTAL DE LA COTIZACIÓN & BOTÓN DE WHATSAPP */}
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(4, 8, 14, 0.98) 0%, rgba(9, 18, 30, 0.95) 100%)',
-              border: '2px solid rgba(0, 242, 254, 0.4)',
-              borderRadius: '18px',
-              padding: '24px 28px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '20px',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.7)'
-            }}>
-              <div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  Resumen de tu Cotización ({totalUnits} {totalUnits === 1 ? 'cuadro' : 'cuadros'} en {postersList.length} {postersList.length === 1 ? 'diseño' : 'diseños'}):
-                </div>
-                
-                <div style={{ fontSize: '0.92rem', color: allConfigured ? '#ffffff' : '#f59e0b', fontWeight: 700, marginBottom: '6px' }}>
-                  {!allConfigured ? (
-                    '👉 Configura la base y tamaño de todos los pósters arriba para calcular el total'
-                  ) : (
-                    postersList.map((p, i) => {
-                      const matLabel = p.baseMaterial === 'mdf' ? 'MDF 5.5mm' : p.baseMaterial === 'pvc' ? 'PVC 5mm' : 'Solo Vinil';
-                      const sizeLabel = p.sizeMode === 'standard' ? p.selectedStandardSize?.name : `${p.customWidth}x${p.customHeight}cm`;
-                      return `#${i + 1}: ${sizeLabel} (${matLabel})`;
-                    }).join('  •  ')
-                  )}
+            {/* SECCIÓN DE DATOS DE CONTACTO Y ENTREGA + RESUMEN FINAL */}
+            <form
+              onSubmit={handleWhatsAppQuote}
+              noValidate
+              aria-labelledby={`${fieldIdPrefix}-custom-contact-heading`}
+            >
+              <div style={{
+                background: 'rgba(9, 13, 22, 0.95)',
+                border: '1px solid rgba(0, 242, 254, 0.3)',
+                borderRadius: '18px',
+                padding: 'clamp(18px, 3vw, 26px)',
+                marginBottom: '22px',
+                boxShadow: '0 12px 32px rgba(0, 0, 0, 0.6)'
+              }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <h2
+                    id={`${fieldIdPrefix}-custom-contact-heading`}
+                    style={{
+                      fontSize: '1.05rem',
+                      fontWeight: 800,
+                      color: 'var(--accent-cyan)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      margin: '0 0 4px 0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <User size={18} aria-hidden="true" />
+                    <span>Datos de Contacto y Entrega</span>
+                  </h2>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    Ingresa tus datos para vincular tu orden personalizada y coordinar la entrega por WhatsApp.
+                  </p>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                  <span style={{ fontSize: '2.4rem', fontWeight: 900, color: allConfigured ? 'var(--accent-cyan)' : 'var(--text-muted)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
-                    Q {totalOrderPrice.toFixed(2)}
-                  </span>
-                  {allConfigured && (
-                    <span style={{ fontSize: '0.74rem', color: '#00f5a0', fontWeight: 700 }}>
-                      ✓ Cinta Tesa de montaje incluida en cuadros rígidos
-                    </span>
-                  )}
+                {contactErrors.config && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginBottom: '14px',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: 'rgba(239, 68, 68, 0.14)',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                      color: '#fca5a5',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <AlertCircle size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+                    <span>{contactErrors.config}</span>
+                  </div>
+                )}
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gap: '14px'
+                }}>
+                  {/* Nombre Completo * */}
+                  <div>
+                    <label
+                      htmlFor={`${fieldIdPrefix}-custom-name`}
+                      style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#ffffff', marginBottom: '6px' }}
+                    >
+                      Nombre Completo <span style={{ color: 'var(--accent-cyan)' }} aria-hidden="true">*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        ref={nameInputRef}
+                        id={`${fieldIdPrefix}-custom-name`}
+                        name="customerName"
+                        type="text"
+                        autoComplete="name"
+                        enterKeyHint="next"
+                        required
+                        minLength={2}
+                        aria-invalid={contactErrors.name ? 'true' : undefined}
+                        aria-describedby={contactErrors.name ? `${fieldIdPrefix}-custom-name-err` : undefined}
+                        placeholder="Ej. Carlos Hernández"
+                        value={customerName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomerName(val);
+                          if (contactErrors.name && val.trim().length >= 2) {
+                            setContactErrors(prev => ({ ...prev, name: '' }));
+                          }
+                        }}
+                        onBlur={() => {
+                          if (customerName.trim().length > 0 && customerName.trim().length < 2) {
+                            setContactErrors(prev => ({ ...prev, name: 'Ingresa tu nombre completo (mínimo 2 caracteres).' }));
+                          }
+                        }}
+                        className="custom-contact-input"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px 10px 36px',
+                          borderRadius: '8px',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: contactErrors.name ? '1px solid #f87171' : '1px solid rgba(0, 242, 254, 0.3)',
+                          color: '#fff',
+                          fontSize: '1rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <User size={16} color={contactErrors.name ? '#f87171' : 'var(--text-muted)'} aria-hidden="true" style={{ position: 'absolute', left: '11px', top: '13px', pointerEvents: 'none' }} />
+                    </div>
+                    {contactErrors.name && (
+                      <div
+                        id={`${fieldIdPrefix}-custom-name-err`}
+                        role="alert"
+                        style={{ marginTop: '5px', color: '#fca5a5', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}
+                      >
+                        <AlertCircle size={13} aria-hidden="true" style={{ flexShrink: 0 }} />
+                        <span>{contactErrors.name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Teléfono / WhatsApp * */}
+                  <div>
+                    <label
+                      htmlFor={`${fieldIdPrefix}-custom-phone`}
+                      style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#ffffff', marginBottom: '6px' }}
+                    >
+                      Teléfono / WhatsApp <span style={{ color: 'var(--accent-cyan)' }} aria-hidden="true">*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        ref={phoneInputRef}
+                        id={`${fieldIdPrefix}-custom-phone`}
+                        name="customerPhone"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        enterKeyHint="next"
+                        required
+                        aria-invalid={contactErrors.phone ? 'true' : undefined}
+                        aria-describedby={contactErrors.phone ? `${fieldIdPrefix}-custom-phone-err` : undefined}
+                        placeholder="Ej. 5544 3322"
+                        value={customerPhone}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomerPhone(val);
+                          if (contactErrors.phone && val.replace(/\D/g, '').length >= 8) {
+                            setContactErrors(prev => ({ ...prev, phone: '' }));
+                          }
+                        }}
+                        onBlur={() => {
+                          const digits = customerPhone.replace(/\D/g, '');
+                          if (customerPhone.trim().length > 0 && digits.length < 8) {
+                            setContactErrors(prev => ({ ...prev, phone: 'Ingresa al menos 8 dígitos de teléfono o WhatsApp.' }));
+                          }
+                        }}
+                        className="custom-contact-input"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px 10px 36px',
+                          borderRadius: '8px',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: contactErrors.phone ? '1px solid #f87171' : '1px solid rgba(0, 242, 254, 0.3)',
+                          color: '#fff',
+                          fontSize: '1rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <Phone size={16} color={contactErrors.phone ? '#f87171' : 'var(--text-muted)'} aria-hidden="true" style={{ position: 'absolute', left: '11px', top: '13px', pointerEvents: 'none' }} />
+                    </div>
+                    {contactErrors.phone && (
+                      <div
+                        id={`${fieldIdPrefix}-custom-phone-err`}
+                        role="alert"
+                        style={{ marginTop: '5px', color: '#fca5a5', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}
+                      >
+                        <AlertCircle size={13} aria-hidden="true" style={{ flexShrink: 0 }} />
+                        <span>{contactErrors.phone}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dirección, Zona o Municipio (Opcional) */}
+                  <div>
+                    <label
+                      htmlFor={`${fieldIdPrefix}-custom-address`}
+                      style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#ffffff', marginBottom: '6px' }}
+                    >
+                      Dirección, Zona o Municipio (Opcional)
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        id={`${fieldIdPrefix}-custom-address`}
+                        name="customerAddress"
+                        type="text"
+                        autoComplete="street-address"
+                        enterKeyHint="done"
+                        placeholder="Ej. Zona 14, Ciudad de Guatemala"
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                        className="custom-contact-input"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px 10px 36px',
+                          borderRadius: '8px',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid rgba(255, 255, 255, 0.14)',
+                          color: '#fff',
+                          fontSize: '1rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <MapPin size={16} color="var(--text-muted)" aria-hidden="true" style={{ position: 'absolute', left: '11px', top: '13px', pointerEvents: 'none' }} />
+                    </div>
+                  </div>
+
+                  {/* Departamento */}
+                  <div>
+                    <label
+                      htmlFor={`${fieldIdPrefix}-custom-dept`}
+                      style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#ffffff', marginBottom: '6px' }}
+                    >
+                      Departamento
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <select
+                        id={`${fieldIdPrefix}-custom-dept`}
+                        name="customerDepartment"
+                        autoComplete="address-level1"
+                        value={customerDepartment}
+                        onChange={(e) => setCustomerDepartment(e.target.value)}
+                        className="custom-contact-input"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px 10px 36px',
+                          borderRadius: '8px',
+                          background: '#0a0f1d',
+                          border: '1px solid rgba(255, 255, 255, 0.14)',
+                          color: '#fff',
+                          fontSize: '1rem',
+                          boxSizing: 'border-box',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {GUATEMALA_DEPARTMENTS.map(dept => (
+                          <option key={dept.value} value={dept.value}>
+                            {dept.label}
+                          </option>
+                        ))}
+                      </select>
+                      <MapPin size={16} color="var(--text-muted)" aria-hidden="true" style={{ position: 'absolute', left: '11px', top: '13px', pointerEvents: 'none' }} />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleWhatsAppQuote}
-                disabled={!allConfigured || isSubmitting}
-                className="btn-cyan"
-                style={{
-                  padding: '14px 28px',
-                  fontSize: '0.98rem',
-                  fontWeight: 800,
-                  boxShadow: allConfigured && !isSubmitting ? '0 8px 25px rgba(0, 242, 254, 0.4)' : 'none',
-                  borderRadius: '12px',
-                  opacity: allConfigured && !isSubmitting ? 1 : 0.65,
-                  cursor: allConfigured && !isSubmitting ? 'pointer' : 'not-allowed',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                <MessageSquare size={19} />
-                <span>
-                  {isSubmitting 
-                    ? '⏳ Registrando cotización...' 
-                    : allConfigured 
-                      ? 'Pedir por WhatsApp' 
-                      : 'Selecciona tus opciones para cotizar'}
-                </span>
-              </button>
-            </div>
+              {/* SECCIÓN FINAL: RESUMEN TOTAL DE LA COTIZACIÓN & BOTÓN DE WHATSAPP */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(4, 8, 14, 0.98) 0%, rgba(9, 18, 30, 0.95) 100%)',
+                border: '2px solid rgba(0, 242, 254, 0.4)',
+                borderRadius: '18px',
+                padding: '24px 28px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '20px',
+                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.7)'
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Resumen de tu Cotización ({totalUnits} {totalUnits === 1 ? 'cuadro' : 'cuadros'} en {postersList.length} {postersList.length === 1 ? 'diseño' : 'diseños'}):
+                  </div>
+
+                  <div style={{ fontSize: '0.92rem', color: allConfigured ? '#ffffff' : '#f59e0b', fontWeight: 700, marginBottom: '6px' }}>
+                    {!allConfigured ? (
+                      '👉 Configura la base y tamaño de todos los pósters arriba para calcular el total'
+                    ) : (
+                      postersList.map((p, i) => {
+                        const matLabel = p.baseMaterial === 'mdf' ? 'MDF 5.5mm' : p.baseMaterial === 'pvc' ? 'PVC 5mm' : 'Solo Vinil';
+                        const sizeLabel = p.sizeMode === 'standard' ? p.selectedStandardSize?.name : `${p.customWidth}x${p.customHeight}cm`;
+                        return `#${i + 1}: ${sizeLabel} (${matLabel})`;
+                      }).join('  •  ')
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                    <span style={{ fontSize: '2.4rem', fontWeight: 900, color: allConfigured ? 'var(--accent-cyan)' : 'var(--text-muted)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
+                      Q {totalOrderPrice.toFixed(2)}
+                    </span>
+                    {allConfigured && (
+                      <span style={{ fontSize: '0.74rem', color: '#00f5a0', fontWeight: 700 }}>
+                        ✓ Cinta Tesa de montaje incluida en cuadros rígidos
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!allConfigured || isSubmitting}
+                  className="btn-cyan"
+                  style={{
+                    padding: '14px 28px',
+                    fontSize: '0.98rem',
+                    fontWeight: 800,
+                    boxShadow: allConfigured && !isSubmitting ? '0 8px 25px rgba(0, 242, 254, 0.4)' : 'none',
+                    borderRadius: '12px',
+                    opacity: allConfigured && !isSubmitting ? 1 : 0.65,
+                    cursor: allConfigured && !isSubmitting ? 'pointer' : 'not-allowed',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <MessageSquare size={19} aria-hidden="true" />
+                  <span>
+                    {isSubmitting
+                      ? '⏳ Registrando cotización...'
+                      : allConfigured
+                        ? 'Pedir por WhatsApp'
+                        : 'Selecciona tus opciones para cotizar'}
+                  </span>
+                </button>
+              </div>
+            </form>
 
           </div>
 
@@ -1289,6 +1659,13 @@ export default function CustomPostersPage({ onNavigate, settings }) {
         </div>
       </section>
 
+      <style>{`
+        .custom-contact-input:focus-visible,
+        #cotizador button:focus-visible {
+          outline: 2px solid var(--accent-cyan);
+          outline-offset: 2px;
+        }
+      `}</style>
     </div>
   );
 }

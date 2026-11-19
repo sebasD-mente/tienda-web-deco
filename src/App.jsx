@@ -415,13 +415,24 @@ export default function App() {
   };
 
   const handleQuickWhatsApp = (item) => {
-    const message = `👋 ¡Hola Deco Vintage! Me interesa ordenar:\n\n` +
+    const qty = Math.max(1, Number(item?.quantity) || 1);
+    const codeSuffix = item?.orderNumber ? ` (#${item.orderNumber})` : '';
+    const message = item?.message || (
+      `👋 ¡Hola Deco Vintage! Me interesa ordenar${codeSuffix}:\n\n` +
+      (item?.orderNumber ? `🔖 *Código de Orden:* #${item.orderNumber}\n` : '') +
+      (item?.customer?.fullName ? `👤 *Cliente:* ${item.customer.fullName}\n` : '') +
+      (item?.customer?.phone ? `📱 *WhatsApp:* ${item.customer.phone}\n` : '') +
       `🖼️ *Póster:* ${item.poster.title}\n` +
       `📐 *Tamaño:* ${item.size.name} (${item.size.dimensions})\n` +
-      `💰 *Precio:* Q${item.price.toFixed(2)}\n\n` +
-      `¿Tienen disponibilidad para coordinar la entrega?`;
+      `🔢 *Cantidad:* ${qty} unidad(es)\n` +
+      `💰 *Precio:* Q${Number(item.price || 0).toFixed(2)}\n\n` +
+      `¿Tienen disponibilidad para coordinar la entrega?`
+    );
     const waUrl = generateWhatsAppLink(message);
-    window.open(waUrl, '_blank');
+    const newWindow = window.open(waUrl, '_blank');
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      window.location.href = waUrl;
+    }
   };
 
   const isAnyModalOpen = Boolean(
