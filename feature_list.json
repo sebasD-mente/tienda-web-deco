@@ -117,6 +117,29 @@
       ],
       "evidence": "node --test tests/frontend-contracts.test.js -> 8/8 PASS (contratos WEB_CART, WEB_CUSTOM, WEB_QUICK_POSTER, Admin IMPORTADO + externalSaleNumber y simulación E2E S2S); npm run build -> vite build 2.21s PASS; npm run harness:check -> HARNESS_PASS (Overall: 100/100, 84/84 tests PASS, vite build OK); bash ./init.sh -> Exit code 0 (CLEAN STATE)",
       "notes": "Preservar registeredOrderNumber, data.orderNumber y onClearCart() en CartDrawer.jsx, cero window.confirm nativos y accesibilidad WCAG. Ver docs/product-specs/web-orders-and-custom-pricing-s2s.md §4."
+    },
+    {
+      "id": "feat-005",
+      "name": "Pulido forense pre-despliegue: sizeId CUSTOM en WebOrderPayload y aislamiento de archivos indexados image_N",
+      "description": "Alinear sizeId por defecto en buildWebOrderPayload a 'CUSTOM' cuando sizeMode === 'custom' según el contrato exacto de Modulo_Ventas, y corregir el emparejamiento de imágenes en createCustomOrder para que archivos indexados (image_1..image_4) nunca sean tomados por ítems previos sin foto mediante el fallback posicional, agregando prueba de regresión en tests/web-orders-s2s-integration.test.js.",
+      "area": "s2s-orders-predeploy-polish",
+      "user_visible_behavior": "En cotizaciones multi-póster donde solo algunos diseños llevan foto adjunta, cada imagen queda vinculada únicamente a su póster exacto sin duplicarse, y WebOrderPayload emite sizeId='CUSTOM' idéntico al contrato de Modulo_Ventas.",
+      "priority": "P0",
+      "status": "done",
+      "dependencies": [
+        "feat-004"
+      ],
+      "required_files": [
+        "services/customOrderService.js",
+        "tests/web-orders-s2s-integration.test.js"
+      ],
+      "verification": [
+        "node --test tests/web-orders-s2s-integration.test.js",
+        "bash ./init.sh",
+        "npm run harness:check"
+      ],
+      "evidence": "node --test tests/web-orders-s2s-integration.test.js -> 10/10 PASS (sizeId='CUSTOM' canónico y aislamiento de image_1 en pedidos multi-póster); bash ./init.sh -> Exit code 0 (CLEAN STATE: Overall: 100/100, 85/85 tests PASS, vite build OK)",
+      "notes": "Revisión forense previa al despliegue en producción solicitada por el propietario."
     }
   ]
 }

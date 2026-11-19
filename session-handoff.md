@@ -1,9 +1,9 @@
 # Session Handoff
 
 ## Current Objective
-- **Goal:** Ejecutar y certificar `feat-004` (Captura estructurada de cliente en los 3 flujos de venta web `WEB_CART`, `WEB_CUSTOM`, `WEB_QUICK_POSTER` y soporte de estado `'IMPORTADO'` + `externalSaleNumber` en `AdminCustomOrdersTab.jsx`).
-- **Current status:** `clean-state` (`WIP = 0`; `feat-001`, `feat-002`, `feat-003` y `feat-004` en `done`; `Overall: 100/100`)
-- **Branch / commit:** `main` (sobre `9aa7118` + `feat-004` completada)
+- **Goal:** Auditoría forense integral de `feat-002`..`feat-004`, aplicación de pulido quirúrgico pre-despliegue (`feat-005`) y despliegue de `main` hacia producción (`https://decovintage.online`).
+- **Current status:** `clean-state` (`WIP = 0`; `feat-001`..`feat-005` en `done`; `Overall: 100/100`; `85/85 tests PASS`)
+- **Branch / commit:** `main` (listo y desplegado en `origin/main`)
 
 ## Completed This Session
 - [x] Actualización de `src/components/CartDrawer.jsx` (`WEB_CART`) enviando `orderSource`, `customerName`, `customerPhone`, `customerAddress`, `customerDepartment` e ítems enriquecidos (`isCustom: false`, `posterId`, `legacyId`, `sku: 'WEB-...'`, `sizeMode: 'standard'`, `selectedStandardSize` completo y URLs absolutas), con etiquetas `<label htmlFor>`, `autoComplete`, `role="alert"` y preservación de `registeredOrderNumber`, `data.orderNumber` y `onClearCart()`.
@@ -11,6 +11,7 @@
 - [x] Implementación en `src/components/ProductModal.jsx` y `src/App.jsx` (`WEB_QUICK_POSTER`) del mini-formulario rápido desplegable dentro del modal (`aria-expanded` / `aria-controls`) que registra la orden en `POST /api/custom-orders` con `AbortController` (`4000ms`) y fallback seguro a WhatsApp ante fallos de red.
 - [x] Actualización de `src/components/admin/AdminCustomOrdersTab.jsx` soportando filtro, badge de alto contraste y selector para `'IMPORTADO'`, visualización de `order.externalSaleNumber`, canal `orderSource` y panel de datos estructurados del cliente.
 - [x] Ampliación de `tests/frontend-contracts.test.js` (`8/8 PASS`, `84/84` pruebas totales del proyecto en verde) incluyendo simulación E2E de los 3 canales contra `createCustomOrder` y `buildWebOrderPayload`.
+- [x] `feat-005`: Revisión forense pre-despliegue, alineación de `sizeId: 'CUSTOM'` en `buildWebOrderPayload` y aislamiento de `unindexedFiles` para `image_1..image_4` en `services/customOrderService.js` + prueba de regresión en `tests/web-orders-s2s-integration.test.js` (`10/10 PASS`, `85/85` pruebas totales en verde) y despliegue a `origin/main`.
 
 ## Verification Evidence
 
@@ -18,10 +19,13 @@
 | :--- | :--- | :--- | :--- |
 | Suite Contratos Frontend y Canales Web | `node --test tests/frontend-contracts.test.js` | `PASS (8/8)` | Valida `WEB_CART`, `WEB_CUSTOM`, `WEB_QUICK_POSTER`, `IMPORTADO` + `externalSaleNumber` y simulación E2E S2S |
 | Build Producción Frontend | `npm run build` | `PASS` | `vite build` limpio en `dist/` (1508 módulos transformados) |
-| Compuerta Unificada Deko Labs | `npm run harness:check` | `PASS (HARNESS_PASS)` | `Overall: 100/100`, 0 secretos, 59 archivos JS limpios, `84/84` tests PASS y `vite build` limpio |
-| Inicialización Integral en 3 Puertas | `bash ./init.sh` | `PASS (Exit code 0)` | Confirmado `CLEAN STATE` en Puertas 1, 2 y 3 con `Pass-State Gating` activo sobre `feat-001`..`feat-004` |
+| Suite S2S Pedidos Web (`feat-003` + `feat-005`) | `node --test tests/web-orders-s2s-integration.test.js` | `PASS (10/10)` | Valida `sizeId: 'CUSTOM'`, aislamiento de `image_1..image_4` dispersos, Push/Pull S2S y `requireIntegrationSecret` |
+| Compuerta Unificada Deko Labs | `npm run harness:check` | `PASS (HARNESS_PASS)` | `Overall: 100/100`, 0 secretos, 59 archivos JS limpios, `85/85` tests PASS y `vite build` limpio |
+| Inicialización Integral en 3 Puertas | `bash ./init.sh` | `PASS (Exit code 0)` | Confirmado `CLEAN STATE` en Puertas 1, 2 y 3 con `Pass-State Gating` activo sobre `feat-001`..`feat-005` |
 
 ## Files Changed
+- `services/customOrderService.js`
+- `tests/web-orders-s2s-integration.test.js`
 - `src/components/CartDrawer.jsx`
 - `src/pages/CustomPostersPage.jsx`
 - `src/components/ProductModal.jsx`

@@ -404,7 +404,7 @@ describe('🔗 Suite S2S: Bandeja de Pedidos Web y Sincronización con Modulo_Ve
         sku: null,
         title: 'Foto Familiar Especial',
         sizeMode: 'custom',
-        sizeId: 'PERSONALIZADO',
+        sizeId: 'CUSTOM',
         sizeLabel: '42.2 x 30 cm',
         customWidth: 42.2,
         customHeight: 30,
@@ -672,6 +672,66 @@ describe('🔗 Suite S2S: Bandeja de Pedidos Web y Sincronización con Modulo_Ve
       const body = await res.json();
       assert.equal(body.success, true);
       assert.equal(body.order.totalPrice, 35);
+    });
+
+    it('Aísla archivos indexados (image_1) en pedidos multi-póster cuando el primer ítem no lleva imagen', async () => {
+      // Cabecera mínima WebP válida (RIFF....WEBP >= 12 bytes) para pasar isValidImageSignature
+      const minimalWebp = Buffer.from([
+        0x52, 0x49, 0x46, 0x46, // RIFF
+        0x10, 0x00, 0x00, 0x00,
+        0x57, 0x45, 0x42, 0x50, // WEBP
+        0x56, 0x50, 0x38, 0x20,
+      ]);
+
+      const form = new FormData();
+      form.append('orderSource', 'WEB_CUSTOM');
+      form.append('customerName', 'Roberto Juárez');
+      form.append('customerPhone', '50255889900');
+      form.append('customerDepartment', 'Guatemala');
+      form.append(
+        'items',
+        JSON.stringify([
+          {
+            isCustom: true,
+            title: 'Póster #1 (Pendiente enviar por WhatsApp)',
+            sizeMode: 'custom',
+            customWidth: 40,
+            customHeight: 50,
+            baseMaterial: 'mdf',
+            quantity: 1,
+          },
+          {
+            isCustom: true,
+            title: 'Póster #2 (Con foto subida)',
+            sizeMode: 'custom',
+            customWidth: 42.2,
+            customHeight: 30,
+            baseMaterial: 'mdf',
+            quantity: 1,
+          },
+        ])
+      );
+      form.append('image_1', new Blob([minimalWebp], { type: 'image/webp' }), 'diseno-segundo.webp');
+
+      const res = await fetch(`${baseUrl}/api/custom-orders`, {
+        method: 'POST',
+        headers: { 'X-Forwarded-For': '190.148.10.29' },
+        body: form,
+      });
+
+      assert.equal(res.status, 201);
+      const body = await res.json();
+      assert.equal(body.success, true);
+      assert.equal(body.order.items.length, 2);
+      assert.equal(Boolean(body.order.items[0].imageUrl), false, 'El ítem 0 sin foto NO debe robar image_1');
+      assert.ok(body.order.items[1].imageUrl, 'El ítem 1 SÍ debe recibir la imagen de image_1');
+
+      // Limpieza del archivo temporal local si cayó en fallback de disco durante el test
+      const relLocal = String(body.order.items[1].imageUrl || '');
+      if (relLocal.startsWith('/posters/uploads/custom/')) {
+        const diskFile = path.join(projectRoot, 'public', relLocal.replace(/^\/+/, ''));
+        if (fs.existsSync(diskFile)) fs.unlinkSync(diskFile);
+      }
     });
   });
 });

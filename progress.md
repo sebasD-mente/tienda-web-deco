@@ -2,9 +2,9 @@
 
 ## Current State
 
-**Last Updated:** 2026-11-18 21:09
-**Session ID:** sesion-004 (Ejecución y certificación de `feat-004` — Captura estructurada de cliente en los 3 flujos de venta web y estado `IMPORTADO` en panel Admin)
-**Active Feature:** Ninguna (`WIP = 0`; `feat-001`, `feat-002`, `feat-003` y `feat-004` en `done`)
+**Last Updated:** 2026-11-18 21:16
+**Session ID:** sesion-005 (Auditoría forense pre-despliegue, cierre de `feat-005` y despliegue a producción)
+**Active Feature:** Ninguna (`WIP = 0`; `feat-001`, `feat-002`, `feat-003`, `feat-004` y `feat-005` en `done`)
 **Standard Startup Path:** `bash ./init.sh`
 **Standard Verification Path:** `bash ./init.sh`
 
@@ -14,7 +14,8 @@
 - [x] `feat-001`: Adaptación e integración completa de `Plantilla-Maestra-Arnes` en `deco-vintage-web` (`Overall: 100/100`, commit `3dccb63`).
 - [x] `feat-002`: Unificación matemática de Medidas Especiales (`+Q25.00` corte especial MDF en `sizeMode === 'custom'`, `+Q15.00` PVC, `50%` `vinyl_only`, decimales `step="0.01"` y `parseDecimalCm`) mediante `utils/customPricing.js` compartido en `utils/` raíz (`70/70 tests PASS`, commit `3b4dcf8`).
 - [x] `feat-003`: Extensión aditiva retrocompatible de `model CustomOrder` + migración SQL idempotente (`20261118203500_add_web_order_integration_fields`), `requireIntegrationSecret` con `safeCompare` (`503`/`401`/`200`), `toAbsolutePublicUrl` + `buildWebOrderPayload`, Push asíncrono `notifySalesModuleNewOrder` (`AbortController` `5000ms`), `GET /api/custom-orders/integration/inbox` y `PATCH /api/custom-orders/integration/:orderNumber/status` (`79/79 tests PASS`, commit `9aa7118`).
-- [x] `feat-004`: Captura estructurada de cliente en los 3 flujos de venta web (`CartDrawer.jsx` -> `WEB_CART`, `CustomPostersPage.jsx` -> `WEB_CUSTOM`, `ProductModal.jsx` + `App.jsx` -> `WEB_QUICK_POSTER`) con validación accesible WCAG 2.1 AA, ítems enriquecidos (`isCustom`, `posterId`, `legacyId`, `sku: 'WEB-...'`, `selectedStandardSize` completo y URLs absolutas), soporte de estado `'IMPORTADO'` + `externalSaleNumber` + panel de cliente en `AdminCustomOrdersTab.jsx` y suite `tests/frontend-contracts.test.js` ampliada a `8/8` pruebas (`84/84 tests PASS`).
+- [x] `feat-004`: Captura estructurada de cliente en los 3 flujos de venta web (`CartDrawer.jsx` -> `WEB_CART`, `CustomPostersPage.jsx` -> `WEB_CUSTOM`, `ProductModal.jsx` + `App.jsx` -> `WEB_QUICK_POSTER`) con validación accesible WCAG 2.1 AA, ítems enriquecidos (`isCustom`, `posterId`, `legacyId`, `sku: 'WEB-...'`, `selectedStandardSize` completo y URLs absolutas), soporte de estado `'IMPORTADO'` + `externalSaleNumber` + panel de cliente en `AdminCustomOrdersTab.jsx` y suite `tests/frontend-contracts.test.js` ampliada a `8/8` pruebas (`84/84 tests PASS`, commit `115112b`).
+- [x] `feat-005`: Auditoría forense pre-despliegue y pulido quirúrgico en `services/customOrderService.js` y `tests/web-orders-s2s-integration.test.js` (alineación de `sizeId: 'CUSTOM'` al contrato exacto de `Modulo_Ventas` y aislamiento de `unindexedFiles` para que un archivo indexado `image_1` jamás sea asignado al ítem `0` cuando el ítem `0` no adjunta foto; `85/85 tests PASS`).
 
 ### What's In Progress
 - Ninguna tarea en curso (`WIP = 0`).
@@ -49,8 +50,8 @@
 ## Verification Evidence
 - [x] Frontend contracts & S2S E2E simulation: `node --test tests/frontend-contracts.test.js` -> `8/8 tests PASS (0 fail)`
 - [x] Production Vite build: `npm run build` -> `vite build PASS (dist/ built in 2.21s)`
-- [x] Unified Deko Labs gate: `npm run harness:check` -> `HARNESS_PASS (Overall: 100/100, secrets PASS, syntax 59 files PASS, models PASS, security 3/3 PASS, unit tests 81/81 PASS, vite build PASS)`
-- [x] Full 3-Gate verification: `bash ./init.sh` -> `Exit code 0 (CLEAN STATE - Puerta 1 check-architecture OK, Puerta 2 Overall: 100/100 25/25 PASS, Puerta 3 check + 84/84 tests + vite build PASS)`
+- [x] Unified Deko Labs gate: `npm run harness:check` -> `HARNESS_PASS (Overall: 100/100, secrets PASS, syntax 59 files PASS, models PASS, security 3/3 PASS, unit tests 82/82 PASS, vite build PASS)`
+- [x] Full 3-Gate verification: `bash ./init.sh` -> `Exit code 0 (CLEAN STATE - Puerta 1 check-architecture OK, Puerta 2 Overall: 100/100 25/25 PASS, Puerta 3 check + 85/85 tests + vite build PASS)`
 
 ## Notes for Next Session
 Iniciar siempre con `bash ./init.sh`. Todas las tareas `feat-001`..`feat-004` se encuentran en `done` (`WIP = 0`). Para nuevos requerimientos, registrar primero la nueva entrada en `feature_list.json` y actualizar `sprint-contract.md` antes de codificar.

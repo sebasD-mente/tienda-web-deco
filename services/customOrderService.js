@@ -132,7 +132,7 @@ export function buildWebOrderPayload(order, options = {}) {
         ? Number((customWidth * customHeight).toFixed(2))
         : null;
       customArea = Number(item.customArea) > 0 ? Number(item.customArea) : computedArea;
-      sizeId = item.sizeId ? String(item.sizeId).trim() : 'PERSONALIZADO';
+      sizeId = item.sizeId ? String(item.sizeId).trim() : 'CUSTOM';
       sizeLabel = item.sizeLabel
         ? String(item.sizeLabel).trim()
         : (customWidth && customHeight ? `${customWidth} x ${customHeight} cm` : 'Medida Especial');
@@ -466,10 +466,15 @@ export async function createCustomOrder({
 
   const authoritative = calculateAuthoritativeOrderTotals(items, cm2Rate);
   const processedItems = [];
+  const unindexedFiles = files.filter(
+    (f) => !/^(?:image|file)_\d+$/i.test(String(f?.fieldname || ''))
+  );
 
   for (let i = 0; i < authoritative.items.length; i++) {
     const item = { ...authoritative.items[i] };
-    const matchingFile = files.find(f => f.fieldname === `image_${i}` || f.fieldname === `file_${i}`) || files[i];
+    const matchingFile =
+      files.find((f) => f.fieldname === `image_${i}` || f.fieldname === `file_${i}`) ||
+      unindexedFiles[i];
 
     if (matchingFile && matchingFile.buffer) {
       try {
