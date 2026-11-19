@@ -28,7 +28,94 @@
         "npm run harness:check"
       ],
       "evidence": "bash ./init.sh -> Exit code 0 (CLEAN STATE: Puerta 1 check-architecture PASS, Puerta 2 Overall: 100/100 25/25 PASS, Puerta 3 check + 65/65 tests + vite build PASS)",
-      "notes": "Adaptación Brownfield sin tocar código de runtime de producción (server.js, Dockerfile, entrypoint.sh, src/)."
+      "notes": "Adaptación Brownfield certificada y sellada en commit 3dccb63."
+    },
+    {
+      "id": "feat-002",
+      "name": "Unificación matemática de Medidas Especiales (+Q25 corte MDF, decimales step=0.01 y paridad J.A.R.V.I.S.)",
+      "description": "Crear el módulo puro compartido utils/customPricing.js (en carpeta utils/ de la raíz para garantizar su copia en el stage production de Dockerfile) con parseDecimalCm y calculateCanonicalPosterItemPrice (+Q25.00 corte especial MDF en sizeMode='custom', +Q15.00 PVC, 50% vinyl_only y redondeo unitario a 2 decimales); alinear src/pages/CustomPostersPage.jsx (inputs step='0.01', inputMode='decimal', min='5', max='300' y desglose transparente por material), services/customOrderService.js (calculateAuthoritativeOrderTotals), services/jarvisService.js (calculateCustomPrice + regex con soporte decimal + formato .toFixed(2)), src/data/storeKnowledge.js y data/jarvisConfig.json; actualizar el vector 50x70 MDF en tests/backend-security-catalog.test.js a Q193.00 / Q386.00 y crear tests/custom-pricing-parity.test.js validando los 7 Vectores Dorados registrada en package.json.",
+      "area": "pricing-custom-posters",
+      "user_visible_behavior": "El cotizador web, el backend autoritativo y el asistente J.A.R.V.I.S. aceptan medidas con decimales (ej. 42.2 x 30 cm) y arrojan exactamente el mismo centavo que Modulo_Ventas (Q 0.00 de diferencia).",
+      "priority": "P0",
+      "status": "not-started",
+      "dependencies": [
+        "feat-001"
+      ],
+      "required_files": [
+        "utils/customPricing.js",
+        "src/pages/CustomPostersPage.jsx",
+        "services/customOrderService.js",
+        "services/jarvisService.js",
+        "src/data/storeKnowledge.js",
+        "data/jarvisConfig.json",
+        "tests/backend-security-catalog.test.js",
+        "tests/custom-pricing-parity.test.js",
+        "package.json"
+      ],
+      "verification": [
+        "node --test tests/custom-pricing-parity.test.js tests/backend-security-catalog.test.js",
+        "bash ./init.sh",
+        "npm run harness:check"
+      ],
+      "evidence": "",
+      "notes": "CRÍTICO DOCKER: utils/customPricing.js DEBE ubicarse en utils/ en la raíz (nunca solo en src/utils/) porque Dockerfile production no copia src/. Ver docs/product-specs/web-orders-and-custom-pricing-s2s.md §1-§2."
+    },
+    {
+      "id": "feat-003",
+      "name": "Migración aditiva de CustomOrder y contrato S2S con Modulo_Ventas (Push Webhook + Pull Inbox + Status Callback)",
+      "description": "Extender model CustomOrder en prisma/schema.prisma con columnas aditivas retrocompatibles (orderSource, customerName, customerAddress, customerDepartment, externalSaleNumber, importedAt) y crear migración SQL idempotente en prisma/migrations/ usando ADD COLUMN IF NOT EXISTS y CREATE INDEX IF NOT EXISTS; agregar 'IMPORTADO' en validators/adminSchemas.js + esquema integrationOrderStatusPatchSchema; implementar requireIntegrationSecret con safeCompare constante (WEB_ORDERS_WEBHOOK_SECRET || CATALOG_WEBHOOK_SECRET), normalización obligatoria de imageUrl/thumbUrl a URLs absolutas HTTPS, constructor WebOrderPayload, emisor asíncrono no bloqueante notifySalesModuleNewOrder (AbortController 5000ms) hacia POST ${VENTAS_API_URL}/api/webhooks/web-orders, y endpoints S2S GET /api/custom-orders/integration/inbox y PATCH /api/custom-orders/integration/:orderNumber/status declarados antes de /:id; documentar variables en .env.example y añadir tests/web-orders-s2s-integration.test.js en package.json.",
+      "area": "s2s-orders-integration",
+      "user_visible_behavior": "Cada pedido creado en la web se persiste con metadatos completos de cliente/canal y se sincroniza de forma segura S2S con la Bandeja de Pedidos Web de Modulo_Ventas mediante Push en vivo, Pull anti-pérdida y Callback de estado IMPORTADO.",
+      "priority": "P0",
+      "status": "not-started",
+      "dependencies": [
+        "feat-002"
+      ],
+      "required_files": [
+        "prisma/schema.prisma",
+        "validators/adminSchemas.js",
+        "middleware/auth.js",
+        "services/customOrderService.js",
+        "routes/customOrderRoutes.js",
+        ".env.example",
+        "tests/web-orders-s2s-integration.test.js",
+        "package.json"
+      ],
+      "verification": [
+        "npx prisma generate",
+        "node --test tests/web-orders-s2s-integration.test.js",
+        "bash ./init.sh",
+        "npm run harness:check"
+      ],
+      "evidence": "",
+      "notes": "PROHIBIDO conectar bases de datos cruzadas o leer/editar .env / .env.local. La migración SQL debe ser idempotente (IF NOT EXISTS) para proteger entrypoint.sh bajo set -e. Ver docs/product-specs/web-orders-and-custom-pricing-s2s.md §3."
+    },
+    {
+      "id": "feat-004",
+      "name": "Captura estructurada de cliente en los 3 flujos de venta web y estado IMPORTADO en panel Admin",
+      "description": "Actualizar CartDrawer.jsx enviando orderSource='WEB_CART', customerName, customerPhone, customerAddress, customerDepartment e ítems con isCustom:false, posterId, legacyId, sku ('WEB-<id>') y selectedStandardSize completo; incorporar en CustomPostersPage.jsx la sección obligatoria de Datos de Contacto (Nombre *, WhatsApp *, Dirección, Departamento) con orderSource='WEB_CUSTOM' e inyección de cliente + #CP-XXXX en WhatsApp; añadir en ProductModal.jsx (+ App.jsx si aplica) el mini-formulario rápido sin salir del modal para registrar orderSource='WEB_QUICK_POSTER' antes de abrir WhatsApp (con fallback seguro ante error de red); y actualizar AdminCustomOrdersTab.jsx soportando badge/filtro/selector 'IMPORTADO', externalSaleNumber y datos estructurados del cliente, ampliando tests/frontend-contracts.test.js.",
+      "area": "frontend-checkout-admin",
+      "user_visible_behavior": "Tanto el Carrito del Catálogo como el Cotizador Personalizado y el botón rápido de WhatsApp en cada póster capturan los datos del cliente, registran la orden #CP-XXXX hacia Modulo_Ventas y reflejan el estado IMPORTADO y número de venta vinculado en el panel Admin.",
+      "priority": "P0",
+      "status": "not-started",
+      "dependencies": [
+        "feat-003"
+      ],
+      "required_files": [
+        "src/components/CartDrawer.jsx",
+        "src/pages/CustomPostersPage.jsx",
+        "src/components/ProductModal.jsx",
+        "src/components/admin/AdminCustomOrdersTab.jsx",
+        "tests/frontend-contracts.test.js"
+      ],
+      "verification": [
+        "node --test tests/frontend-contracts.test.js",
+        "npm run build",
+        "bash ./init.sh",
+        "npm run harness:check"
+      ],
+      "evidence": "",
+      "notes": "Preservar registeredOrderNumber, data.orderNumber y onClearCart() en CartDrawer.jsx, cero window.confirm nativos y accesibilidad WCAG. Ver docs/product-specs/web-orders-and-custom-pricing-s2s.md §4."
     }
   ]
 }

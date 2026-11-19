@@ -11,13 +11,14 @@
 - **Prohibición absoluta de autogeneración de tags**: Está terminantemente prohibido autogenerar con IA, enriquecer masivamente o inyectar listas de palabras clave genéricas en el campo `tags` de los pósters.
 - **Razón de negocio**: En Deco Vintage Guate, `tags` se reserva exclusivamente para el apodo o clave interna con que el taller y el equipo identifican cada obra en la empresa, curado manualmente poco a poco para evitar falsos positivos y contaminación en el buscador.
 
-## 2. Frontera Inter-Proyecto con `Modulo_Ventas` (`project`)
+## 2. Frontera Inter-Proyecto con `Modulo_Ventas` (`https://ventas.decovintage.online`) (`project`)
 
-- **Pausa en seguimiento de taller dentro de `Web Deco Vintage Proyect`**: Mantener en pausa modificaciones al flujo de seguimiento de estado de taller en este repositorio hasta que finalice la fase de pruebas del proyecto hermano `Modulo_Ventas`.
-- **Razón arquitectónica**: Toda venta real y trazabilidad operativa (desde el primer abono hasta fabricación en MDF 5.5mm y entrega) es propiedad de la base de datos de `Modulo_Ventas`, con el cual este sitio se integrará futuramente mediante un contrato API aislado.
+- **Aislamiento absoluto de bases de datos**: `Web Deco Vintage` y `Modulo_Ventas` operan sobre instancias y bases de datos PostgreSQL estrictamente separadas; está terminantemente prohibido conectar Prisma de un repositorio a la BD del otro.
+- **Integración aprobada por Contrato API S2S (`feat-002` a `feat-004`)**: Ambos sistemas comparten exactamente la misma fórmula matemática de Medidas Especiales (`+ Q 25.00` por corte especial de madera MDF en `sizeMode === 'custom'`, soporte decimal `step="0.01"`) y sincronizan todos los pedidos web (Carrito, Cotizador Personalizado y Compra Rápida en Ficha) mediante HTTPS Server-to-Server autenticado con `x-webhook-secret` (`WEB_ORDERS_WEBHOOK_SECRET || CATALOG_WEBHOOK_SECRET`), nunca por base de datos compartida.
+- **Tracker conversacional de taller (`consultar_estado_taller`)**: Mantener sin conexión directa a BD externa; el ciclo operativo interno desde anticipo hasta entrega vive en `Modulo_Ventas`.
 
 ## 3. Referencia de Producción y Verificación Post-Despliegue (`reference` / `feedback`)
 
 - **Dominio oficial en producción**: `https://decovintage.online` (desplegado vía Docker + Dokploy sobre VPS Hostinger).
 - **Protocolo post-despliegue**: Tras desplegar cambios visibles a producción, verificar `https://decovintage.online` mediante Chrome DevTools MCP con recarga limpia de caché, probando búsqueda, filtros y carrito, y adjuntando evidencia visual antes de dar por cerrado un despliegue en vivo.
-- **Regla de reparación en origen**: Ante discrepancias de datos en catálogo, filtros o carrito, reparar siempre 2 capas atrás (en el servicio o estado productor) en lugar de enmascarar el síntoma con valores por defecto silenciosos en componentes consumidores.
+- **Regla de reparación en origen**: Ante discrepancias de datos en catálogo, precios, filtros o carrito, reparar siempre en el servicio o helper canónico productor en lugar de parchar síntomas con valores por defecto silenciosos en componentes consumidores.

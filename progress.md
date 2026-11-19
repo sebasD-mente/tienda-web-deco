@@ -2,54 +2,54 @@
 
 ## Current State
 
-**Last Updated:** 2026-11-18 19:32
-**Session ID:** sesion-001 (Adaptación Integral de Plantilla-Maestra-Arnes en Deco Vintage Guate)
-**Active Feature:** Ninguna (`WIP = 0`; `feat-001` completada en `done`, listo para la siguiente solicitud del usuario)
+**Last Updated:** 2026-11-18 20:10
+**Session ID:** sesion-001 (Instalación del Arnés Maestro + Planificación S2S `deco-vintage-web` <-> `Modulo_Ventas`)
+**Active Feature:** Ninguna (`WIP = 0`; `feat-001` en `done`; `feat-002`, `feat-003` y `feat-004` declaradas en `not-started` listas para la Sesión Ejecutora)
 **Standard Startup Path:** `bash ./init.sh`
 **Standard Verification Path:** `bash ./init.sh`
 
 ## Status
 
 ### What's Done
-- [x] `feat-001`: Análisis exhaustivo de los 28 archivos de `Plantilla-Maestra-Arnes` y adaptación integral a `Web Deco Vintage Proyect` (`deco-vintage-web`) alcanzando `Overall: 100/100` (`25/25 PASS`) y `65/65` pruebas de aplicación/seguridad en verde.
-- [x] Mapeo *Brownfield* completo de Express 5, Prisma 6, Sharp, Google Cloud Storage, Google Gemini (`@google/genai`), React 18 y Vite 5 sobre las 6 capas estrictas (`Types -> Config -> Repo -> Service -> Runtime -> UI`) en `ARCHITECTURE.md`.
-- [x] Migración de las directrices soberanas no derivables de negocio desde el antiguo `.agents/library/EXPERIENCE.md` hacia `memory/topics/deco-vintage-context.md` + `memory/INDEX.md` cumpliendo `Gotcha #1`, `#4` y `#15`.
-- [x] Blindaje de compatibilidad Windows/Linux/Docker/Multi-Workspace: `.gitattributes` (`eol=lf` para `*.sh` y `*.mjs`), `.gitignore` (desbloqueo de `.env.example` y `.agents/hooks.json` + `.agents/skills/`), `.dockerignore` (aislamiento de caché de capas en Dokploy), `resolveTargetRoot` multi-workspace en `scripts/harness-hooks.mjs` y sincronización inteligente `INSTALL_CMD` en `init.sh`.
+- [x] `feat-001`: Adaptación e integración completa de `Plantilla-Maestra-Arnes` en `deco-vintage-web` (`Overall: 100/100`, `65/65 tests PASS`, `vite build` limpio, commit local `3dccb63`).
+- [x] Análisis forense cruzado del informe inter-agentes de `Modulo_Ventas` (`2026-11-18_INFORME_INTEGRACION_PEDIDOS_Y_COTIZADOR_WEB_DECO_VINTAGE.md`) contra el código real de `deco-vintage-web`, codificando la especificación autocontenida en `docs/product-specs/web-orders-and-custom-pricing-s2s.md` y declarando la cadena secuencial `feat-002 -> feat-003 -> feat-004` en `feature_list.json`, `sprint-contract.md` y `goal.md` sin tocar código de aplicación (`WIP = 0`).
 
 ### What's In Progress
-- Ninguna tarea en curso (`WIP = 0`).
+- Ninguna tarea en curso (`WIP = 0`; sesión dedicada exclusivamente a planificación para que otra sesión ejecute).
 
 ### What's Next
-1. Conversar de forma natural con Sebastián sobre el siguiente requerimiento de `Deco Vintage Guate`, registrarlo como `feat-002` en `feature_list.json` y `sprint-contract.md`, e implementarlo bajo `WIP = 1`.
+1. En la **Sesión Ejecutora**: ejecutar `bash ./init.sh`, leer `docs/product-specs/web-orders-and-custom-pricing-s2s.md` y `sprint-contract.md`, pasar `feat-002` a `in-progress` (`WIP = 1`) e implementar secuencialmente `feat-002` -> `feat-003` -> `feat-004`.
 
 ## Blockers / Risks
-- Ninguno activo para producción (`Dockerfile`, `entrypoint.sh`, `server.js` y `src/` intactos).
-- Nota preventiva *Brownfield* documentada en `ARCHITECTURE.md`: si en el futuro se mueven físicamente `CartDrawer.jsx`, `JarvisAgent.jsx` y `CustomPostersPage.jsx` desde `src/components/` y `src/pages/` hacia `src/ui/`, deberá extraerse antes `generateWhatsAppLink` de `src/config/constants.js` hacia `src/service/` para evitar salto `UI -> Config`.
+- Ninguno activo.
+- **4 Salvaguardas Críticas Pre-Auditadas para la Sesión Ejecutora** (documentadas en `docs/product-specs/web-orders-and-custom-pricing-s2s.md` §1):
+  1. **Riesgo de caída en contenedor `Dockerfile` (`production`)**: `Dockerfile` copia `utils/` pero **NO copia `src/`** en la etapa final; por ello `utils/customPricing.js` DEBE crearse en `utils/` de la raíz (nunca solo en `src/utils/`).
+  2. **Tercer motor de precios detectado en J.A.R.V.I.S.**: Además de `CustomPostersPage.jsx` y `customOrderService.js`, `services/jarvisService.js` (`calculateCustomPrice` y regex de medidas) y `data/jarvisConfig.json` tenían una tercera fórmula obsoleta (`Math.ceil / 5 * 5` y PVC `* 1.25`) y han sido incluidos explícitamente en `feat-002`.
+  3. **Test histórico de `50x70 MDF` en `tests/backend-security-catalog.test.js`**: Esperaba `168 / 336` sin el recargo de `+Q25.00`; autorizado en `feat-002` actualizarlo a `193 / 386` conservando la prueba anti-manipulación.
+  4. **Migración Prisma idempotente para `entrypoint.sh` (`set -e`)**: Usar `ADD COLUMN IF NOT EXISTS` y `CREATE INDEX IF NOT EXISTS` en `feat-003`.
 
 ## Decisions Made
-- **Mapeo Brownfield sin mover carpetas en caliente**:
-  - Context: `deco-vintage-web` está en producción activa (`https://decovintage.online`) con estructura consolidada (`routes/`, `services/`, `src/components/`, `src/pages/`).
-  - Alternatives considered: Reubicar masivamente todo `src/` en `src/{types,config,repo,service,runtime,ui}` durante la instalación del arnés; descartado porque introduciría riesgo innecesario de regresión sin valor funcional inmediato, mientras que el mapeo *Brownfield* en `ARCHITECTURE.md` está soportado nativamente por el arnés.
-- **Unificación de Puerta 3 (`init.sh`) con las compuertas Zero-Trust existentes (`npm run harness:check`)**:
-  - Context: `package.json` carecía de scripts `"check"` y `"test"` estándar (usaba `"test:unit"` y `"audit:*"`, además de omitir 2 suites nuevas en `"test:unit"`), lo que habría hecho que `init.sh` ejecutara solo `vite build` sin correr las suites de seguridad y negocio; asimismo, ejecutar `npm install` incondicional en cada `Stop` en Windows arriesga bloqueos `EPERM` en binarios nativos (`sharp` / `@prisma/client`).
-  - Alternatives considered: Dejar `package.json` e `init.sh` sin conectar; descartado porque habría dejado un *Split-Brain* entre `.git/hooks/pre-push` (`harness:check`) y `bash ./init.sh`. Se conectaron `"check"`, `"test"` (con las 10 suites completas = 65 tests) e `INSTALL_CMD` condicional.
-- **Prioridad de `REPO_ROOT` en `resolveTargetRoot` para sesiones multi-workspace (`scripts/harness-hooks.mjs`)**:
-  - Context: El entorno activo en Antigravity monta dos workspaces simultáneos (`Trabajos Graficos` en `workspacePaths[0]` y `Web Deco Vintage Proyect` en `workspacePaths[1]`).
-  - Alternatives considered: Conservar `payload.workspacePaths[0]` sin comprobar `REPO_ROOT`; descartado porque si en el futuro `Trabajos Graficos` también instala el arnés, los hooks de este proyecto habrían evaluado el directorio vecino por error.
+- **Codificación en el repositorio mediante Expansión Progresiva (`docs/product-specs/web-orders-and-custom-pricing-s2s.md`)**:
+  - Context: El informe provino de una ruta externa al repositorio (`nuve DRIVE/Comunicacion entre agentes/...`). Si la Sesión Ejecutora o un sub-agente *Checker* aislado corre confinado al workspace o a un `git worktree`, no debe depender de rutas externas.
+  - Alternatives considered: Dejar solo resúmenes breves en `feature_list.json`; descartado porque se perderían la función matemática exacta, los 7 Vectores Dorados, el esquema `WebOrderPayload` y las 4 alertas forenses de Docker/Jarvis/Prisma.
+- **División en 3 Tareas Atómicas Secuenciales (`feat-002 -> feat-003 -> feat-004`) con `WIP = 0`**:
+  - Context: Separar limpiamente (1) paridad matemática pura y tests de precios, (2) esquema Prisma + capa S2S backend autenticada, y (3) captura UI en los 3 canales de venta + panel Admin, dejando todas en `"not-started"` según la instrucción del usuario (*"nosotros planeamos los cambios, otra sesión ejecuta"*).
+  - Alternatives considered: Agrupar los 3 bloques en una sola macro-tarea; descartado porque mezcla migración de base de datos, seguridad S2S y refactor de 4 vistas React en un solo paso, dificultando el diagnóstico y el *Ratchet*.
 
 ## Files Modified This Session
-- `AGENTS.md`, `ARCHITECTURE.md`, `clean-state-checklist.md`, `evaluator-rubric.md`, `goal.md`, `graph.md`, `maker-prompt.md`, `checker-prompt.md`, `sprint-contract.md`, `loop-state.md`, `progress.md`, `session-handoff.md`, `feature_list.json` - Artefactos raíz del Arnés Maestro adaptados a `deco-vintage-web`
-- `init.sh`, `scripts/check-architecture.sh`, `scripts/feature-list.schema.json`, `scripts/validate-harness.mjs`, `scripts/harness-hooks.mjs`, `scripts/lib/harness-utils.mjs` - Motor de verificación en 3 puertas, puntuación `100/100` y runner de hooks multi-workspace
-- `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/QUALITY_SCORE.md`, `docs/GOTCHAS.md` - Documentación técnica adaptada con Recorridos Dorados y defensas Zero-Trust reales del proyecto
-- `memory/INDEX.md`, `memory/topics/harness-rules.md`, `memory/topics/deco-vintage-context.md` - Auto-Memoria en Dos Pasos preservando directrices soberanas de negocio
-- `.agents/hooks.json`, `.agents/skills/maker-checker/SKILL.md` - Candados nativos de ciclo de vida y Skill `maker-checker`
-- `.gitignore`, `.gitattributes`, `.dockerignore`, `package.json`, `scripts/audit-harness.js` - Higiene Git/LF, caché Docker y unificación de scripts de prueba (`65/65` tests)
+- `docs/product-specs/web-orders-and-custom-pricing-s2s.md` - Especificación canónica completa (Bloques A, B y C + 7 Vectores Dorados + 4 alertas forenses)
+- `feature_list.json` - Declaración secuencial de `feat-002`, `feat-003` y `feat-004` (`status: "not-started"`, `WIP = 0`)
+- `AGENTS.md` - Registro del nuevo artefacto `docs/product-specs/web-orders-and-custom-pricing-s2s.md` en `Required Artifacts`
+- `ARCHITECTURE.md` - Referencia a la especificación de producto y costura S2S con `Modulo_Ventas`
+- `memory/topics/deco-vintage-context.md` - Actualización de la frontera S2S aprobada con `Modulo_Ventas` (aislamiento total de BDs + `x-webhook-secret`)
+- `sprint-contract.md` - Contrato pre-preparado para `feat-002 -> feat-003 -> feat-004` con exclusiones explícitas
+- `goal.md` - Meta y criterios verificables para ejecución en Modo Diario Ágil o `/goal`
+- `progress.md` y `session-handoff.md` - Trazabilidad y acta de entrega lista para la Sesión Ejecutora
 
 ## Verification Evidence
-- [x] Tests & 3 Gates pass: `bash ./init.sh` -> `Exit code 0 (CLEAN STATE - Puertas 1, 2 y 3 superadas: check-architecture OK, 100/100, audit-secrets + audit-syntax + verify-gemini-models + 65/65 tests + vite build)`
+- [x] Tests & 3 Gates pass: `bash ./init.sh` -> `Exit code 0 (CLEAN STATE - Puerta 1 check-architecture OK, Puerta 2 Overall: 100/100 25/25 PASS, Puerta 3 check + 65/65 tests + vite build PASS)`
 - [x] Architecture & Red-Pen check: `bash scripts/check-architecture.sh` -> `OK: Límites arquitectónicos, invariantes de 6 capas, Auto-Memoria, Seguridad e higiene estructural verificados sin violaciones.`
 - [x] Harness mathematical validation: `node scripts/validate-harness.mjs --min-score 100` -> `command and output verified: Overall: 100/100 (25/25 checks PASS)`
-- [x] Unified Deko Labs gate: `npm run harness:check` -> `status: HARNESS_PASS (harness, secrets, syntax, models, security, tests 62+3=65, build PASS)`
 
 ## Notes for Next Session
-Ejecuta `bash ./init.sh` (en Windows PowerShell vía Git Bash: `& "C:\Program Files\Git\bin\bash.exe" ./init.sh`) al iniciar la sesión, consulta `memory/INDEX.md` y espera la siguiente instrucción natural del usuario bajo `WIP = 1`.
+La siguiente sesión es la **Sesión Ejecutora**: debe iniciar con `bash ./init.sh`, leer `docs/product-specs/web-orders-and-custom-pricing-s2s.md` y `sprint-contract.md`, cambiar **únicamente `feat-002`** a `"in-progress"` (`WIP = 1`), implementarla y certificarla antes de avanzar a `feat-003` y finalmente a `feat-004`.

@@ -1,43 +1,46 @@
 # Session Handoff
 
 ## Current Objective
-- **Goal:** Adaptación e integración impecable de `Plantilla-Maestra-Arnes` en `Web Deco Vintage Proyect` (`deco-vintage-web`) completada y certificada en las 3 Puertas.
-- **Current status:** `clean-state` (`WIP = 0`; `feat-001` en `done`; `Overall: 100/100` y `65/65 tests PASS`)
-- **Branch / commit:** `main` (sobre base `df3a546`)
+- **Goal:** Planificación integral y declaración en el arnés de la unificación del Cotizador de Medidas Especiales (`+Q25` corte MDF y decimales `step="0.01"`) y la integración S2S de Bandeja de Pedidos Web (`deco-vintage-web` -> `Modulo_Ventas`) en 3 tareas secuenciales (`feat-002`, `feat-003`, `feat-004`), listas para ser ejecutadas en otra sesión.
+- **Current status:** `clean-state` (`WIP = 0`; `feat-001` en `done`; `feat-002`, `feat-003` y `feat-004` en `not-started`; `Overall: 100/100`)
+- **Branch / commit:** `main` (sobre commit `3dccb63` + planificación S2S lista)
 
 ## Completed This Session
-- [x] Auditoría profunda línea por línea de los 28 archivos de `Plantilla-Maestra-Arnes` frente a la arquitectura productiva de `Web Deco Vintage Proyect`.
-- [x] Adaptación completa de `AGENTS.md`, `ARCHITECTURE.md`, `docs/*`, `memory/*`, `init.sh`, `scripts/*`, `.agents/*`, `.gitignore`, `.gitattributes`, `.dockerignore`, `package.json` y `scripts/audit-harness.js`.
-- [x] Detección y corrección proactiva de 6 puntos finos de compatibilidad (reglas `.agents/*` y `.env.example` en `.gitignore`, `core.autocrlf=true` en Windows blindado con `.gitattributes`, conexión de scripts `"check"`/`"test"` + 2 suites faltantes en `package.json`, `INSTALL_CMD` seguro frente a binarios nativos `sharp`/Prisma, `resolveTargetRoot` multi-workspace en `harness-hooks.mjs` y aislamiento en `.dockerignore`).
+- [x] Instalación y adaptación completa de `Plantilla-Maestra-Arnes` en `deco-vintage-web` (commit local `3dccb63`).
+- [x] Lectura y auditoría cruzada del informe inter-agentes de `Modulo_Ventas` contra el código real de `deco-vintage-web` (`customOrderService.js`, `customOrderRoutes.js`, `auth.js`, `adminSchemas.js`, `jarvisService.js`, `jarvisConfig.json`, `storeKnowledge.js`, `CustomPostersPage.jsx`, `CartDrawer.jsx`, `ProductModal.jsx`, `App.jsx`, `AdminCustomOrdersTab.jsx`, `Dockerfile` y suites `tests/`).
+- [x] Codificación completa en `docs/product-specs/web-orders-and-custom-pricing-s2s.md` y declaración del DAG secuencial `feat-002 -> feat-003 -> feat-004` en `feature_list.json`, `sprint-contract.md` y `goal.md`.
 
 ## Verification Evidence
 
 | Check | Command | Result | Notes |
 | :--- | :--- | :--- | :--- |
-| Vigilante Arquitectónico (Puerta 1) | `bash scripts/check-architecture.sh` | `PASS (Exit code 0)` | 26 artefactos requeridos verificados, `fl_check` OK, Auto-Memoria en Dos Pasos OK, `harness-hooks.mjs <= 280L` y `0` temporales |
+| Vigilante Arquitectónico (Puerta 1) | `bash scripts/check-architecture.sh` | `PASS (Exit code 0)` | 27 artefactos requeridos verificados (incluida `docs/product-specs/web-orders-and-custom-pricing-s2s.md`), `fl_check` OK sobre 4 tareas DAG (`WIP = 0`) |
 | Validación de los 5 Subsistemas (Puerta 2) | `node scripts/validate-harness.mjs --min-score 100` | `PASS (100/100)` | `25/25` checks PASS (`instructions`, `state`, `verification`, `scope`, `lifecycle`) |
-| Inicialización Integral en 3 Puertas (Puertas 1-3) | `bash ./init.sh` | `PASS (Exit code 0)` | Confirmado `CLEAN STATE` con `check`, `65/65 tests` y `vite build` |
-| Compuerta Pre-Push Unificada | `npm run harness:check` | `PASS (Exit code 0)` | `DEKO-MASTER-HARNESS`: arnés `100/100` + secretos + sintaxis + modelos Gemini + Zero-Trust + unitarias + build |
+| Inicialización Integral en 3 Puertas (Puertas 1-3) | `bash ./init.sh` | `PASS (Exit code 0)` | Confirmado `CLEAN STATE` con `65/65 tests` y `vite build`, cero cambios en código de aplicación |
 
 ## Files Changed
-- `AGENTS.md`, `ARCHITECTURE.md`, `clean-state-checklist.md`, `evaluator-rubric.md`, `goal.md`, `graph.md`, `maker-prompt.md`, `checker-prompt.md`, `sprint-contract.md`, `loop-state.md`, `progress.md`, `session-handoff.md`, `feature_list.json`
-- `init.sh`, `scripts/check-architecture.sh`, `scripts/feature-list.schema.json`, `scripts/validate-harness.mjs`, `scripts/harness-hooks.mjs`, `scripts/lib/harness-utils.mjs`, `scripts/audit-harness.js`
-- `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/QUALITY_SCORE.md`, `docs/GOTCHAS.md`
-- `memory/INDEX.md`, `memory/topics/harness-rules.md`, `memory/topics/deco-vintage-context.md`
-- `.agents/hooks.json`, `.agents/skills/maker-checker/SKILL.md`
-- `.gitignore`, `.gitattributes`, `.dockerignore`, `package.json`
+- `docs/product-specs/web-orders-and-custom-pricing-s2s.md`
+- `feature_list.json`
+- `AGENTS.md`
+- `ARCHITECTURE.md`
+- `memory/topics/deco-vintage-context.md`
+- `sprint-contract.md`
+- `goal.md`
+- `progress.md`
+- `session-handoff.md`
 
 ## Decisions Made
-- Cero modificaciones al código de ejecución de producción (`server.js`, `Dockerfile`, `entrypoint.sh`, `routes/`, `services/`, `prisma/`, `src/`) para garantizar riesgo `0%` en `https://decovintage.online`.
-- Preservación de las reglas soberanas de negocio del antiguo `.agents/library/EXPERIENCE.md` en `memory/topics/deco-vintage-context.md`.
+- **Cero ejecución de código en esta pasada (`WIP = 0`)**: Se respetó estrictamente la instrucción de planificar aquí y delegar la implementación a una sesión ejecutora dedicada.
+- **Incorporación de 4 hallazgos forenses propios del repo**: Ubicación obligatoria de `utils/customPricing.js` en `utils/` raíz por `Dockerfile` `production`; inclusión de `services/jarvisService.js` + `data/jarvisConfig.json` en `feat-002`; autorización explícita para actualizar `50x70 MDF` (`168 -> 193`, `336 -> 386`) en `tests/backend-security-catalog.test.js`; y exigencia de DDL idempotente `IF NOT EXISTS` en la migración Prisma de `feat-003`.
 
 ## Blockers / Risks
-- Ninguno activo.
+- Ninguno activo. Recordar en la Sesión Ejecutora **no leer ni tocar `.env` ni `.env.local`** y **jamás conectar bases de datos cruzadas**.
 
 ## Next Session Startup
 1. Confirmar `pwd`.
 2. Leer `AGENTS.md`, `progress.md`, `session-handoff.md`, `memory/INDEX.md` y `feature_list.json`.
-3. Ejecutar `bash ./init.sh` antes de editar cualquier archivo.
+3. Leer `docs/product-specs/web-orders-and-custom-pricing-s2s.md` y `sprint-contract.md`.
+4. Ejecutar `bash ./init.sh` antes de editar cualquier archivo de código.
 
 ## Recommended Next Step
-- Revisar con el usuario el reporte de adaptación y realizar el `git commit` de consolidación del Arnés Maestro cuando el usuario lo indique, o iniciar `feat-002` bajo `WIP = 1`.
+- En la **Sesión Ejecutora**: cambiar `"status"` de **`feat-002`** a `"in-progress"` (`WIP = 1`) e implementar secuencialmente `feat-002` -> `feat-003` -> `feat-004` (o iniciar `/goal` para que el bucle autónomo ejecute y audite la secuencia completa).

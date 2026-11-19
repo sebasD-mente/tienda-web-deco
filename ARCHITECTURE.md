@@ -9,7 +9,7 @@ Este documento es el mapa superior de **Deco Vintage Guate (`deco-vintage-web`)*
 - **Superficies de Ejecución:**
   - **Producción (`Runtime` Web + API)**: Servidor Express 5 (`server.js`) con compresión, Helmet CSP, CORS estricto, inyección SSR dinámica de OpenGraph para `/poster/:id`, API REST (`/api/auth`, `/api/catalog`, `/api/settings`, `/api/custom-orders`, `/api/jarvis`), Prisma ORM 6 sobre PostgreSQL, motor de imágenes Sharp (`libvips42`) y SPA React 18 compilada con Vite 5 (`dist/`).
   - **Arnés y Gobernanza CLI**: Scripts POSIX (`init.sh`, `scripts/check-architecture.sh`), runners Node.js (`scripts/validate-harness.mjs`, `scripts/harness-hooks.mjs`) y compuertas Zero-Trust de Deko Labs (`scripts/audit-harness.js`, `scripts/audit-secrets.js`, `scripts/audit-syntax.js`, `scripts/verify-gemini-models.js`).
-- **Fuente de Verdad del Comportamiento:** `feature_list.json`, `sprint-contract.md`, `ARCHITECTURE.md`, `PROJECT.md` (contratos API Fase 3) y `docs/product-specs/` (bajo demanda).
+- **Fuente de Verdad del Comportamiento:** `feature_list.json`, `sprint-contract.md`, `ARCHITECTURE.md`, `PROJECT.md` (contratos API Fase 3) y `docs/product-specs/web-orders-and-custom-pricing-s2s.md`.
 
 ## 2. Mapa de Dominios
 
@@ -70,6 +70,7 @@ flowchart TD
 - **Almacenamiento y Procesamiento de Medios**: `imageService.js` + `gcsService.js` abstraen la optimización Sharp WebP (`full` y `thumb`) entre Google Cloud Storage (`https://storage.googleapis.com`) y el volumen persistente local Docker (`/app/public/posters/uploads`).
 - **IA Multimodal y Búsqueda Semántica (`@google/genai`)**: `jarvisService.js`, `posterVisionService.js` y `embeddingService.js` encapsulan los modelos vigentes de Google Gemini (auditados mecánicamente por `scripts/verify-gemini-models.js` contra modelos apagados).
 - **Lectura de Catálogo con Caché RAM Coherente**: `catalogService.js` (`getCachedFullCatalog`, TTL 5 min con invalidación instantánea en mutaciones) desacopla la lectura de alta concurrencia en `/api/catalog` y `/api/jarvis/chat` respecto de PostgreSQL, mientras el cliente usa `apiClient.js` / `catalogStorage.js`.
+- **Puente S2S de Bandeja de Pedidos Web (`deco-vintage-web` <-> `Modulo_Ventas`)**: Integración HTTPS Server-to-Server autenticada en tiempo constante (`x-webhook-secret` + `safeCompare`) con bases de datos PostgreSQL estrictamente aisladas (`Push` asíncrono + `Pull` `/integration/inbox` + `Callback` `/integration/:orderNumber/status`).
 - **Ejecución y Verificación del Arnés**: `scripts/lib/harness-utils.mjs` y `scripts/harness-hooks.mjs` desacoplan la lógica pura de validación respecto del entorno de ejecución (`Local FS`, `git worktree` o sub-agente aislado `one-shot`).
 
 ## 5. Interfaces Transversales (Cross-Cutting Interfaces)

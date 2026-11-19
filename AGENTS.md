@@ -53,6 +53,7 @@ Before writing code or modifying any project deliverable:
 - `.agents/skills/maker-checker/SKILL.md` — Skill bajo demanda del bucle `Maker-Checker` con `description <= 150` caracteres (`Gotcha #12`).
 - `graph.md` — Ingeniería de Grafos de 5 nodos (`research -> implement -> verify -> human_approval -> merge`), `error_layer` y patrones `Coordinator`, `Fork` y `Swarm`.
 - `docs/GOTCHAS.md` — Tabla de los 15 Gotchas críticos de producción, auditoría de las 25 verificaciones (`structuredHas`) y protocolo de Estudios de Ablación.
+- `docs/product-specs/web-orders-and-custom-pricing-s2s.md` — Especificación canónica del cotizador de medidas especiales (`+Q25` MDF / decimales) e integración S2S de pedidos con `Modulo_Ventas`.
 
 ## Progressive Expansion (Anti-Doc Bloat — SOP `encode-knowledge-into-repo`)
 
