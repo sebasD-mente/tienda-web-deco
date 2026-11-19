@@ -9,10 +9,13 @@
     "preview": "vite preview",
     "start": "node server.js",
     "optimize:images": "node scripts/optimize-images.js",
+    "check": "node scripts/audit-secrets.js && node scripts/audit-syntax.js && node scripts/verify-gemini-models.js",
+    "test": "npm run test:security && npm run test:unit",
     "test:security": "node --test tests/security/zero-trust.test.js",
-    "test:unit": "node --test --test-concurrency=1 tests/repo-hygiene.test.js tests/searchEngine.test.js tests/posterVisionService.test.js tests/backend-security-catalog.test.js tests/jarvis-memory-cache.test.js tests/frontend-contracts.test.js tests/adversarial-security-challenge.test.js",
+    "test:unit": "node --test --test-concurrency=1 tests/repo-hygiene.test.js tests/searchEngine.test.js tests/posterVisionService.test.js tests/backend-security-catalog.test.js tests/jarvis-memory-cache.test.js tests/frontend-contracts.test.js tests/adversarial-security-challenge.test.js tests/deeplink-opengraph-catalog.test.js tests/jarvis-visual-search.test.js",
     "audit:secrets": "node scripts/audit-secrets.js",
     "audit:syntax": "node scripts/audit-syntax.js",
+    "harness:validate": "node scripts/validate-harness.mjs --min-score 100",
     "harness:check": "node scripts/audit-harness.js"
   },
   "dependencies": {

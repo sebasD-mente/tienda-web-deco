@@ -3,14 +3,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * 🛡️ [DEKO LABS] COMPUERTA FÍSICA DE VERIFICACIÓN (HARNESS² EDITION)
+ * 🛡️ [DEKO LABS] COMPUERTA FÍSICA UNIFICADA DE VERIFICACIÓN (ARNÉS MAESTRO + ZERO-TRUST)
  *
- * Verifica únicamente los candados físicos deterministas del proyecto:
+ * Verifica los candados deterministas del proyecto y del Arnés Maestro:
+ * 0. Puntaje matemático 100/100 de los 5 subsistemas del arnés (scripts/validate-harness.mjs).
  * 1. Cero secretos expuestos en texto plano (scripts/audit-secrets.js).
  * 2. Sintaxis válida del runtime (scripts/audit-syntax.js).
- * 3. Validación de catálogo de modelos de IA si aplica (scripts/verify-gemini-models.js).
- * 4. Pruebas unitarias y de seguridad reales del proyecto (npm run test:unit).
- * 5. Compilación real del frontend si aplica (npm run build).
+ * 3. Validación de catálogo de modelos de IA vigentes (scripts/verify-gemini-models.js).
+ * 4. Suite de Seguridad Zero-Trust (tests/security/zero-trust.test.js).
+ * 5. Pruebas unitarias y contratos E2E reales del proyecto (npm run test:unit).
+ * 6. Compilación real del frontend (npm run build).
  */
 
 const startTime = Date.now();
@@ -19,6 +21,7 @@ const args = process.argv.slice(2);
 const skipUnit = args.includes('--skip-unit');
 
 const results = {
+  harness: 'SKIPPED',
   secrets: 'SKIPPED',
   syntax: 'SKIPPED',
   models: 'SKIPPED',
@@ -50,6 +53,11 @@ function runStep(name, cmd, cmdArgs = [], options = {}) {
     process.exit(1);
   }
   console.log(`✅ [OK] '${name}' (${duration}s).\n`);
+}
+
+if (fs.existsSync(path.join(rootDir, 'scripts', 'validate-harness.mjs'))) {
+  runStep('0. Validación Matemática del Arnés Maestro (100/100)', process.execPath, ['scripts/validate-harness.mjs', '--min-score', '100']);
+  results.harness = 'PASS';
 }
 
 if (fs.existsSync(path.join(rootDir, 'scripts', 'audit-secrets.js'))) {
@@ -116,7 +124,7 @@ try {
 const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
 console.log(JSON.stringify({
   status: 'HARNESS_PASS',
-  framework: 'DEKO-HARNESS2-CORE',
+  framework: 'DEKO-MASTER-HARNESS',
   results,
   totalTimeSeconds: parseFloat(totalTime),
 }, null, 2));

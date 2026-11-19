@@ -1,23 +1,45 @@
-# Dependencies
-node_modules
-/.pnp
-.pnp.js
-
-# Production builds
-dist
-dist-ssr
-
-# Environment & Secrets
-*.local
+# Secretos y variables de entorno (Docs: docs/SECURITY.md)
 .env
 .env.*
+.env*
+!.env.example
+!.env.sample
+!.env.template
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 google-service-account*.json
 
-# Logs
+# Configuraciones locales de agente no compartidas (Gotcha #2)
+*.local
+*.local.md
+
+# Dependencias y artefactos de compilación
+node_modules
+node_modules/
+/.pnp
+.pnp.js
+dist
+dist/
+dist-ssr
+build
+build/
+coverage/
+.next/
+out/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Archivos temporales, respaldos, editores y logs (clean-state-checklist.md)
+*.tmp
+*.bak
+*.swp
+*~
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -25,12 +47,10 @@ pnpm-debug.log*
 firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*
-
-# OS Files
 .DS_Store
 Thumbs.db
 
-# Temporary Screenshots & debug images in root
+# Capturas temporales, evidencias locales y respaldos del proyecto
 /*.png
 /*.jpg
 /*.jpeg
@@ -39,10 +59,10 @@ Thumbs.db
 scratch/
 reportes/
 reportes_generales_deco/
-# Agent Swarm Workspaces (preserve Harness² library)
-.agents/*
-!.agents/library/
-!.agents/library/**
 test_evidence/
 backups/
 
+# Worktrees y temporales efímeros de sub-agentes (preserva .agents/hooks.json y .agents/skills/)
+.agents/worktrees/
+.agents/scratch/
+.agents/tmp/

@@ -7,6 +7,10 @@ docs del proyecto
 docs
 .git
 .github
+.agents
+memory
+init.sh
+feature_list.json
 *.local
 .env*
 .firebase
