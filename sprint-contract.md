@@ -4,12 +4,12 @@ Este documento materializa la **Observabilidad de Proceso (Antes de Codificar)**
 
 ---
 
-## Estado Actual del Contrato (`WIP = 0` — Planificado para Ejecución en Siguiente Sesión)
+## Estado Actual del Contrato (`WIP = 0` — `feat-002` Completada; `feat-003` Lista para Activar)
+- **Tarea recién certificada (`done`):** **`feat-002`** (*Unificación matemática de Medidas Especiales: `+Q25` corte MDF, decimales `step="0.01"` y paridad J.A.R.V.I.S.*).
 - **Tarea activa (`in-progress`):** Ninguna (`WIP = 0`).
-- **Cola secuencial planificada (`not-started`):**
-  1. **`feat-002`** (*Unificación matemática de Medidas Especiales: `+Q25` corte MDF, decimales `step="0.01"` y paridad J.A.R.V.I.S.*) -> **PRIMERA TAREA A ACTIVAR (`in-progress`) EN LA SESIÓN EJECUTORA**.
-  2. **`feat-003`** (*Migración aditiva de `CustomOrder` y contrato S2S con `Modulo_Ventas`: Push Webhook + Pull Inbox + Status Callback*, depende de `feat-002`).
-  3. **`feat-004`** (*Captura estructurada de cliente en los 3 flujos de venta web y estado `IMPORTADO` en panel Admin*, depende de `feat-003`).
+- **Cola secuencial pendiente (`not-started`):**
+  1. **`feat-003`** (*Migración aditiva de `CustomOrder` y contrato S2S con `Modulo_Ventas`: Push Webhook + Pull Inbox + Status Callback*, depende de `feat-002`) -> **SIGUIENTE TAREA A ACTIVAR (`in-progress`)**.
+  2. **`feat-004`** (*Captura estructurada de cliente en los 3 flujos de venta web y estado `IMPORTADO` en panel Admin*, depende de `feat-003`).
 - **Especificación técnica canónica obligatoria:** `docs/product-specs/web-orders-and-custom-pricing-s2s.md`.
 
 ## Alcance Incluido por Ronda Secuencial (`Fair game` — Ejecutar UNA tarea a la vez bajo `WIP = 1`)

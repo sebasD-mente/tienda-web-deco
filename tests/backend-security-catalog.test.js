@@ -88,12 +88,12 @@ describe('🛡️ Suite Backend Zero-Trust: SSRF, Path Traversal y Cálculo Auto
       assert.equal(result.totalPrice, 375); // 130 + 140 + 105
     });
 
-    it('Recalcula medidas personalizadas por área (cm² * tarifa) con exactitud al centavo', () => {
+    it('Recalcula medidas personalizadas por área (cm² * tarifa + Q25 corte especial MDF) con exactitud al centavo', () => {
       const customItems = [
         {
           sizeMode: 'custom',
           customWidth: 50,
-          customHeight: 70, // 3500 cm² * 0.048 = Q168.00
+          customHeight: 70, // 3500 cm² * 0.048 = Q168.00 + Q25.00 corte MDF = Q193.00
           baseMaterial: 'mdf',
           quantity: 2,
           unitPrice: 10,
@@ -103,9 +103,9 @@ describe('🛡️ Suite Backend Zero-Trust: SSRF, Path Traversal y Cálculo Auto
 
       const result = calculateAuthoritativeOrderTotals(customItems, 0.048);
       assert.equal(result.items[0].customArea, 3500);
-      assert.equal(result.items[0].unitPrice, 168);
-      assert.equal(result.items[0].totalPrice, 336);
-      assert.equal(result.totalPrice, 336);
+      assert.equal(result.items[0].unitPrice, 193);
+      assert.equal(result.items[0].totalPrice, 386);
+      assert.equal(result.totalPrice, 386);
       assert.equal(result.totalUnits, 2);
     });
   });

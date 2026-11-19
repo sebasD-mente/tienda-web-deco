@@ -37,7 +37,7 @@
       "area": "pricing-custom-posters",
       "user_visible_behavior": "El cotizador web, el backend autoritativo y el asistente J.A.R.V.I.S. aceptan medidas con decimales (ej. 42.2 x 30 cm) y arrojan exactamente el mismo centavo que Modulo_Ventas (Q 0.00 de diferencia).",
       "priority": "P0",
-      "status": "not-started",
+      "status": "done",
       "dependencies": [
         "feat-001"
       ],
@@ -57,7 +57,7 @@
         "bash ./init.sh",
         "npm run harness:check"
       ],
-      "evidence": "",
+      "evidence": "node --test tests/custom-pricing-parity.test.js tests/backend-security-catalog.test.js -> 9/9 PASS (7 Vectores Dorados exactos al centavo en los 3 motores); npm run harness:check -> HARNESS_PASS (Overall: 100/100, 70/70 tests PASS, vite build OK); bash ./init.sh -> Exit code 0 (CLEAN STATE)",
       "notes": "CRÍTICO DOCKER: utils/customPricing.js DEBE ubicarse en utils/ en la raíz (nunca solo en src/utils/) porque Dockerfile production no copia src/. Ver docs/product-specs/web-orders-and-custom-pricing-s2s.md §1-§2."
     },
     {

@@ -10,6 +10,11 @@ import { processImageBuffer } from './imageService.js';
 import path from 'path';
 import fs from 'fs';
 import { PROJECT_ROOT } from '../config/paths.js';
+import {
+  DEFAULT_CM2_RATE,
+  parseDecimalCm,
+  calculateCanonicalPosterItemPrice,
+} from '../utils/customPricing.js';
 
 /**
  * Genera un código de cotización único, legible y memorable (ej. "CP-4821")
@@ -83,8 +88,6 @@ const AUTHORITATIVE_DIMENSIONS_PRICES = {
   '60x100': 210,
 };
 
-const PVC_SURCHARGE = 15.0;
-
 function resolveStandardBasePrice(stdSize) {
   if (!stdSize || typeof stdSize !== 'object') return null;
   const rawId = String(stdSize.id || stdSize.sizeId || '').trim().toUpperCase();
@@ -108,47 +111,54 @@ function resolveStandardBasePrice(stdSize) {
  * Recalcula de forma autoritativa en el servidor los precios unitarios, subtotales y unidades
  * de una orden, impidiendo cualquier manipulación financiera desde el cliente.
  */
-export function calculateAuthoritativeOrderTotals(rawItems = [], cm2Rate = 0.048) {
-  const safeRate = Number(cm2Rate) > 0 ? Number(cm2Rate) : 0.048;
+export function calculateAuthoritativeOrderTotals(rawItems = [], cm2Rate = DEFAULT_CM2_RATE) {
+  const safeRate = Number(cm2Rate) > 0 ? Number(cm2Rate) : DEFAULT_CM2_RATE;
   const normalizedItems = [];
   let totalOrderPrice = 0;
   let totalOrderUnits = 0;
 
   for (const rawItem of (Array.isArray(rawItems) ? rawItems : [])) {
     const item = { ...rawItem };
-    const qty = Math.max(1, Math.min(500, Math.floor(Number(item.quantity) || 1)));
     const material = String(item.baseMaterial || 'mdf').toLowerCase();
+    const parsedW = parseDecimalCm(item.customWidth);
+    const parsedH = parseDecimalCm(item.customHeight);
+    const isCustomMode = item.sizeMode === 'custom' || (parsedW > 0 && parsedH > 0);
 
-    let basePrice = 0;
-    if (item.sizeMode === 'custom' || (Number(item.customWidth) > 0 && Number(item.customHeight) > 0)) {
-      const w = Math.max(1, Math.min(500, Number(item.customWidth) || 0));
-      const h = Math.max(1, Math.min(500, Number(item.customHeight) || 0));
-      const area = Number((w * h).toFixed(2));
-      item.customArea = area;
-      basePrice = area * safeRate;
+    let canonical;
+    if (isCustomMode) {
+      const w = Math.max(1, Math.min(500, parsedW || 1));
+      const h = Math.max(1, Math.min(500, parsedH || 1));
+      canonical = calculateCanonicalPosterItemPrice({
+        sizeMode: 'custom',
+        customWidth: w,
+        customHeight: h,
+        baseMaterial: material,
+        quantity: item.quantity,
+        cm2Rate: safeRate,
+      });
+      item.customWidth = w;
+      item.customHeight = h;
+      item.customArea = canonical.customArea;
     } else {
       const resolvedStd = resolveStandardBasePrice(item.selectedStandardSize);
-      basePrice = resolvedStd != null
+      const stdBase = resolvedStd != null
         ? resolvedStd
         : Math.max(25, Number(item.unitPrice) || 25);
+      canonical = calculateCanonicalPosterItemPrice({
+        sizeMode: 'standard',
+        standardSizePrice: stdBase,
+        baseMaterial: material,
+        quantity: item.quantity,
+        cm2Rate: safeRate,
+      });
     }
 
-    let unitPrice = basePrice;
-    if (material === 'pvc') {
-      unitPrice = basePrice + PVC_SURCHARGE;
-    } else if (material === 'vinyl_only') {
-      unitPrice = basePrice * 0.5;
-    }
+    item.quantity = canonical.quantity;
+    item.unitPrice = canonical.unitPrice;
+    item.totalPrice = canonical.totalPrice;
 
-    const roundedUnit = Number(unitPrice.toFixed(2));
-    const roundedSubtotal = Number((roundedUnit * qty).toFixed(2));
-
-    item.quantity = qty;
-    item.unitPrice = roundedUnit;
-    item.totalPrice = roundedSubtotal;
-
-    totalOrderUnits += qty;
-    totalOrderPrice = Number((totalOrderPrice + roundedSubtotal).toFixed(2));
+    totalOrderUnits += canonical.quantity;
+    totalOrderPrice = Number((totalOrderPrice + canonical.totalPrice).toFixed(2));
     normalizedItems.push(item);
   }
 

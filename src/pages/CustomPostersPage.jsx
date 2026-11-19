@@ -25,6 +25,13 @@ import {
 import { generateWhatsAppLink } from '../config/constants';
 import { OFFICIAL_SIZES } from '../data/catalogData';
 import { getStoredSettings } from '../utils/catalogStorage';
+import {
+  DEFAULT_CM2_RATE,
+  WOOD_CUSTOM_CUT_SURCHARGE,
+  PVC_SURCHARGE,
+  parseDecimalCm,
+  calculateCanonicalPosterItemPrice
+} from '../../utils/customPricing.js';
 
 const createNewCustomPoster = (index = 1) => ({
   id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -43,8 +50,7 @@ const createNewCustomPoster = (index = 1) => ({
 export default function CustomPostersPage({ onNavigate, settings }) {
   // Store Settings (Dynamic cm2 rate)
   const storeSettings = settings || getStoredSettings() || {};
-  const cm2Rate = Number(storeSettings.customCm2Price) || 0.048;
-  const pvcSurcharge = 15.00;
+  const cm2Rate = Number(storeSettings.customCm2Price) || DEFAULT_CM2_RATE;
 
   // List of Custom Posters configured by the customer
   const [postersList, setPostersList] = useState([createNewCustomPoster(1)]);
@@ -62,53 +68,47 @@ export default function CustomPostersPage({ onNavigate, settings }) {
     { label: '100 x 150 cm (Monumento)', w: 100, h: 150 }
   ];
 
-  // Helper: Calculate price details for a single poster item
+  // Helper: Calculate price details for a single poster item using canonical engine
   const getPosterPrice = (poster) => {
+    const parsedW = parseDecimalCm(poster.customWidth);
+    const parsedH = parseDecimalCm(poster.customHeight);
     const hasSize = poster.sizeMode === 'standard'
       ? Boolean(poster.selectedStandardSize)
-      : (Number(poster.customWidth) > 0 && Number(poster.customHeight) > 0);
+      : (parsedW > 0 && parsedH > 0);
 
     const hasBase = Boolean(poster.baseMaterial);
     const isConfigured = hasSize && hasBase;
 
-    const numericWidth = Number(poster.customWidth) || 0;
-    const numericHeight = Number(poster.customHeight) || 0;
-    const customArea = numericWidth * numericHeight;
-    const fullPriceForCustom = customArea * cm2Rate;
-
-    let unitPrice = 0;
-    if (isConfigured) {
-      const baseFullPrice = poster.sizeMode === 'standard'
-        ? poster.selectedStandardSize.price
-        : fullPriceForCustom;
-
-      if (poster.baseMaterial === 'mdf') {
-        unitPrice = baseFullPrice;
-      } else if (poster.baseMaterial === 'pvc') {
-        unitPrice = baseFullPrice + pvcSurcharge;
-      } else if (poster.baseMaterial === 'vinyl_only') {
-        unitPrice = baseFullPrice * 0.5; // Exactamente el 50%
-      }
-    }
-
-    const totalPrice = isConfigured ? unitPrice * (poster.quantity || 1) : 0;
+    const previewCalc = calculateCanonicalPosterItemPrice({
+      sizeMode: poster.sizeMode,
+      standardSizePrice: poster.selectedStandardSize?.price || 0,
+      customWidth: parsedW,
+      customHeight: parsedH,
+      baseMaterial: poster.baseMaterial || 'mdf',
+      quantity: poster.quantity || 1,
+      cm2Rate,
+    });
 
     return {
       hasSize,
       hasBase,
       isConfigured,
-      customArea,
-      unitPrice,
-      totalPrice
+      customArea: previewCalc.customArea,
+      basePrint: previewCalc.basePrint,
+      unitPrice: isConfigured ? previewCalc.unitPrice : 0,
+      totalPrice: isConfigured ? previewCalc.totalPrice : 0
     };
   };
 
-  // Helper: Card price display based on material
+  // Helper: Card price display based on material (standard pre-cut sizes)
   const getCardPriceForMaterial = (basePrice, material) => {
-    if (!material || material === 'mdf') return basePrice;
-    if (material === 'pvc') return basePrice + pvcSurcharge;
-    if (material === 'vinyl_only') return basePrice * 0.5;
-    return basePrice;
+    return calculateCanonicalPosterItemPrice({
+      sizeMode: 'standard',
+      standardSizePrice: basePrice,
+      baseMaterial: material || 'mdf',
+      quantity: 1,
+      cm2Rate,
+    }).unitPrice;
   };
 
   // Mutators for Posters List
@@ -187,8 +187,8 @@ export default function CustomPostersPage({ onNavigate, settings }) {
           id: p.id,
           sizeMode: p.sizeMode,
           selectedStandardSize: p.selectedStandardSize,
-          customWidth: p.customWidth,
-          customHeight: p.customHeight,
+          customWidth: p.sizeMode === 'custom' ? parseDecimalCm(p.customWidth) : p.customWidth,
+          customHeight: p.sizeMode === 'custom' ? parseDecimalCm(p.customHeight) : p.customHeight,
           customArea: calc.customArea,
           baseMaterial: p.baseMaterial,
           unitPrice: calc.unitPrice,
@@ -909,9 +909,11 @@ export default function CustomPostersPage({ onNavigate, settings }) {
                             <div style={{ position: 'relative' }}>
                               <input
                                 type="number"
-                                min="10"
+                                min="5"
                                 max="300"
-                                placeholder="Ej. 50"
+                                step="0.01"
+                                inputMode="decimal"
+                                placeholder="Ej. 42.2"
                                 value={poster.customWidth}
                                 onChange={(e) => handleUpdatePoster(poster.id, { customWidth: e.target.value })}
                                 style={{
@@ -939,9 +941,11 @@ export default function CustomPostersPage({ onNavigate, settings }) {
                             <div style={{ position: 'relative' }}>
                               <input
                                 type="number"
-                                min="10"
+                                min="5"
                                 max="300"
-                                placeholder="Ej. 70"
+                                step="0.01"
+                                inputMode="decimal"
+                                placeholder="Ej. 68.5"
                                 value={poster.customHeight}
                                 onChange={(e) => handleUpdatePoster(poster.id, { customHeight: e.target.value })}
                                 style={{
@@ -970,7 +974,7 @@ export default function CustomPostersPage({ onNavigate, settings }) {
                           </span>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                             {customPresets.map((preset, idx) => {
-                              const isPresetActive = Number(poster.customWidth) === preset.w && Number(poster.customHeight) === preset.h;
+                              const isPresetActive = parseDecimalCm(poster.customWidth) === preset.w && parseDecimalCm(poster.customHeight) === preset.h;
                               return (
                                 <button
                                   key={idx}
@@ -1011,13 +1015,24 @@ export default function CustomPostersPage({ onNavigate, settings }) {
                               Área de Impresión:
                             </span>
                             <strong style={{ color: '#fff', fontSize: '0.95rem' }}>
-                              {posterCalc.customArea > 0 ? `${poster.customWidth} x ${poster.customHeight} cm = ${posterCalc.customArea.toLocaleString()} cm²` : 'Ingresa ancho y alto'}
+                              {posterCalc.customArea > 0 ? `${poster.customWidth} x ${poster.customHeight} cm = ${posterCalc.customArea.toLocaleString('es-GT', { maximumFractionDigits: 2 })} cm²` : 'Ingresa ancho y alto'}
                             </strong>
+                            {posterCalc.customArea > 0 && (
+                              <span style={{ fontSize: '0.72rem', color: '#00f5a0', display: 'block', marginTop: '3px', fontWeight: 700 }}>
+                                {poster.baseMaterial === 'pvc'
+                                  ? `Base impresión Q ${posterCalc.basePrint.toFixed(2)} + Q ${PVC_SURCHARGE.toFixed(2)} PVC`
+                                  : poster.baseMaterial === 'vinyl_only'
+                                    ? `Base impresión Q ${posterCalc.basePrint.toFixed(2)} × 50% solo vinil`
+                                    : poster.baseMaterial === 'mdf'
+                                      ? `Base impresión Q ${posterCalc.basePrint.toFixed(2)} + Q ${WOOD_CUSTOM_CUT_SURCHARGE.toFixed(2)} corte especial MDF`
+                                      : `Base impresión Q ${posterCalc.basePrint.toFixed(2)} (elige material arriba para cotizar)`}
+                              </span>
+                            )}
                           </div>
 
                           <div style={{ textAlign: 'right' }}>
                             <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'block' }}>
-                              {posterCalc.customArea > 0 ? `Precio (${posterCalc.customArea.toLocaleString()} cm²):` : 'Precio Estimado:'}
+                              {posterCalc.customArea > 0 ? `Precio (${posterCalc.customArea.toLocaleString('es-GT', { maximumFractionDigits: 2 })} cm²):` : 'Precio Estimado:'}
                             </span>
                             <strong style={{ color: 'var(--accent-cyan)', fontSize: '0.98rem' }}>
                               {posterCalc.unitPrice > 0 ? `Q ${posterCalc.unitPrice.toFixed(2)} unitario` : 'Q 0.00'}

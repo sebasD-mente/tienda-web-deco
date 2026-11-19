@@ -22,6 +22,11 @@ import {
   prisma
 } from './catalogService.js';
 import { findSimilarPosters, ENTITY_ALIASES, normalizeText, isNoveltyQuery } from './embeddingService.js';
+import {
+  DEFAULT_CM2_RATE,
+  parseDecimalCm,
+  calculateCanonicalPosterItemPrice
+} from '../utils/customPricing.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -62,13 +67,14 @@ export const JARVIS_TOOL_DECLARATIONS = [
   },
   {
     name: 'capturar_orden_personalizada',
-    description: 'Calcula la cotización exacta en Quetzales y captura los parámetros para un cuadro personalizado con medidas especiales (en cm), tipo de material y detalles de diseño. Si el usuario menciona medidas o dimensiones, invoca de inmediato esta herramienta asumiendo material mdf por defecto sin frenar la venta con preguntas.',
+    description: 'Calcula la cotización exacta en Quetzales y captura los parámetros para un cuadro personalizado con medidas especiales (en cm, soporta decimales), tipo de material y detalles de diseño. Si el usuario menciona medidas o dimensiones, invoca de inmediato esta herramienta asumiendo material mdf por defecto sin frenar la venta con preguntas.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        anchoCm: { type: 'NUMBER', description: 'Ancho en centímetros (ej: 50)' },
-        altoCm:  { type: 'NUMBER', description: 'Alto en centímetros (ej: 30)' },
-        material: { type: 'STRING', description: 'Material: mdf o pvc. Por defecto asume mdf si el cliente no especificó otro.', enum: ['mdf', 'pvc'] },
+        anchoCm: { type: 'NUMBER', description: 'Ancho en centímetros, acepta decimales (ej: 42.2 o 50)' },
+        altoCm:  { type: 'NUMBER', description: 'Alto en centímetros, acepta decimales (ej: 30 o 68.5)' },
+        material: { type: 'STRING', description: 'Material: mdf, pvc o vinyl_only. Por defecto asume mdf si el cliente no especificó otro.', enum: ['mdf', 'pvc', 'vinyl_only'] },
+        cantidad: { type: 'NUMBER', description: 'Cantidad de unidades (por defecto 1)' },
         detallesDiseno: { type: 'STRING', description: 'Descripción o detalles del diseño personalizado solicitado por el cliente' }
       },
       required: ['anchoCm', 'altoCm']
@@ -140,32 +146,56 @@ export const JARVIS_TOOL_DECLARATIONS = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Calculates the price of a custom-sized poster in Quetzales.
- * @param {number} widthCm
- * @param {number} heightCm
- * @param {'mdf'|'pvc'} material
+ * Calculates the price of a custom-sized poster in Quetzales using the canonical pricing engine.
+ * @param {number|string} widthCm
+ * @param {number|string} heightCm
+ * @param {'mdf'|'pvc'|'vinyl_only'} material
  * @param {number|null} customRate - Dynamic price per cm2 (defaults to 0.048)
- * @returns {{ width, height, material, totalPrice, deposit50, areaCm2 }}
+ * @param {number} quantity - Number of units (defaults to 1)
+ * @returns {{ width, height, material, baseMaterial, basePrint, unitPrice, totalPrice, deposit50, areaCm2, quantity }}
  */
-export function calculateCustomPrice(widthCm, heightCm, material = 'mdf', customRate = null) {
-  const w = Math.max(10, Math.min(250, Number(widthCm) || 30));
-  const h = Math.max(10, Math.min(250, Number(heightCm) || 45));
-  const areaCm2 = w * h;
-  const baseRatePerCm2 = (customRate !== null && !isNaN(Number(customRate))) ? Number(customRate) : 0.048;
-  const rawPrice = areaCm2 * baseRatePerCm2;
-  const minPrice = 25.00;
-  const rounded = Math.ceil(rawPrice / 5) * 5;
-  const calculated = Math.max(minPrice, rounded);
-  const multiplier = (material || '').toLowerCase() === 'pvc' ? 1.25 : 1.0;
-  const finalPrice = Math.round(calculated * multiplier);
+export function calculateCustomPrice(widthCm, heightCm, material = 'mdf', customRate = null, quantity = 1) {
+  const parsedW = parseDecimalCm(widthCm);
+  const parsedH = parseDecimalCm(heightCm);
+  const w = Math.max(5, Math.min(300, parsedW > 0 ? parsedW : 30));
+  const h = Math.max(5, Math.min(300, parsedH > 0 ? parsedH : 45));
+  const matRaw = String(material || 'mdf').toLowerCase().trim();
+  const matKey = matRaw === 'pvc'
+    ? 'pvc'
+    : (matRaw === 'vinyl_only' || matRaw === 'vinil' || matRaw === 'vinilo')
+      ? 'vinyl_only'
+      : 'mdf';
+  const baseRatePerCm2 = (customRate !== null && customRate !== undefined && Number(customRate) > 0)
+    ? Number(customRate)
+    : DEFAULT_CM2_RATE;
+
+  const canonical = calculateCanonicalPosterItemPrice({
+    sizeMode: 'custom',
+    customWidth: w,
+    customHeight: h,
+    baseMaterial: matKey,
+    quantity,
+    cm2Rate: baseRatePerCm2,
+  });
+
+  let materialLabel = 'Madera MDF 5.5mm (Estándar)';
+  if (matKey === 'pvc') {
+    materialLabel = 'PVC Sintético 5mm (Impermeable)';
+  } else if (matKey === 'vinyl_only') {
+    materialLabel = 'Solo Impresión en Vinil Adhesivo HD (50%)';
+  }
 
   return {
     width: w,
     height: h,
-    material: material === 'pvc' ? 'PVC Sintético 5mm (Impermeable)' : 'Madera MDF 5.5mm (Estándar)',
-    totalPrice: finalPrice,
-    deposit50: Math.round(finalPrice * 0.5 * 100) / 100,
-    areaCm2
+    material: materialLabel,
+    baseMaterial: matKey,
+    basePrint: canonical.basePrint,
+    unitPrice: canonical.unitPrice,
+    totalPrice: canonical.totalPrice,
+    deposit50: Number((canonical.totalPrice * 0.5).toFixed(2)),
+    areaCm2: canonical.customArea,
+    quantity: canonical.quantity,
   };
 }
 
@@ -602,6 +632,7 @@ ${customDocs}
 - PVC Sintético 5mm: Ultraligero y 100% impermeable / resistente al agua y humedad (+Q15.00).
 - Solo Vinil Adhesivo: Impresión en vinil HP Látex al 50% de descuento (mitad de precio).
 Medidas estándar: Mini (14x21cm - Q25), Pequeño (21x27cm - Q35), Portada Álbum (30x30cm - Q55), Mediano (30x45cm - Q65), Grande (45x60cm - Q125), Gigante (60x100cm - Q210).
+Medidas especiales (no estándar, con soporte decimal): Base impresión (Ancho × Alto × Q0.048/cm²) + Q25.00 de corte especial en MDF 5.5mm; + Q15.00 en PVC 5mm; o 50% de la base en solo vinil adhesivo.
 
 === OBRAS DISPONIBLES COINCIDENTES PARA ESTA CONSULTA (RAG SEMÁNTICO) ===
 ${catalogSummary}`;
@@ -644,7 +675,9 @@ export function formatChatHistory(rawHistory, maxTurns = 8) {
 
         const quoteAction = actions.find(a => a && a.type === 'custom_quote' && a.quote);
         if (quoteAction && quoteAction.quote) {
-          text += `\n[Contexto de cotización calculada en este turno: Medida ${quoteAction.quote.width}x${quoteAction.quote.height}cm, Material ${quoteAction.quote.material}, Total: Q${quoteAction.quote.totalPrice}.00, Anticipo: Q${quoteAction.quote.deposit50}.00]`;
+          const qTotal = Number(quoteAction.quote.totalPrice || 0).toFixed(2);
+          const qDeposit = Number(quoteAction.quote.deposit50 || 0).toFixed(2);
+          text += `\n[Contexto de cotización calculada en este turno: Medida ${quoteAction.quote.width}x${quoteAction.quote.height}cm, Material ${quoteAction.quote.material}, Total: Q${qTotal}, Anticipo: Q${qDeposit}]`;
         }
       }
 
@@ -852,8 +885,8 @@ export function executeFunctionCall(call, posters = [], relevantPosters = [], ca
 
       case 'capturar_orden_personalizada':
       case 'cotizar_personalizado': {
-        const dynamicRate = catalog?.settings?.customCm2Price || 0.048;
-        const quote = calculateCustomPrice(args.anchoCm, args.altoCm, args.material, dynamicRate);
+        const dynamicRate = catalog?.settings?.customCm2Price || DEFAULT_CM2_RATE;
+        const quote = calculateCustomPrice(args.anchoCm, args.altoCm, args.material, dynamicRate, args.cantidad || 1);
         const mockOrderNumber = `DV-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
         return {
           type: 'custom_quote',
@@ -1005,26 +1038,38 @@ export function runFallbackEngine(prompt, posters, jarvisMemory, catalog = null)
     };
   }
 
-  // 1. Check for custom dimensions calculation first (e.g. 50x70, 80x120)
-  const dimMatch = qLower.match(/(\d{2,3})\s*(?:x|\*|por)\s*(\d{2,3})/);
+  // 1. Check for custom dimensions calculation first (e.g. 50x70, 42.2x30, 48,5 por 68,25)
+  const dimMatch = qLower.match(/(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:x|\*|por)\s*(\d{1,3}(?:[.,]\d{1,2})?)/);
 
   if (dimMatch) {
-    const w     = parseInt(dimMatch[1], 10);
-    const h     = parseInt(dimMatch[2], 10);
-    const isPvc = qLower.includes('pvc') || qLower.includes('impermeable');
-    const dynamicRate = catalog?.settings?.customCm2Price || 0.048;
-    const quote = calculateCustomPrice(w, h, isPvc ? 'pvc' : 'mdf', dynamicRate);
-    localActions.push({ type: 'custom_quote', quote });
-    localReply = `¡Con gusto! Para una medida personalizada de **${w}x${h}cm** en **${quote.material}**:\n\n` +
-                 `* **Precio Total:** Q${quote.totalPrice}.00\n` +
-                 `* **Anticipo 50%:** Q${quote.deposit50}.00 (el saldo contra entrega en Ciudad de Guatemala o previo a envío departamental).\n` +
-                 `* **Incluye:** Cinta industrial Tesa en el reverso lista para colgar sin clavos ni taladros e impresión HP Látex con protección UV.\n\n` +
-                 `¿Deseas que te ayudemos a procesar este diseño personalizado por WhatsApp?`;
-    return {
-      replyText: localReply,
-      actions: localActions,
-      poweredBy: 'Deco High-Availability Fallback Engine'
-    };
+    const rawW = parseDecimalCm(dimMatch[1]);
+    const rawH = parseDecimalCm(dimMatch[2]);
+    if (rawW >= 5 && rawH >= 5 && rawW <= 300 && rawH <= 300) {
+      const isPvc = qLower.includes('pvc') || qLower.includes('impermeable');
+      const isVinylOnly = !isPvc && (
+        qLower.includes('solo vinil') ||
+        qLower.includes('sin base') ||
+        qLower.includes('vinyl_only') ||
+        qLower.includes('vinil adhesivo')
+      );
+      const matKey = isPvc ? 'pvc' : (isVinylOnly ? 'vinyl_only' : 'mdf');
+      const dynamicRate = catalog?.settings?.customCm2Price || DEFAULT_CM2_RATE;
+      const quote = calculateCustomPrice(rawW, rawH, matKey, dynamicRate);
+      localActions.push({ type: 'custom_quote', quote });
+      const includesLine = matKey === 'vinyl_only'
+        ? `* **Incluye:** Impresión fotográfica HP Látex en vinil adhesivo HD con protección UV (sin base rígida).\n\n`
+        : `* **Incluye:** Cinta industrial Tesa en el reverso lista para colgar sin clavos ni taladros e impresión HP Látex con protección UV.\n\n`;
+      localReply = `¡Con gusto! Para una medida personalizada de **${quote.width}x${quote.height}cm** en **${quote.material}**:\n\n` +
+                   `* **Precio Total:** Q${quote.totalPrice.toFixed(2)}\n` +
+                   `* **Anticipo 50%:** Q${quote.deposit50.toFixed(2)} (el saldo contra entrega en Ciudad de Guatemala o previo a envío departamental).\n` +
+                   includesLine +
+                   `¿Deseas que te ayudemos a procesar este diseño personalizado por WhatsApp?`;
+      return {
+        replyText: localReply,
+        actions: localActions,
+        poweredBy: 'Deco High-Availability Fallback Engine'
+      };
+    }
   }
 
   // 1.5 Check for novelty intent (novedades, obras nuevas, qué hay de nuevo, qué agregaron)

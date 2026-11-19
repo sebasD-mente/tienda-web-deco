@@ -61,7 +61,7 @@ export const DEFAULT_STORE_KNOWLEDGE = {
       "id": "doc-personalizados",
       "title": "Protocolo de Cuadros Personalizados",
       "category": "Producción",
-      "content": "Cualquier imagen, fotografía familiar, diseño de anime, fútbol o arte digital que envíes se puede fabricar en MDF 5.5mm o PVC 5mm impermeable. Evaluamos la resolución para garantizar que quede nítida. El precio para medidas no estándar se calcula a Q0.048 por cm² en MDF (mínimo Q30.00).",
+      "content": "Cualquier imagen, fotografía familiar, diseño de anime, fútbol o arte digital que envíes se puede fabricar en MDF 5.5mm, PVC 5mm impermeable o solo vinil adhesivo (incluyendo medidas con decimales). Evaluamos la resolución para garantizar que quede nítida. El precio para medidas especiales se calcula como (Ancho × Alto × Q 0.048) + Q 25.00 de corte especial en MDF 5.5mm; + Q 15.00 en PVC 5mm; o 50% de la base en solo vinil adhesivo.",
       "dateAdded": "26/8/2026"
     },
     {
@@ -159,7 +159,7 @@ export const DEFAULT_STORE_KNOWLEDGE = {
     "deliveryTime": "De 2 a 4 días hábiles de fabricación y entrega en toda Guatemala.",
     "shippingCoverage": "Envíos a los 22 departamentos de Guatemala mediante mensajerías certificadas (Guatex / Forza / Cargo Expreso / Mensajería Directa en Ciudad de Guatemala).",
     "customOrders": "El cliente puede enviar cualquier imagen, fotografía familiar, diseño o póster que desee fabricar. Evaluamos la resolución para garantizar nitidez óptima.",
-    "customPricingFormula": "Para medidas no estándar: se calcula por cm² a razón de Q 0.048 por cm² en MDF 5.5mm (mínimo Q 30.00)."
+    "customPricingFormula": "Para medidas especiales (no estándar, acepta decimales): (Ancho × Alto × Q 0.048) + Q 25.00 de corte especial en MDF 5.5mm; + Q 15.00 en PVC 5mm; o 50% de la base en solo vinil adhesivo."
   }
 };
 
